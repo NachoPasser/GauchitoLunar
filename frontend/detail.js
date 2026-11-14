@@ -3,6 +3,7 @@
 
 import { getSites, getMask, getSite } from "./api.js";
 import { createSkyline } from "./skyline.js";
+import { renderMetrics } from "./panel.js";
 
 const $ = (id) => document.getElementById(id);
 const sky = createSkyline($("skyline"));
@@ -46,6 +47,7 @@ async function showSite(lat, lon) {
     slider.max = site.sun_track.length - 1;
     slider.value = 0;
     updateCursor(0);
+    renderMetrics($("metrics"), site);
     setStatus("");
   } catch (e) {
     setStatus(`No se pudo cargar (¿backend activo?): ${e.message}`, true);
