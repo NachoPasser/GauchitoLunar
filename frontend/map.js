@@ -13,14 +13,20 @@ const $ = (id) => document.getElementById(id);
 const stage = $("map-stage");
 const disk = $("map-disk");
 const layer = $("map-markers");
-const modal = createDetailModal({ windowDays: windowDays(), date: startDate() });
-const top3 = createTop3({ onDetail: (lat, lon, name) => modal.open(lat, lon, name) });
 let proj = null;
 let pending = null;            // {lat, lon} del último click en zona libre
+let activeSite = null;         // {lat, lon} del sitio activo (apoyo de la cuña, §2.3)
+const modal = createDetailModal({
+  windowDays: windowDays(), date: startDate(),
+  // Sincronización por azimut: la ventana del skyline mueve la cuña del mapa en vivo.
+  onAzimuthWindow: (win) => { if (activeSite) drawCone(activeSite.lat, activeSite.lon, win); },
+});
+const top3 = createTop3({ onDetail: (lat, lon, name) => modal.open(lat, lon, name) });
 
 function setStatus(msg) { $("map-status").textContent = msg || ""; }
 
 const SVGNS = "http://www.w3.org/2000/svg";
+const CONE = "#d946ef", CONE_EDGE = "#f0abfc";   // cuña de azimut (fucsia, §2.3)
 function svg(tag, attrs) {
   const el = document.createElementNS(SVGNS, tag);
   for (const k in attrs) el.setAttribute(k, attrs[k]);
@@ -151,6 +157,70 @@ function drawDirArrows(sunAz, earthAz, tLabel) {
   g.appendChild(t);
 }
 
+// Cuña de visión (§2.3) en el sitio activo: refleja la ventana de azimut del skyline.
+// El marco local (Norte/Este en pantalla) se deriva de la proyección (lonlatToNorm en
+// lat±ε, lon±ε), así el azimut apunta bien en cualquier longitud. La estereográfica es
+// conforme → N⊥E y la cuña sale como un sector circular. Se dibuja en #map-chrome
+// (sobre el raster, bajo los marcadores) y reemplaza la cuña anterior.
+function drawCone(lat, lon, win) {
+  const old = $("map-cone");
+  if (old) old.remove();
+  if (!proj || !win) return;
+  const EPS = 0.1;
+  const P = proj.lonlatToNorm(lon, lat);
+  const Pn = proj.lonlatToNorm(lon, lat + EPS);
+  const Pe = proj.lonlatToNorm(lon + EPS, lat);
+  const unit = (a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], m = Math.hypot(dx, dy);
+    return m > 1e-9 ? [dx / m, dy / m] : [0, 0];
+  };
+  const [nx, ny] = unit(P, Pn);           // Norte local en pantalla
+  const [ex, ey] = unit(P, Pe);           // Este local en pantalla
+  const cx = P[0] * 1000, cy = P[1] * 1000, R = 200;
+  const sweep = ((win.hasta - win.desde + 360) % 360) || 360;
+  const dir = (azDeg, rad = R) => {
+    const a = (azDeg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
+    return [cx + rad * (c * nx + s * ex), cy + rad * (c * ny + s * ey)];
+  };
+  const steps = Math.max(2, Math.round(sweep / 6));
+  let d = `M${cx.toFixed(1)} ${cy.toFixed(1)}`;
+  for (let i = 0; i <= steps; i++) {
+    const [px, py] = dir(win.desde + (sweep * i) / steps);
+    d += `L${px.toFixed(1)} ${py.toFixed(1)}`;
+  }
+  const g = svg("g", { id: "map-cone" });
+  const defs = svg("defs", {});
+  // Relleno radial desde el vértice: brilla en el sitio y se desvanece hacia el arco
+  // (linterna en vista cenital), sin línea dura en la parte redondeada.
+  const grad = svg("radialGradient",
+    { id: "cone-grad", gradientUnits: "userSpaceOnUse", cx, cy, r: R });
+  grad.appendChild(svg("stop", { offset: 0, "stop-color": CONE, "stop-opacity": 0.6 }));
+  grad.appendChild(svg("stop", { offset: 0.6, "stop-color": CONE, "stop-opacity": 0.28 }));
+  grad.appendChild(svg("stop", { offset: 1, "stop-color": CONE, "stop-opacity": 0 }));
+  defs.appendChild(grad);
+  // Bordes rectos marcados que MUEREN con el degradado: cada uno un linearGradient
+  // del vértice (opaco) al arco (transparente), así no cortan en seco.
+  const eA = dir(win.desde), eB = dir(win.desde + sweep);
+  const edgeGrad = (id, p) => {
+    const lg = svg("linearGradient",
+      { id, gradientUnits: "userSpaceOnUse", x1: cx, y1: cy, x2: p[0], y2: p[1] });
+    lg.appendChild(svg("stop", { offset: 0, "stop-color": CONE_EDGE, "stop-opacity": 0.95 }));
+    lg.appendChild(svg("stop", { offset: 1, "stop-color": CONE_EDGE, "stop-opacity": 0 }));
+    defs.appendChild(lg);
+  };
+  edgeGrad("cone-edge-a", eA);
+  edgeGrad("cone-edge-b", eB);
+  g.appendChild(defs);
+  g.appendChild(svg("path", { d: `${d}Z`, fill: "url(#cone-grad)", stroke: "none" }));
+  g.appendChild(svg("line", { x1: cx, y1: cy, x2: eA[0], y2: eA[1],
+    stroke: "url(#cone-edge-a)", "stroke-width": 2.5, "stroke-linecap": "round" }));
+  g.appendChild(svg("line", { x1: cx, y1: cy, x2: eB[0], y2: eB[1],
+    stroke: "url(#cone-edge-b)", "stroke-width": 2.5, "stroke-linecap": "round" }));
+  g.appendChild(svg("circle", { cx, cy, r: 4, fill: CONE_EDGE,
+    stroke: "#0b1124", "stroke-width": 1.5 }));
+  $("map-chrome").appendChild(g);
+}
+
 // Marcadores SVG (no emoji): estrella = predefinido, chincheta = del usuario.
 function markerSVG(kind) {
   if (kind === "pin") {
@@ -184,6 +254,7 @@ function addMarker(lon, lat, name, kind) {
   m.addEventListener("click", (e) => {
     e.stopPropagation();
     setActive(m);
+    activeSite = { lat, lon };
     setSitioActivo({ lat, lon, name });
     modal.open(lat, lon, name);
   });
@@ -253,6 +324,7 @@ $("free-detail").addEventListener("click", () => {
   if (!pending) return;
   const name = freeName(pending);
   setActive(null);
+  activeSite = { lat: pending.lat, lon: pending.lon };
   setSitioActivo({ lat: pending.lat, lon: pending.lon, name });
   modal.open(pending.lat, pending.lon, name);
   hidePopup();

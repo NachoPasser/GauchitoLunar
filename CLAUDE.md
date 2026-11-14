@@ -132,7 +132,11 @@ Regla: primero que el **skyline se entienda solo**; no agregar features si la ba
   (capa de datos + modal con carrusel de 3 pasos: podio + tabla de todos los sitios, "ver detalle"),
   abierto desde el botón 🏆 del mapa. El panel de detalle sumó **métricas por instante** atadas al
   slider: energía solar **acumulada** al cursor (Sol) y despeje sobre el horizonte `el−h(az)`
-  (Tierra), más aguja punteada sobre los cartuchos. Falta: H6 (extras).
+  (Tierra), más aguja punteada sobre los cartuchos. **H6 — cono (sincronización por azimut,
+  §2.3): hecho.** El skyline tiene una ventana de azimut (fucsia) arrastrable con agarradera de
+  ojo + flechitas; el mapa dibuja una cuña tipo linterna (degradé radial) en el sitio activo que
+  refleja esa ventana en vivo, con marco local Norte/Este derivado de la proyección (validado:
+  N⊥E, N radial afuera, E horario). Falta: resto de H6 (Monte Carlo, eclipses, modo guiado, export).
 - Lo que contradiga la arquitectura del SPEC se adapta o se descarta.
 
 ## Honestidad (para no prometer de más)

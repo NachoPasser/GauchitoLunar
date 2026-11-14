@@ -6,9 +6,10 @@ import { getMask, getSite } from "./api.js";
 import { createSkyline } from "./skyline.js";
 import { renderMetrics, renderCartuchos, instantLine } from "./panel.js";
 
-export function createDetailModal({ windowDays = 30, date = null } = {}) {
+export function createDetailModal({ windowDays = 30, date = null,
+                                    onAzimuthWindow = null } = {}) {
   const $ = (id) => document.getElementById(id);
-  const sky = createSkyline($("skyline"));
+  const sky = createSkyline($("skyline"), { onWindowChange: onAzimuthWindow });
   let fullSky = false;
   let data = null;          // respuesta /api/site del sitio activo (para el slider)
   let updateMetrics = null; // updater(i) de las métricas por instante (ver panel.js)
@@ -48,6 +49,8 @@ export function createDetailModal({ windowDays = 30, date = null } = {}) {
       sky.setMask(mask.horizon_mask);
       sky.setTracks(site.sun_track, site.earth_track);
       sky.setParams({ commsMargin: site.params.comms_margin_deg });
+      // Ventana de azimut inicial centrada en la Tierra (dirección de comms, §2.3).
+      sky.centerWindow(site.earth_track[0].az);
       const slider = $("time-slider");
       slider.max = site.sun_track.length - 1;
       slider.value = 0;

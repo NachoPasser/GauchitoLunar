@@ -5,9 +5,11 @@
 const SVGNS = "http://www.w3.org/2000/svg";
 const PAD = { t: 14, r: 14, b: 26, l: 34 };
 const W = 760, H = 340;
+const AZ_WIN_WIDTH = 120;   // ancho fijo de la ventana de azimut (§2.3), en grados
 // Modo oscuro (cielo real): fondo navy, estrellas blancas, terreno negro silueteado.
 // Tracks en variantes brillantes para que resalten sobre el cielo oscuro.
 const SUN = "#fbbf24", EARTH = "#60a5fa";   // Sol ámbar / Tierra celeste (sobre oscuro)
+const AZWIN = "#d946ef", AZWIN_EDGE = "#f0abfc";   // ventana de azimut (fucsia, §2.3)
 const SKY_TOP = "#070b1c", SKY_HORIZON = "#141d3a";
 const GROUND = "#05070f", RIM = "#5b6a86";
 const GRID = "rgba(255,255,255,.07)", GRID_HORIZON = "rgba(148,163,184,.45)";
@@ -41,8 +43,10 @@ function niceStep(rough) {
   return 90;
 }
 
-export function createSkyline(svg) {
+export function createSkyline(svg, { onWindowChange } = {}) {
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.style.cursor = "ew-resize";   // afforda "arrastrable en horizontal"
+  svg.style.touchAction = "none";   // el drag no scrollea en touch
   const stars = makeStars(90);
   const st = {
     mask: [], sun: [], earth: [], fullSky: false, commsMargin: 0, azWindow: null,
@@ -74,6 +78,34 @@ export function createSkyline(svg) {
     if (commsMargin != null) st.commsMargin = commsMargin;
   }
   function setAzimuthWindow(win) { st.azWindow = win || null; }
+
+  // Ventana de azimut arrastrable (el "recuadro" del skyline, §2.3): ancho fijo,
+  // el centro sigue al puntero. Emite onWindowChange para sincronizar el cono del mapa.
+  const normAz = (a) => ((a % 360) + 360) % 360;
+  function azAtClientX(clientX) {
+    const r = svg.getBoundingClientRect();
+    const xs = ((clientX - r.left) / r.width) * W;           // px → unidades viewBox
+    const az = ((xs - PAD.l) / (W - PAD.l - PAD.r)) * 360;
+    return Math.max(0, Math.min(360, az));
+  }
+  function centerWindow(c) {
+    const half = AZ_WIN_WIDTH / 2;
+    st.azWindow = { desde: normAz(c - half), hasta: normAz(c + half) };
+    draw();
+    if (onWindowChange) onWindowChange(st.azWindow);
+  }
+  let dragging = false;
+  svg.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    svg.setPointerCapture(e.pointerId);
+    centerWindow(azAtClientX(e.clientX));
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (dragging) centerWindow(azAtClientX(e.clientX));
+  });
+  const endDrag = () => { dragging = false; };
+  svg.addEventListener("pointerup", endDrag);
+  svg.addEventListener("pointercancel", endDrag);
 
   // Rango vertical dinámico (piso ~5°) o cielo completo (0–90°).
   function range() {
@@ -136,14 +168,44 @@ export function createSkyline(svg) {
     }));
   }
 
-  // Banda translúcida de la ventana de azimut (secundaria, §2.3).
-  function drawAzWindow(y) {
+  // Recuadro translúcido de la ventana de azimut (§2.3). Si envuelve el Norte
+  // (desde > hasta) se dibuja en dos tramos. Bordes marcados = agarradera visual.
+  function drawAzWindow() {
     if (!st.azWindow) return;
-    const [a0, a1] = st.azWindow;
-    svg.appendChild(el("rect", {
-      x: x(a0), y: PAD.t, width: x(a1) - x(a0), height: H - PAD.b - PAD.t,
-      fill: "#3b82f6", opacity: 0.08,
-    }));
+    const { desde, hasta } = st.azWindow;
+    const bands = desde <= hasta ? [[desde, hasta]] : [[desde, 360], [0, hasta]];
+    for (const [a0, a1] of bands) {
+      svg.appendChild(el("rect", {
+        x: x(a0), y: PAD.t, width: x(a1) - x(a0), height: H - PAD.b - PAD.t,
+        fill: AZWIN, opacity: 0.13,
+      }));
+    }
+    for (const a of [desde, hasta]) {
+      svg.appendChild(el("line", {
+        x1: x(a), y1: PAD.t, x2: x(a), y2: H - PAD.b,
+        stroke: AZWIN_EDGE, "stroke-width": 1.5, opacity: 0.85,
+      }));
+    }
+    drawAzHandle(normAz(desde + AZ_WIN_WIDTH / 2));   // agarradera en el centro
+  }
+
+  // Agarradera de la ventana: ojo (= dirección de visión) + dos flechitas que invitan
+  // a deslizar. Pegada al borde superior, centrada en la ventana; se redibuja al mover.
+  function drawAzHandle(center) {
+    const hx = x(center), hy = PAD.t + 1;
+    svg.appendChild(el("circle", { cx: hx, cy: hy, r: 10,
+      fill: "#1a1030", stroke: AZWIN_EDGE, "stroke-width": 1.5 }));
+    svg.appendChild(el("path", {    // almendra del ojo
+      d: `M${hx - 6} ${hy} Q${hx} ${hy - 4} ${hx + 6} ${hy} Q${hx} ${hy + 4} ${hx - 6} ${hy} Z`,
+      fill: "none", stroke: AZWIN_EDGE, "stroke-width": 1.3 }));
+    svg.appendChild(el("circle", { cx: hx, cy: hy, r: 1.9, fill: AZWIN_EDGE }));  // pupila
+    const chev = (dx, dir) => el("path", {   // flechita (chevron) hacia afuera
+      d: `M${hx + dx - dir * 1.5} ${hy - 3} L${hx + dx + dir * 1.5} ${hy} ` +
+         `L${hx + dx - dir * 1.5} ${hy + 3}`,
+      fill: "none", stroke: AZWIN_EDGE, "stroke-width": 1.5,
+      "stroke-linecap": "round", "stroke-linejoin": "round" });
+    svg.appendChild(chev(-15, -1));   // ‹ izquierda
+    svg.appendChild(chev(15, 1));     // › derecha
   }
 
   // Umbral de comms (h(az) + margen) punteado; solo visible si el margen > 0.
@@ -245,7 +307,7 @@ export function createSkyline(svg) {
     const r = range();
     const y = yFn(r);
     drawSky(y, r);
-    drawAzWindow(y);
+    drawAzWindow();
     drawGrid(y, r);
     drawTerrain(y, r);
     drawCommsMargin(y);
@@ -257,6 +319,7 @@ export function createSkyline(svg) {
   }
 
   return {
-    setMask, setTracks, setFullSky, setParams, setAzimuthWindow, setCursor, draw,
+    setMask, setTracks, setFullSky, setParams, setAzimuthWindow, centerWindow,
+    setCursor, draw,
   };
 }
