@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Detalle de sitio · Skyline</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <!--
+    Harness de desarrollo de H2. Requiere el backend corriendo:
+        cd backend && .venv/bin/uvicorn main:app --reload
+    y servir este frontend por HTTP (no file://, por CORS):
+        cd frontend && python3 -m http.server 5500   → http://localhost:5500/detail.html
+  -->
+</head>
+<body class="bg-slate-900 min-h-screen flex items-center justify-center p-6 font-['Inter']">
+
+  <button id="open-btn" class="px-4 py-2 rounded-lg bg-[#0032A0] text-white font-semibold">
+    Ver detalle del sitio
+  </button>
+
+  <!-- MODAL DE DETALLE PUNTUAL (reusable por H3) -->
+  <div id="detail-overlay"
+       class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 hidden z-40">
+    <div id="detail-panel"
+         class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-auto">
+
+      <!-- Encabezado -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div>
+          <h2 id="site-name" class="text-lg font-bold text-slate-800">—</h2>
+          <p id="site-coords" class="text-xs text-slate-400 font-['JetBrains_Mono']"></p>
+        </div>
+        <button id="close-btn"
+                class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 text-xl leading-none">
+          ×
+        </button>
+      </div>
+
+      <!-- Controles -->
+      <div class="flex flex-wrap items-center gap-3 px-6 pt-4">
+        <label class="text-xs text-slate-500">Sitio
+          <select id="site-select"
+                  class="ml-1 border border-slate-200 rounded px-2 py-1 text-sm"></select>
+        </label>
+        <button id="fullsky-btn"
+                class="text-xs px-2.5 py-1 rounded border border-slate-200 text-slate-600 hover:bg-slate-50">
+          Cielo completo (0–90°)
+        </button>
+        <span id="status" class="text-xs text-slate-400"></span>
+      </div>
+
+      <!-- Skyline -->
+      <div class="px-4 py-3">
+        <svg id="skyline" class="w-full" role="img"
+             aria-label="Skyline: elevación del Sol y la Tierra sobre el horizonte"></svg>
+      </div>
+
+      <!-- Placeholders para H2.5 (métricas) y H2.6 (cartuchos) -->
+      <div id="metrics" class="px-6"></div>
+      <div id="cartuchos" class="px-6 pb-6"></div>
+    </div>
+  </div>
+
+  <script type="module" src="detail.js"></script>
+</body>
+</html>
