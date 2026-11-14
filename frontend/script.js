@@ -244,11 +244,12 @@ dateForm.addEventListener('submit', (e) => {
     false
   );
 
-  // H4: fija el rango global en la única fuente de verdad y navega al mapa.
-  // Preserva ?api= para el modo dev. El estado cruza la página vía localStorage.
+  // H4: fija el rango global en la única fuente de verdad y navega al mapa. El
+  // estado y la base del backend cruzan la página vía localStorage (NO por la URL:
+  // arrastrar ?api= la componía en navegaciones sucesivas). Ver apibase.js.
   if (window.LLNState) window.LLNState.setRango(startVal, endVal);
   setTimeout(() => {
-    window.location.href = `map.html${window.location.search}`;
+    window.location.href = "map.html";
   }, 650);
 });
 
