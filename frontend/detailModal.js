@@ -6,7 +6,7 @@ import { getMask, getSite } from "./api.js";
 import { createSkyline } from "./skyline.js";
 import { renderMetrics, renderCartuchos } from "./panel.js";
 
-export function createDetailModal({ windowDays = 30 } = {}) {
+export function createDetailModal({ windowDays = 30, date = null } = {}) {
   const $ = (id) => document.getElementById(id);
   const sky = createSkyline($("skyline"));
   let fullSky = false;
@@ -36,7 +36,7 @@ export function createDetailModal({ windowDays = 30 } = {}) {
     try {
       const [mask, site] = await Promise.all([
         getMask(lat, lon),
-        getSite(lat, lon, { windowDays }),
+        getSite(lat, lon, { windowDays, date }),
       ]);
       $("site-name").textContent = name || site.site.name;
       $("site-coords").textContent = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;

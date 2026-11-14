@@ -6,11 +6,12 @@
 import { getSites, getSite, mapUrl, getMapMeta } from "./api.js";
 import { createProjection } from "./proj.js";
 import { createDetailModal } from "./detailModal.js";
+import { windowDays, startDate, addSitio, setSitioActivo, getState } from "./state.js";
 
 const $ = (id) => document.getElementById(id);
 const stage = $("map-stage");
 const layer = $("map-markers");
-const modal = createDetailModal();
+const modal = createDetailModal({ windowDays: windowDays(), date: startDate() });
 let proj = null;
 let pending = null;            // {lat, lon} del último click en zona libre
 
@@ -121,6 +122,7 @@ function addMarker(lon, lat, name, kind) {
   m.title = `${name} · ${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
   m.addEventListener("click", (e) => {
     e.stopPropagation();
+    setSitioActivo({ lat, lon, name });
     modal.open(lat, lon, name);
   });
   layer.appendChild(m);
@@ -152,10 +154,13 @@ async function init() {
     drawChrome();
     const { sites } = await getSites();
     sites.forEach((s) => addMarker(s.lon, s.lat, s.name, "seed"));
-    setStatus(`${sites.length} sitios`);
-    // Flechas de dirección: sitio de referencia cerca del polo, primer instante.
+    // Chinchetas 📍 del usuario persistidas en el estado compartido.
+    const pins = getState().sitios;
+    pins.forEach((s) => addMarker(s.lon, s.lat, s.name, "pin"));
+    setStatus(`${sites.length} sitios · ${pins.length} propios`);
+    // Flechas de dirección: sitio de referencia cerca del polo, al inicio del rango.
     const ref = sites[0] || { lat: -89.9, lon: 0 };
-    const rs = await getSite(ref.lat, ref.lon, { windowDays: 1 });
+    const rs = await getSite(ref.lat, ref.lon, { windowDays: 1, date: startDate() });
     const s0 = rs.sun_track[0], e0 = rs.earth_track[0];
     drawDirArrows(s0.az, e0.az, s0.t.slice(0, 16).replace("T", " "));
   } catch (e) {
@@ -168,17 +173,22 @@ stage.addEventListener("click", (e) => {
   onFreeClick(e);
 });
 
+function freeName(p) {
+  return `Sitio ${p.lat.toFixed(1)}°, ${p.lon.toFixed(1)}°E`;
+}
+
 $("free-add").addEventListener("click", () => {
   if (!pending) return;
-  const name = `Sitio ${pending.lat.toFixed(1)}°, ${pending.lon.toFixed(1)}°E`;
+  const name = freeName(pending);
+  addSitio({ name, lat: pending.lat, lon: pending.lon, kind: "pin" });
   addMarker(pending.lon, pending.lat, name, "pin");
   hidePopup();
 });
 
 $("free-detail").addEventListener("click", () => {
   if (!pending) return;
-  modal.open(pending.lat, pending.lon,
-    `Sitio ${pending.lat.toFixed(1)}°, ${pending.lon.toFixed(1)}°E`);
+  setSitioActivo({ lat: pending.lat, lon: pending.lon, name: freeName(pending) });
+  modal.open(pending.lat, pending.lon, freeName(pending));
   hidePopup();
 });
 

@@ -136,13 +136,25 @@ disponibles. A partir de acá los 3 pueden trabajar en paralelo.
 **Objetivo:** fijar el rango global y cablear la única fuente de verdad.
 **Depende de:** contrato H0. (Reutiliza el cascarón de bienvenida ya existente en `index.html`.)
 
-- [ ] Pantalla de bienvenida: mini-tutorial (2 líneas) + **date-range picker** del rango global.
-- [ ] Enter/confirmar → fija `rangoFechas` → `window_days` → navega al mapa.
-- [ ] **Estado compartido** `{ rangoFechas, sitios[], sitioActivo, ventanaAzimut }` como única
-      fuente de verdad, consumido por mapa / detalle / Top 3.
-- [ ] Adaptar/descartar lo del frontend actual que contradiga esta arquitectura.
+- [x] Pantalla de bienvenida: mini-tutorial + **date-range picker** del rango global
+      (se reusó el cascarón de 3 pasos de `index.html`, ya tenía el picker con límite 30 d).
+- [x] Enter/confirmar → fija `rangoFechas` → `window_days` → navega al mapa (`map.html`,
+      preservando `?api=`). El submit válido persiste el rango y redirige.
+- [x] **Estado compartido** `{ rangoFechas, sitios[], sitioActivo, ventanaAzimut }` en
+      `state.js` como única fuente de verdad; cruza páginas por `localStorage` y notifica
+      en página con `subscribe()`. `ventanaAzimut` reservado para H6.
+- [x] Adaptar lo del frontend actual: `index.html` es ahora la bienvenida real (su submit
+      navega al mapa en vez de solo mostrar telemetría).
 
-**DoD:** el rango elegido se propaga a todas las vistas; agregar/abrir sitios actualiza el estado.
+**DoD:** el rango elegido se propaga a todas las vistas; agregar/abrir sitios actualiza el
+estado. ✅ Verificado headless: rango sembrado → flechas Sol/Tierra y modal usan `windowDays`
++ `startDate`; chinchetas 📍 persistidas reaparecen en el mapa.
+
+> H4 en `frontend/`: `state.js` (store + localStorage + bridge `window.LLNState` para el
+> `script.js` clásico). `index.html`/`script.js` navegan al mapa con el rango fijado.
+> `map.js` lee `state`: carga 📍 persistidas, setea `sitioActivo` al abrir detalle, y pasa
+> `windowDays`/`startDate` al modal y a las flechas. Pendiente H5: el ranking consumirá
+> `sitios[]` (semillas + propios) del estado.
 
 ---
 

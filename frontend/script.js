@@ -243,6 +243,13 @@ dateForm.addEventListener('submit', (e) => {
     `Analizando sitios en el Polo Sur del <strong class="font-['JetBrains_Mono'] text-[#0032A0]">${formatReadableDate(startVal)}</strong> al <strong class="font-['JetBrains_Mono'] text-[#0032A0]">${formatReadableDate(endVal)}</strong> (${diffDays} días)...`,
     false
   );
+
+  // H4: fija el rango global en la única fuente de verdad y navega al mapa.
+  // Preserva ?api= para el modo dev. El estado cruza la página vía localStorage.
+  if (window.LLNState) window.LLNState.setRango(startVal, endVal);
+  setTimeout(() => {
+    window.location.href = `map.html${window.location.search}`;
+  }, 650);
 });
 
 clearBtn.addEventListener('click', () => {
