@@ -30,8 +30,12 @@ Reto: https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navi
    alinear con la fuente oficial. (Hoy el cache usa el default de Horizons.)
 3. **Globo/color:** SVS CGI Moon Kit es opcional (solo estética del inset).
 
-## Acción
+## Decisión (equipo, H0)
+
+- **DEM: queda en 80 m (`LDEM_80S_80MPP_ADJ`).** El de 20 m solo si hace falta precisión.
+- **Efeméride: queda DE421** (default de Horizons). Diferencia despreciable para esta app.
+
+## Acción pendiente
 
 - Afinar coords de sitios semilla contra el Lunar Surface Data Book 2025.
-- Evaluar pedir `EPHEMERIS='DE441'` explícito en `fetch_horizons.py`.
 - Confirmar todo contra la pestaña Resources oficial cuando haya red sin bloqueo.
