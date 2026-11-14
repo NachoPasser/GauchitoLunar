@@ -7,11 +7,25 @@ import { createSkyline } from "./skyline.js";
 const $ = (id) => document.getElementById(id);
 const sky = createSkyline($("skyline"));
 let fullSky = false;
+let data = null;   // respuesta /api/site del sitio activo (para el slider)
 
 function setStatus(msg, isError = false) {
   const s = $("status");
   s.textContent = msg;
   s.className = `text-xs ${isError ? "text-red-500" : "text-slate-400"}`;
+}
+
+// Mueve el instante actual sobre el skyline y actualiza la etiqueta.
+function updateCursor(i) {
+  if (!data) return;
+  sky.setCursor(i);
+  sky.draw();
+  const s = data.sun_track[i], e = data.earth_track[i];
+  const t = s.t.slice(0, 16).replace("T", " ");
+  const tag = (p) => (p.visible ? "visible" : "tapado");
+  $("time-label").textContent =
+    `${t} UTC  ·  Sol ${s.el.toFixed(1)}° ${tag(s)}  ·  ` +
+    `Tierra ${e.el.toFixed(1)}° ${tag(e)}`;
 }
 
 // Carga máscara + tracks de un sitio y redibuja el skyline.
@@ -24,10 +38,14 @@ async function showSite(lat, lon) {
     ]);
     $("site-name").textContent = site.site.name;
     $("site-coords").textContent = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
+    data = site;
     sky.setMask(mask.horizon_mask);
     sky.setTracks(site.sun_track, site.earth_track);
     sky.setParams({ commsMargin: site.params.comms_margin_deg });
-    sky.draw();
+    const slider = $("time-slider");
+    slider.max = site.sun_track.length - 1;
+    slider.value = 0;
+    updateCursor(0);
     setStatus("");
   } catch (e) {
     setStatus(`No se pudo cargar (¿backend activo?): ${e.message}`, true);
@@ -76,6 +94,10 @@ $("fullsky-btn").addEventListener("click", () => {
   sky.setFullSky(fullSky);
   sky.draw();
   $("fullsky-btn").classList.toggle("bg-slate-100", fullSky);
+});
+
+$("time-slider").addEventListener("input", (e) => {
+  updateCursor(Number(e.target.value));
 });
 
 openModal();

@@ -56,12 +56,24 @@
              aria-label="Skyline: elevación del Sol y la Tierra sobre el horizonte"></svg>
       </div>
 
+      <!-- Slider de tiempo -->
+      <div class="px-6 pb-1">
+        <input id="time-slider" type="range" min="0" max="0" value="0"
+               class="w-full accent-[#0032A0]" aria-label="Instante dentro de la ventana" />
+        <p id="time-label" class="text-xs text-slate-500 font-['JetBrains_Mono'] mt-1"></p>
+      </div>
+
       <!-- Placeholders para H2.5 (métricas) y H2.6 (cartuchos) -->
       <div id="metrics" class="px-6"></div>
       <div id="cartuchos" class="px-6 pb-6"></div>
     </div>
   </div>
 
+  <script>
+    // Base del backend: ?api=http://host:puerto sobreescribe el default (uvicorn :8000).
+    window.API_BASE = new URLSearchParams(location.search).get("api")
+      || "http://127.0.0.1:8000";
+  </script>
   <script type="module" src="detail.js"></script>
 </body>
 </html>

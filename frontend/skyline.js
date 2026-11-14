@@ -22,11 +22,13 @@ export function createSkyline(svg) {
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const st = {
     mask: [], sun: [], earth: [], fullSky: false, commsMargin: 0, azWindow: null,
+    cursor: null,
   };
 
   function setMask(mask) { st.mask = mask || []; }
   function setTracks(sun, earth) { st.sun = sun || []; st.earth = earth || []; }
   function setFullSky(b) { st.fullSky = !!b; }
+  function setCursor(i) { st.cursor = i; }   // índice del instante actual (slider)
   function setParams({ commsMargin } = {}) {
     if (commsMargin != null) st.commsMargin = commsMargin;
   }
@@ -181,6 +183,19 @@ export function createSkyline(svg) {
     });
   }
 
+  // Marcador del instante actual: relleno = visible, hueco = tapado.
+  function drawCursor(y) {
+    if (st.cursor == null) return;
+    for (const [track, color] of [[st.earth, EARTH], [st.sun, SUN]]) {
+      const p = track[st.cursor];
+      if (!p) continue;
+      svg.appendChild(el("circle", {
+        cx: x(p.az), cy: y(p.el), r: 5,
+        fill: p.visible ? color : "#fff", stroke: color, "stroke-width": 2,
+      }));
+    }
+  }
+
   function draw() {
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     const r = range();
@@ -192,8 +207,11 @@ export function createSkyline(svg) {
     drawTrack(y, st.earth, EARTH);
     drawTrack(y, st.sun, SUN);
     drawBlockedLabel(y);
+    drawCursor(y);
     drawLegend();
   }
 
-  return { setMask, setTracks, setFullSky, setParams, setAzimuthWindow, draw };
+  return {
+    setMask, setTracks, setFullSky, setParams, setAzimuthWindow, setCursor, draw,
+  };
 }
