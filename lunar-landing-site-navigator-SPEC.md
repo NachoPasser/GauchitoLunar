@@ -306,8 +306,7 @@ El hackathon es hoy. Cortar el diseño y construir. El jurado premia **correcto 
 3. **Mapa polar (hub)** (fondo = raster de iluminación) + sitios predefinidos ⭐ + click (marcador → detalle; zona libre → botón flotante agregar 📍 / detalle) + orientación.
 4. **Bienvenida + date-range** (fija el rango global) y wiring del estado compartido (§2.1).
 5. **Top 3**: carrusel (comms / energía / mixto) + tabla de ranking + semáforos potencia/comms.
-6. **Escenario de retraso** (+N días) — conecta con la motivación del brief.
-7. Extra (si sobra tiempo): cono/sincronización por azimut (§2.3), Monte Carlo de dispersión, eclipses, modo guiado, exportar/compartir.
+6. Extra (si sobra tiempo): cono/sincronización por azimut (§2.3), Monte Carlo de dispersión, eclipses, modo guiado, exportar/compartir.
 
 **Línea de corte MVP (lo que SÍ tiene que andar en la demo):** máscara de horizonte por sitio + tracks Sol/Tierra (vía Horizons) + detalle puntual (skyline + métricas) legible con cuenta regresiva + mapa hub con sitios predefinidos y poder agregar propios + Top 3 con ranking. El resto es mejora.
 
