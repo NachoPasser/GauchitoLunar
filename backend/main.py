@@ -50,11 +50,9 @@ def sites() -> dict:
 
 @app.get("/api/mask")
 def mask(lat: float = Query(...), lon: float = Query(...)) -> JSONResponse:
-    """MOCK del contrato §5. H1: ray casting real sobre el DEM."""
-    data = _mock("mask.json")
-    data["site"]["lat"] = lat
-    data["site"]["lon"] = lon
-    return JSONResponse(data)
+    """Máscara real h(az) por ray casting sobre el DEM (§3.3), cacheada por sitio."""
+    from mask_service import get_mask
+    return JSONResponse(get_mask(lat, lon))
 
 
 @app.get("/api/site")
