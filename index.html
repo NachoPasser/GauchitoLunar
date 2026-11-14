@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bloque Espacial // Marco NASA #0032A0</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="flex items-center justify-center p-6 sm:p-12 bg-black">
+
+  <!-- BLOQUE PRINCIPAL CON BORDE NASA #0032A0 -->
+  <div id="nasa-framed-block" class="relative w-full max-w-2xl bg-[#0032A0] p-[18px] sm:p-[24px] rounded-2xl shadow-[0_18px_45px_rgba(0,50,160,0.28)] overflow-visible">
+    
+    <!-- CAPA SVG DEL MARCO: puntitos blancos, vector orbital rojo #FC3D21 y estrellas sobresalientes -->
+    <svg
+      id="nasa-border-stars"
+      class="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-20"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    ></svg>
+
+    <!-- INTERIOR BLANCO PURO (#FFFFFF) CON ALTURA FIJA -->
+    <div class="relative z-10 w-full h-[580px] sm:h-[465px] bg-white rounded-xl p-6 sm:p-9 flex flex-col justify-between overflow-hidden">
+      
+      <!-- BARRA SUPERIOR DE PROGRESO DE SECUENCIA (3 FASES) -->
+      <div class="shrink-0">
+        <div class="flex items-center justify-between gap-4 mb-3">
+          <div class="flex items-center gap-2 font-['JetBrains_Mono'] text-[11px] font-semibold tracking-wider text-[#0032A0]">
+          </div>
+
+          <!-- Botones rápidos de salto de fase -->
+          <div class="flex items-center gap-1.5" role="tablist" aria-label="Pasos de introducción">
+            <button type="button" data-goto="1" class="phase-pill cursor-pointer px-2 py-0.5 rounded font-['JetBrains_Mono'] text-[10px] font-semibold transition-colors bg-[#0032A0] text-white">01</button>
+            <button type="button" data-goto="2" class="phase-pill cursor-pointer px-2 py-0.5 rounded font-['JetBrains_Mono'] text-[10px] font-semibold transition-colors bg-slate-100 text-slate-500 hover:text-[#0032A0]">02</button>
+            <button type="button" data-goto="3" class="phase-pill cursor-pointer px-2 py-0.5 rounded font-['JetBrains_Mono'] text-[10px] font-semibold transition-colors bg-slate-100 text-slate-500 hover:text-[#0032A0]">03</button>
+          </div>
+        </div>
+
+        <!-- Barra segmentada -->
+        <div class="grid grid-cols-3 gap-2">
+          <div id="bar-1" class="h-[3px] rounded-full bg-[#0032A0] transition-colors duration-300"></div>
+          <div id="bar-2" class="h-[3px] rounded-full bg-[#0032A0]/15 transition-colors duration-300"></div>
+          <div id="bar-3" class="h-[3px] rounded-full bg-[#0032A0]/15 transition-colors duration-300"></div>
+        </div>
+      </div>
+
+      <!-- =========================================================
+           PASO 1: BIENVENIDA E INTRODUCCIÓN AL POLO SUR LUNAR
+           ========================================================= -->
+      <section id="step-1" class="step-panel active flex-col justify-between flex-1 pt-6 min-h-0">
+        <div class="grid grid-cols-1 sm:grid-cols-[1fr_148px] gap-6 items-center my-auto">
+          <div>
+            <h1 class="mt-2 text-2xl sm:text-[28px] font-bold text-slate-950 tracking-tight leading-tight">
+              ¡Bienvenido, explorador!
+            </h1>
+            <p class="mt-4 text-sm sm:text-[15px] text-slate-600 leading-relaxed">
+              El <strong class="font-semibold text-slate-900">Polo Sur de la Luna</strong> es uno de los lugares más fascinantes para la futura exploración lunar. Pero <span class="text-[#0032A0] font-medium">¿dónde deberíamos aterrizar?</span>
+            </p>
+            <p class="mt-3 text-sm sm:text-[15px] text-slate-600 leading-relaxed">
+              ¡Exploremos la superficie lunar y descubramos qué lugares ofrecen las mejores condiciones para llevar a cabo una misión exitosa!
+            </p>
+          </div>
+
+          <!-- Diagrama técnico minimalista del Polo Sur Lunar -->
+          <div class="hidden sm:flex items-center justify-center">
+            <svg viewBox="0 0 140 140" class="w-36 h-36" aria-hidden="true">
+              <circle cx="70" cy="70" r="62" fill="none" stroke="#0032A0" stroke-width="0.75" stroke-dasharray="2 3" opacity="0.35"/>
+              <circle cx="70" cy="70" r="46" fill="none" stroke="#0032A0" stroke-width="1.25"/>
+              <path d="M 70 24 A 46 46 0 0 1 70 116 A 26 46 0 0 1 70 24 Z" fill="#0032A0" opacity="0.08"/>
+              <line x1="70" y1="12" x2="70" y2="128" stroke="#0032A0" stroke-width="0.75" opacity="0.3"/>
+              <line x1="12" y1="70" x2="128" y2="70" stroke="#0032A0" stroke-width="0.75" opacity="0.3"/>
+              <circle cx="70" cy="96" r="14" fill="none" stroke="#0032A0" stroke-width="1" stroke-dasharray="3 2"/>
+              <circle cx="70" cy="96" r="3.5" fill="#FC3D21"/>
+              <path d="M 61 96 L 65 96 M 75 96 L 79 96 M 70 87 L 70 91 M 70 101 L 70 105" stroke="#FC3D21" stroke-width="1.2"/>
+              <text x="70" y="136" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7.5" fill="#0032A0" font-weight="600">90°S // POLO SUR</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Pie de navegación Paso 1 -->
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between shrink-0">
+          <span class="font-['JetBrains_Mono'] text-[11px] text-[#FFFFFF]">
+            LISTO PARA INICIAR SECUENCIA
+          </span>
+          <button
+            type="button"
+            data-goto="2"
+            class="group bg-[#0032A0] hover:bg-[#FC3D21] text-white font-['JetBrains_Mono'] text-xs font-semibold tracking-wider uppercase px-5 py-3 rounded-lg transition-colors duration-150 flex items-center gap-2.5 cursor-pointer"
+          >
+            <span>EXPLORAR CONDICIONES</span>
+            <span class="transition-transform duration-150 group-hover:translate-x-1">→</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- =========================================================
+           PASO 2: DOS FACTORES CLAVE
+           ========================================================= -->
+      <section id="step-2" class="step-panel flex-col justify-between flex-1 pt-6 min-h-0">
+        <div class="my-auto">
+          <h2 class="text-2xl sm:text-[26px] font-bold text-slate-950 tracking-tight">
+            Dos factores clave.
+          </h2>
+          <p class="mt-1.5 text-sm text-slate-600 leading-relaxed">
+            Encontrar el lugar adecuado requiere evaluar dos condiciones fundamentales para una futura misión lunar.
+          </p>
+
+          <!-- Tarjetas técnicas lado a lado -->
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            
+            <!-- Factor 1: Energía solar -->
+            <div class="group rounded-xl border border-[#0032A0]/25 hover:border-[#0032A0] bg-[#0032A0]/[0.02] p-4 transition-colors">
+              <div class="flex items-center justify-between">
+                <h3 class="mt-2 text-base font-bold text-[#0032A0]">
+                1. Energía solar
+                </h3>
+                <svg class="w-6 h-6 text-[#0032A0]" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                  <circle cx="16" cy="16" r="5.5" stroke="currentColor" stroke-width="1.6"/>
+                  <path d="M16 4V7.5M16 24.5V28M4 16H7.5M24.5 16H28M7.5 7.5L10 10M22 22L24.5 24.5M24.5 7.5L22 10M10 22L7.5 24.5" stroke="#FC3D21" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+              </div>
+
+              <p class="mt-1 text-xs sm:text-[13px] text-slate-600 leading-relaxed">
+                <strong class="text-slate-900 font-medium">¿Cuánta luz solar recibe cada ubicación?</strong> Analizá los períodos de iluminación, los ángulos de incidencia y la energía solar disponible.
+              </p>
+            </div>
+
+            <!-- Factor 2: Visibilidad de la Tierra -->
+            <div class="group rounded-xl border border-[#0032A0]/25 hover:border-[#0032A0] bg-[#0032A0]/[0.02] p-4 transition-colors">
+              <div class="flex items-center justify-between">
+                <h3 class="mt-2 text-base font-bold text-[#0032A0]">
+                2. Visibilidad de la Tierra
+                </h3>
+                <svg class="w-6 h-6 text-[#0032A0]" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                  <circle cx="8" cy="24" r="3" fill="#FC3D21"/>
+                  <circle cx="24" cy="8" r="4.5" stroke="currentColor" stroke-width="1.6"/>
+                  <path d="M12 20L20 12" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/>
+                  <path d="M14 10C17.5 10 22 14.5 22 18" stroke="#FC3D21" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+              </div>
+
+              <p class="mt-1 text-xs sm:text-[13px] text-slate-600 leading-relaxed">
+                <strong class="text-slate-900 font-medium">¿Durante cuánto tiempo permanece la Tierra visible desde cada ubicación?</strong> Evaluá las ventanas de visibilidad y las oportunidades de comunicación directa.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Pie de navegación Paso 2 -->
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between shrink-0">
+          <button
+            type="button"
+            data-goto="1"
+            class="font-['JetBrains_Mono'] text-xs font-semibold text-slate-500 hover:text-[#0032A0] px-2 py-2 transition-colors cursor-pointer"
+          >
+            ← VOLVER
+          </button>
+
+          <button
+            type="button"
+            data-goto="3"
+            class="group bg-[#0032A0] hover:bg-[#FC3D21] text-white font-['JetBrains_Mono'] text-xs font-semibold tracking-wider uppercase px-5 py-3 rounded-lg transition-colors duration-150 flex items-center gap-2.5 cursor-pointer"
+          >
+            <span>DEFINIR PERÍODO</span>
+            <span class="transition-transform duration-150 group-hover:translate-x-1">→</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- =========================================================
+           PASO 3: SELECCIÓN DE PERÍODO CON DOS CALENDARIOS (MÁX. 30 DÍAS)
+           ========================================================= -->
+      <section id="step-3" class="step-panel flex-col justify-between flex-1 pt-5 min-h-0">
+        <div class="my-auto">
+          <h2 class="text-2xl sm:text-[26px] font-bold text-slate-950 tracking-tight">
+            ¿Cuándo deberíamos comenzar?
+          </h2>
+          <p class="mt-1 text-xs sm:text-[14px] text-slate-600 leading-relaxed">
+            Elige un período de tiempo para tu análisis. Lo utilizaremos para comparar los posibles lugares de aterrizaje e identificar las ubicaciones más prometedoras.
+          </p>
+
+          <!-- Formulario de dos calendarios -->
+          <form id="mission-date-form" class="mt-3.5" novalidate>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-['JetBrains_Mono'] text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Ventana operativa (Límite: 30 días)
+              </span>
+              <span id="mission-duration-badge" class="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider text-[#0032A0] bg-[#0032A0]/10 px-2 py-0.5 rounded">
+                DURACIÓN: — / 30 DÍAS
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2.5 items-end">
+              <!-- Calendario 1: Fecha de inicio -->
+              <div>
+                <label for="start-date-input" class="block font-['JetBrains_Mono'] text-[10px] font-semibold uppercase tracking-wider text-[#0032A0] mb-1">
+                  Fecha de inicio
+                </label>
+                <input
+                  id="start-date-input"
+                  type="date"
+                  class="nasa-date-input w-full bg-white border-[1.5px] border-[#0032A0] rounded-lg px-3 py-2 text-xs sm:text-[13px] font-['JetBrains_Mono'] text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0032A0]/20 transition cursor-pointer"
+                />
+              </div>
+
+              <!-- Calendario 2: Fecha de fin (limitado dinámicamente a +30 días) -->
+              <div>
+                <label for="end-date-input" class="block font-['JetBrains_Mono'] text-[10px] font-semibold uppercase tracking-wider text-[#0032A0] mb-1">
+                  Fecha de fin
+                </label>
+                <input
+                  id="end-date-input"
+                  type="date"
+                  class="nasa-date-input w-full bg-white border-[1.5px] border-[#0032A0] rounded-lg px-3 py-2 text-xs sm:text-[13px] font-['JetBrains_Mono'] text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0032A0]/20 transition cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              <!-- Botón Analizar -->
+              <button
+                type="submit"
+                class="group bg-[#0032A0] hover:bg-[#FC3D21] active:bg-[#d93016] text-white font-['JetBrains_Mono'] text-xs font-semibold tracking-wider uppercase px-4 py-2.5 rounded-lg transition-colors duration-150 flex items-center justify-center gap-2 shrink-0 cursor-pointer h-[39px]"
+              >
+                <span>ANALIZAR</span>
+                <span class="transition-transform duration-150 group-hover:translate-x-0.5">→</span>
+              </button>
+            </div>
+
+            <!-- Atajos rápidos de ventana -->
+            <div class="mt-2.5 flex flex-wrap items-center gap-2">
+              <span class="font-['JetBrains_Mono'] text-[10px] uppercase text-slate-400">Sugerencias:</span>
+              <button type="button" data-days="14" class="preset-btn cursor-pointer font-['JetBrains_Mono'] text-[11px] text-[#0032A0] hover:bg-[#0032A0] hover:text-white border border-[#0032A0]/30 rounded px-2 py-0.5 transition-colors">
+                14 días (Medio ciclo)
+              </button>
+              <button type="button" data-days="30" class="preset-btn cursor-pointer font-['JetBrains_Mono'] text-[11px] text-[#0032A0] hover:bg-[#0032A0] hover:text-white border border-[#0032A0]/30 rounded px-2 py-0.5 transition-colors">
+                30 días (Ciclo lunar completo)
+              </button>
+            </div>
+
+            <!-- Salida de telemetría al enviar o advertencia -->
+            <div id="telemetry-feedback" class="hidden mt-3 rounded-lg border border-[#0032A0]/30 bg-[#0032A0]/[0.04] px-3 py-2 text-xs">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-start gap-2">
+                  <span id="feedback-indicator" class="mt-1 w-2 h-2 rounded-full bg-[#FC3D21] telemetry-pulse shrink-0"></span>
+                  <div>
+                    <p id="feedback-title" class="font-['JetBrains_Mono'] font-semibold text-[#0032A0] uppercase tracking-wide text-[10px]">
+                      VENTANA CARGADA EN MATRIZ
+                    </p>
+                    <p id="feedback-detail" class="mt-0.5 text-[11.5px] text-slate-700 leading-snug"></p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  id="clear-feedback"
+                  class="font-['JetBrains_Mono'] text-[11px] text-slate-400 hover:text-[#FC3D21] px-1 cursor-pointer"
+                  title="Cerrar aviso"
+                >
+                  [×]
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Pie de navegación Paso 3 -->
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between shrink-0">
+          <button
+            type="button"
+            data-goto="2"
+            class="font-['JetBrains_Mono'] text-xs font-semibold text-slate-500 hover:text-[#0032A0] px-2 py-1.5 transition-colors cursor-pointer"
+          >
+            ← FACTORES CLAVE
+          </button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

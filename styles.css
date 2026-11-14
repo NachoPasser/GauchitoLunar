@@ -1,0 +1,60 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Estilo limpio para los íconos nativos de calendario */
+.nasa-date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.nasa-date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+@keyframes nasaStarTwinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.nasa-star-twinkle {
+  animation: nasaStarTwinkle 3.4s ease-in-out infinite;
+}
+
+@keyframes stepFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.step-panel.active {
+  display: flex;
+  animation: stepFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.step-panel {
+  display: none;
+}
+
+@keyframes telemetryPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.55; }
+}
+
+.telemetry-pulse {
+  animation: telemetryPulse 1.8s ease-in-out infinite;
+}
