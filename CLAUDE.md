@@ -112,10 +112,16 @@ Regla: primero que el **skyline se entienda solo**; no agregar features si la ba
 
 ## Estado actual del repo
 
-Hoy: solo frontend vanilla (`index.html`, `script.js`, `styles.css`, `README.md`) con una UI de
-navegación en 3 pasos — **sin backend ni física**. Plan: conservar como cascarón de UI y agregar el
-backend FastAPI + núcleo físico, ajustando la UI a las 2 vistas (mapa polar + skyline). Lo que
-contradiga la arquitectura del SPEC se adapta o se descarta.
+- **Backend (`backend/`): H0 y H1 cerrados.** FastAPI con los 3 endpoints del contrato §5
+  (`/api/mask`, `/api/site`, `/api/map`) sirviendo datos reales: máscara `h(az)` por ray casting
+  sobre el DEM, tracks Sol/Tierra desde Horizons, energía integrada + métricas + cartuchos
+  (`sun_intervals`/`earth_intervals`). Núcleo físico con tests (pytest). Datos pesados en `data/`
+  (DEM + rasters PGDA + cache de Horizons), fuera del repo.
+- **Frontend (`frontend/`): H2 en curso.** Vanilla. El viejo cascarón de intro en 3 pasos sigue
+  en `index.html`/`script.js`/`styles.css` para reusar piezas (date-range en H4). La vista nueva de
+  detalle vive en `detail.html` + `detail.js` + `skyline.js` + `api.js` (skyline con terreno, tracks,
+  margen de comms y banda de azimut). Falta: slider de tiempo, panel de métricas y cartuchos.
+- Lo que contradiga la arquitectura del SPEC se adapta o se descarta.
 
 ## Honestidad (para no prometer de más)
 
