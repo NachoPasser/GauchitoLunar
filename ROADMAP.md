@@ -34,19 +34,20 @@ H6 es mejora. Regla de oro: **primero que el skyline se entienda solo.**
 
 **Objetivo:** esqueleto del repo, datos bajados y contrato congelado para desbloquear a los 3.
 
-- [ ] Estructura de carpetas: `backend/` (FastAPI) y `frontend/` (el vanilla actual).
-- [ ] `backend/`: entorno Python (venv/requirements), FastAPI "hola mundo" que levanta.
-- [ ] Definir `backend/constants.py` con los invariantes físicos del §3.0/§3 (S=1361, R=1737.4,
+- [x] Estructura de carpetas: `backend/` (FastAPI) y `frontend/` (el vanilla actual).
+- [x] `backend/`: entorno Python (venv/requirements), FastAPI "hola mundo" que levanta.
+- [x] Definir `backend/constants.py` con los invariantes físicos del §3.0/§3 (S=1361, R=1737.4,
       convención de azimut, etc.) — **una sola fuente**.
-- [ ] Bajar y cachear datos en `data/` (NO al repo si pesan; `.gitignore`):
-  - [ ] DEM polar `LDEM_80S_80MPP_ADJ.TIF` (80 m, 181 MB).
-  - [ ] Raster iluminación `AVGVISIB_85S_060M_201608.TIF` + Earth + PSR.
-- [ ] **Cache de Horizons:** script que baja az/el de Sol y Tierra para un sitio semilla y un rango,
+- [x] Bajar y cachear datos en `data/` (NO al repo si pesan; `.gitignore`):
+  - [x] DEM polar `LDEM_80S_80MPP_ADJ.TIF` (80 m, 181 MB).
+  - [x] Raster iluminación `AVGVISIB_85S_060M_201608.TIF` + Earth + PSR.
+- [x] **Cache de Horizons:** script que baja az/el de Sol y Tierra para un sitio semilla y un rango,
       y lo guarda en disco (JSON/parquet). **Pre-generar ya** por si Horizons no responde en el venue.
-- [ ] Encapsular en `ephem(site, t) → (az, el)` (firma, aunque devuelva del cache).
-- [ ] **Congelar el contrato de API** (§5 del SPEC) en un archivo o docstring + **fixtures/mocks
+- [x] Encapsular en `ephem(site, t) → (az, el)` (firma, aunque devuelva del cache).
+- [x] **Congelar el contrato de API** (§5 del SPEC) en un archivo o docstring + **fixtures/mocks
       JSON** de `/api/mask` y `/api/site` para que el frontend arranque sin backend real.
-- [ ] Revisar la pestaña **Resources** del reto (dataset/API que la NASA pueda pedir).
+- [x] Revisar la pestaña **Resources** del reto (dataset/API que la NASA pueda pedir).
+      Ver `backend/RESOURCES_NASA.md` (ojo: el reto cita `LDEM_85S_20M` y DE441).
 
 **DoD:** FastAPI levanta, datos en disco, cache de Horizons generado, mocks JSON del contrato
 disponibles. A partir de acá los 3 pueden trabajar en paralelo.

@@ -1,0 +1,14 @@
+# Datos pesados (DEM, rasters, cache de Horizons) — self-host, NO al repo
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Varios
+.DS_Store
+*.log
