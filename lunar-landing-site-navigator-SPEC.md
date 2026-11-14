@@ -10,7 +10,7 @@
 
 Una herramienta web **intuitiva y simple** para evaluar y comparar sitios de aterrizaje en el **polo sur lunar**, mostrando posición del Sol y de la Tierra respecto al horizonte local en un sitio y fecha, para estimar **potencia** (generación solar) y **comunicación directa con la Tierra**.
 
-**Tesis de diferenciación:** destacar por **rigor físico**. No el simulador más preciso, sino el que resuelve bien riesgos físicos que otros ignoran, y que muestra esa física en la interfaz (no escondida en el código). El rigor es también la narrativa ante el jurado: validar contra datos publicados de la NASA.
+**Tesis de diferenciación:** destacar por **rigor físico**. No el simulador más preciso, sino el que resuelve bien riesgos físicos que otros ignoran, y que muestra esa física en la interfaz **de forma legible para cualquiera** (no escondida en el código, pero tampoco en crudo). El rigor es también la narrativa ante el jurado: validar contra datos publicados de la NASA.
 
 Lo que el brief pide como núcleo (obligatorio de facto):
 - Visualizar Sol y Tierra respecto al horizonte en un sitio + fecha.
@@ -20,23 +20,59 @@ Lo que el brief pide como núcleo (obligatorio de facto):
 
 Lo que el brief marcaba como opcional ("you may"): mapas 2D, vistas 3D, animaciones, juego educativo. El 3D NO es obligatorio.
 
+### 1.1 Usuario objetivo
+
+**Primario y único a optimizar: una persona casual, sin conocimiento de dominio.** Cualquiera que entre debe poder usarla sin leer instrucciones: curiosos, visitantes del stand, estudiantes, el propio jurado. NO asumimos que sepan qué es azimut, elevación solar, libración ni línea de vista.
+
+Consecuencias de diseño (atan al resto del doc):
+- **Lenguaje llano en la UI**, jerga solo como etiqueta secundaria: "cuánta luz de sol recibe" antes que "irradiancia integrada"; "¿se puede hablar con la Tierra?" antes que "ventana de visibilidad".
+- **Cero configuración obligatoria:** defaults sensatos (margen de comms, rango de fechas). Los parámetros finos (slider de margen, superficie del panel) van como "ver más", no en el camino principal.
+- **Entender en ~30 s:** semáforos, rankings y comparaciones visuales antes que tablas densas.
+- **El rigor no se sacrifica, se traduce:** la física correcta sigue por debajo; la UI la muestra *legible* (visual, con explicación a un clic), no escondida pero tampoco impuesta. Así se resuelve la tensión con la tesis: "mostrar la física" = mostrarla entendible, no en bruto.
+
+El marco "planificador de misión / ingeniero" es **narrativa de credibilidad** ante el jurado (por qué esto importa), NO un usuario real de la interfaz. No diseñamos pantallas para expertos.
+
 ---
 
-## 2. Arquitectura de vistas (2 vistas, 1 estado compartido)
+## 2. Flujo de usuario y arquitectura de vistas
 
-Un único **estado compartido**: `{ sitio, fecha/hora, ventanaAzimut }`. Ambas vistas son funciones de ese estado.
+### 2.1 Flujo (pantallas)
 
-| Vista | Pregunta que responde | Rol | Prioridad |
+**Estado compartido (única fuente de verdad):** `{ rangoFechas, sitios[], sitioActivo, ventanaAzimut }`.
+- `rangoFechas`: global, se fija al inicio → determina `window_days` (§5).
+- `sitios[]`: predefinidos (famosos, ⭐) + propios del usuario (chinchetas 📍). **Todos** entran al ranking.
+- `sitioActivo`: el sitio cuyo detalle está abierto.
+
+**A. Bienvenida.** Texto corto de bienvenida / mini-tutorial (qué es y cómo se usa, en 2 líneas) + un campo para el **rango de fechas a analizar** (idealmente un date-range picker: más amigable para un casual que texto libre). Enter → mapa.
+
+**B. Mapa (hub).** Al entrar muestra **todos los sitios predefinidos** con una ⭐. Interacción:
+- **Click en un marcador existente** (⭐ o 📍) → abre su **detalle puntual** (modal).
+- **Click en zona libre del mapa** → aparece un **botón flotante** con dos opciones: (1) **agregar como sitio propio** (fija una chincheta 📍 y lo suma a `sitios[]`), (2) **ver detalle puntual** de ese punto.
+
+**C. Top 3.** Un botón abre un **carrusel de 3 pasos**, uno por criterio:
+1. **Comunicación con la Tierra** (fracción de tiempo visible / menor corte continuo).
+2. **Energía solar** (kWh/m² integrados).
+3. **Mixto** (combinación normalizada de los dos; ver nota).
+
+Cada parada muestra las **3 mejores tarjetas** (top 3 de `sitios[]` para ese criterio) y debajo una **tabla de ranking** tipo tabla de posiciones con todos los sitios seleccionados. Cada tarjeta y cada fila tienen un botón **"ver detalle"**.
+
+> **Criterio "mixto":** no es obvio, hay que definirlo explícito. Propuesta: normalizar cada métrica a 0–1 sobre los sitios seleccionados y combinar con pesos (default 50/50, slider opcional). Mostrar el peso usado (honestidad, §8).
+
+**D. Modals sobre el mapa.** Tanto el **Top 3** como el **detalle puntual** se abren como **modal encima del mapa** (el mapa queda de fondo; no se navega fuera de él).
+
+### 2.2 Las dos vistas detrás del flujo
+
+| Vista | Dónde aparece | Pregunta que responde | Rol |
 |---|---|---|---|
-| **South pole map** (mapa polar 2D) | ¿Dónde miro? (overview, todos los sitios) | Descubrimiento | Core |
-| **Horizon & sky** (skyline equirectangular) | ¿Qué pasa acá? (leer, preciso) | Analítica | Core |
+| **South pole map** (mapa polar 2D) | Pantalla B (hub) | ¿Dónde miro? (overview, todos los sitios) | Descubrimiento |
+| **Horizon & sky** (skyline) | Modal de **detalle puntual** (D) | ¿Qué pasa en este sitio? (leer, preciso) | Analítica |
 
-Cada vista responde algo distinto → no son redundantes: el mapa orienta (dónde mirar), el skyline lee con precisión (qué pasa en el sitio).
+El **detalle puntual** = skyline del sitio + panel de métricas de ese sitio, en un modal. El **Top 3** no es una tercera vista: es una comparación (ranking) que arma el frontend con las métricas por sitio del backend.
 
-**Sincronización por azimut (el "cono"):**
-- El skyline tiene una **ventana de azimut** (banda vertical, p. ej. 120° de ancho).
-- El mapa tiene un **cono de visión** (cuña) en el sitio seleccionado, que refleja esa misma ventana.
-- Mover una mueve la otra. Esto ata mapa ↔ skyline.
+### 2.3 Sincronización por azimut (el "cono") — secundario
+
+- El skyline tiene una **ventana de azimut** (banda vertical, p. ej. 120°); el mapa, un **cono de visión** (cuña) en el sitio activo que refleja esa misma ventana.
+- Con el detalle como modal sobre el mapa, esta sincronización pasa a ser **secundaria**: para el MVP el skyline es autosuficiente (lleva su propia ventana de azimut) y el cono en el mapa queda como mejora. No bloquear el flujo por esto.
 
 
 ---
@@ -249,12 +285,15 @@ Frontend solo dibuja; nunca toca el DEM.
 
 ## 6. Frontend
 
-Stack: HTML + CSS + JS Vanilla (2 vistas 2D; sin 3D).
+Stack: HTML + CSS + JS Vanilla (2D; sin 3D). Pantallas según el flujo del §2.
 
-- **South pole map:** canvas 2D o PNG precalculado como fondo. Click → lat/lon. Marcadores de sitios, cono de visión (cuña de azimut) en el sitio seleccionado, flechas de Sol/Tierra en el margen (muestran DIRECCIÓN, no visibilidad). Orientación: inset de globo, anillos de latitud (80°S borde, 85°S, 90°S centro), barra de escala (100 km), subtítulo "80°S–90°S · ~600 km".
-- **Horizon & sky (skyline):** SVG/canvas. Eje x = azimut 0–360°, eje y = elevación. Silueta del terreno `h(az)`, trayectoria Sol y Tierra, cuenta regresiva a ocaso/Earthset, margen de comms punteado, ventana de azimut (banda, sincronizada con el cono del mapa). Legibilidad: Sol/Tierra **brillante = visible / apagado = tapado**, tramo tapado punteado, label "blocked by terrain". Rango vertical dinámico (piso ~5°) + botón "cielo completo" (0–90° para sitios fuera del polo).
+- **Bienvenida:** texto corto / mini-tutorial + date-range picker. Enter → mapa.
+- **South pole map (hub):** canvas 2D o PNG precalculado como fondo. ⭐ sitios predefinidos, 📍 chinchetas del usuario. Click en marcador → detalle (modal); click en zona libre → botón flotante (agregar 📍 / ver detalle). Cono de visión (cuña de azimut) en el sitio activo [secundario, §2.3], flechas de Sol/Tierra en el margen (muestran DIRECCIÓN, no visibilidad). Orientación: inset de globo, anillos de latitud (80°S borde, 85°S, 90°S centro), barra de escala (100 km), subtítulo "80°S–90°S · ~600 km".
+- **Detalle puntual (modal sobre el mapa):** = skyline + panel de métricas del sitio. Skyline (SVG/canvas): eje x = azimut 0–360°, eje y = elevación. Silueta del terreno `h(az)`, trayectoria Sol y Tierra, cuenta regresiva a ocaso/Earthset, margen de comms punteado, ventana de azimut (banda). Legibilidad: Sol/Tierra **brillante = visible / apagado = tapado**, tramo tapado punteado, label "blocked by terrain". Rango vertical dinámico (piso ~5°) + botón "cielo completo" (0–90°).
+- **Top 3 (modal sobre el mapa):** carrusel de 3 pasos (comms / energía / mixto). Cada paso: 3 tarjetas top + tabla de ranking de todos los sitios seleccionados; tarjetas y filas con botón "ver detalle".
+- **Semáforos** potencia/comms y **lenguaje llano** en todas las etiquetas (ver §1.1).
 
-Vista por defecto del cielo: **skyline** (más legible que la cenital para novatos).
+Vista por defecto del cielo: **skyline** (más legible que la cenital para un casual).
 
 ---
 
@@ -263,13 +302,14 @@ Vista por defecto del cielo: **skyline** (más legible que la cenital para novat
 El hackathon es hoy. Cortar el diseño y construir. El jurado premia **correcto + útil** antes que vistoso.
 
 1. **Backend máscara + trayectorias** (Horizons + DEM 80 m). La pieza central.
-2. **Skyline** con slider de tiempo (cumple el requisito de horizonte por sí solo).
-3. **Panel de métricas + comparación de sitios** (hasta 3) + semáforos potencia/comms.
-4. **Mapa polar** (fondo = raster de iluminación) + orientación + cono + click.
-5. **Escenario de retraso** (+N días) — conecta con la motivación del brief.
-6. Extra (si sobra tiempo): Monte Carlo de dispersión, eclipses, modo guiado, exportar/compartir.
+2. **Detalle puntual**: skyline + panel de métricas, con slider de tiempo (cumple el requisito de horizonte por sí solo).
+3. **Mapa polar (hub)** (fondo = raster de iluminación) + sitios predefinidos ⭐ + click (marcador → detalle; zona libre → botón flotante agregar 📍 / detalle) + orientación.
+4. **Bienvenida + date-range** (fija el rango global) y wiring del estado compartido (§2.1).
+5. **Top 3**: carrusel (comms / energía / mixto) + tabla de ranking + semáforos potencia/comms.
+6. **Escenario de retraso** (+N días) — conecta con la motivación del brief.
+7. Extra (si sobra tiempo): cono/sincronización por azimut (§2.3), Monte Carlo de dispersión, eclipses, modo guiado, exportar/compartir.
 
-**Línea de corte MVP (lo que SÍ tiene que andar en la demo):** máscara de horizonte por sitio + tracks Sol/Tierra (vía Horizons) + skyline legible con cuenta regresiva + panel de métricas con comparación de 2–3 sitios + mapa polar con click. El resto es mejora.
+**Línea de corte MVP (lo que SÍ tiene que andar en la demo):** máscara de horizonte por sitio + tracks Sol/Tierra (vía Horizons) + detalle puntual (skyline + métricas) legible con cuenta regresiva + mapa hub con sitios predefinidos y poder agregar propios + Top 3 con ranking. El resto es mejora.
 
 Regla: primero que el **skyline se entienda solo**. Nada de agregar features si la vista base no es legible.
 
