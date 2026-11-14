@@ -117,10 +117,14 @@ Regla: primero que el **skyline se entienda solo**; no agregar features si la ba
   sobre el DEM, tracks Sol/Tierra desde Horizons, energía integrada + métricas + cartuchos
   (`sun_intervals`/`earth_intervals`). Núcleo físico con tests (pytest). Datos pesados en `data/`
   (DEM + rasters PGDA + cache de Horizons), fuera del repo.
-- **Frontend (`frontend/`): H2 en curso.** Vanilla. El viejo cascarón de intro en 3 pasos sigue
-  en `index.html`/`script.js`/`styles.css` para reusar piezas (date-range en H4). La vista nueva de
-  detalle vive en `detail.html` + `detail.js` + `skyline.js` + `api.js` (skyline con terreno, tracks,
-  margen de comms y banda de azimut). Falta: slider de tiempo, panel de métricas y cartuchos.
+- **Frontend (`frontend/`): H2 y H3 cerrados.** Vanilla. El viejo cascarón de intro en 3 pasos
+  sigue en `index.html`/`script.js`/`styles.css` para reusar piezas (date-range en H4). El detalle
+  puntual (skyline + slider + métricas + cartuchos) vive en `detailModal.js` (lógica compartida) +
+  `skyline.js` + `panel.js` + `api.js`, con `detail.html`/`detail.js` como harness. El **mapa hub**
+  (H3) es `map.html` + `map.js`: fondo = raster de luz, ⭐ sitios + 📍 chinchetas ubicados por
+  `proj.js` (estereográfica polar sur validada contra pyproj), click → modal de detalle, popup de
+  zona libre, anillos/escala/flechas de Sol-Tierra. Backend sumó `/api/map/meta`. Falta (H4):
+  bienvenida + date-range + estado compartido (hoy las 📍 son locales de la página).
 - Lo que contradiga la arquitectura del SPEC se adapta o se descarta.
 
 ## Honestidad (para no prometer de más)

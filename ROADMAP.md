@@ -109,15 +109,25 @@ disponibles. A partir de acá los 3 pueden trabajar en paralelo.
 **Objetivo:** pantalla de descubrimiento ("¿dónde miro?").
 **Depende de:** contrato H0 (mock del raster) + H2 para el "ver detalle".
 
-- [ ] Canvas/PNG de fondo = raster de iluminación (`/api/map`).
-- [ ] ⭐ sitios predefinidos (semilla) dibujados sobre el mapa.
-- [ ] Click en marcador → abre detalle (modal de H2).
-- [ ] Click en zona libre → botón flotante: (1) agregar 📍 a `sitios[]`, (2) ver detalle puntual.
-- [ ] Orientación: inset de globo, anillos de latitud (80/85/90°S), barra de escala (100 km),
-      subtítulo "80°S–90°S · ~600 km".
-- [ ] Flechas de Sol/Tierra en el margen (DIRECCIÓN, no visibilidad).
+- [x] Canvas/PNG de fondo = raster de iluminación (`/api/map`).
+- [x] ⭐ sitios predefinidos (semilla) dibujados sobre el mapa.
+- [x] Click en marcador → abre detalle (modal de H2).
+- [x] Click en zona libre → botón flotante: (1) agregar 📍 a `sitios[]`, (2) ver detalle puntual.
+- [x] Orientación: inset de globo, anillos de latitud, barra de escala (100 km), subtítulo.
+      **Nota honestidad:** el raster de fondo (85°S/060M) mide ~303 km de lado y llega a
+      ~83°S en las esquinas, NO "80°S–90°S · ~600 km". Anillos reales dibujados = 85°S y
+      88°S (80°S queda fuera del lienzo). Subtítulo corregido a "~83°S–90°S · ~300 km".
+- [x] Flechas de Sol/Tierra en el margen (DIRECCIÓN, no visibilidad). Usan el azimut de un
+      sitio de referencia cerca del polo en UN instante (inicio de ventana), rotulado.
 
-**DoD:** se ven todos los sitios, se puede abrir detalle y agregar sitios propios.
+**DoD:** se ven todos los sitios, se puede abrir detalle y agregar sitios propios. ✅
+
+> H3 en `frontend/`: `map.html` + `map.js` (fondo, marcadores proyectados, chrome,
+> flechas, popup de zona libre) + `proj.js` (estereográfica polar sur, validada al metro
+> contra pyproj) + `detailModal.js` (showSite compartido con H2). Backend: `/api/map/meta`
+> expone bounds + proyección leídos del CRS del raster. Verificado headless (Chrome).
+> Pendiente para H4: cablear `sitios[]`/`sitioActivo` al estado compartido (hoy las
+> chinchetas 📍 son locales de la página).
 
 ---
 

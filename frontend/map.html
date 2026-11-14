@@ -20,7 +20,7 @@
     <h1 class="text-lg font-bold">¿Dónde aterrizar en el polo sur lunar?</h1>
     <p class="text-sm text-slate-400">
       Tocá un sitio para ver su cielo y sus métricas.
-      <span class="text-slate-500">80°S–90°S · ~600 km de lado · fondo = luz promedio</span>
+      <span class="text-slate-500">~83°S–90°S · ~300 km de lado · fondo = luz promedio</span>
     </p>
   </header>
 
@@ -34,7 +34,8 @@
            class="absolute inset-0 w-full h-full object-cover select-none" draggable="false" />
       <!-- Capas de chrome (anillos/escala) y marcadores se dibujan en JS -->
       <svg id="map-chrome" class="absolute inset-0 w-full h-full pointer-events-none"
-           viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
+           viewBox="0 0 1000 1000" preserveAspectRatio="none"
+           style="filter: drop-shadow(0 0 1.5px rgba(0,0,0,.9));"></svg>
       <div id="map-markers" class="absolute inset-0"></div>
 
       <!-- Botón flotante al clickear zona libre -->
