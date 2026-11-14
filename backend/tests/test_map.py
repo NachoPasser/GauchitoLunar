@@ -4,6 +4,7 @@ import io
 
 import numpy as np
 import pytest
+import rasterio
 from PIL import Image
 
 import map_service
@@ -26,6 +27,32 @@ def test_map_png_is_valid_rgba(metric):
 def test_unknown_metric_raises():
     with pytest.raises(KeyError):
         map_service.get_map_png("nope")
+
+
+@needs_rasters
+def test_map_meta_shape_and_proj():
+    m = map_service.get_map_meta("illumination")
+    assert m["size_px"][0] <= map_service.MAX_PX
+    assert m["proj"]["lat0"] == -90.0 and m["proj"]["lon0"] == 0.0
+    b = m["bounds"]
+    assert b["left"] < 0 < b["right"] and b["bottom"] < 0 < b["top"]
+
+
+@needs_rasters
+def test_seed_sites_project_inside_bounds():
+    """Cada sitio semilla cae dentro de los bounds del raster de fondo (sanity H3)."""
+    from pyproj import Transformer
+
+    from sites import SEED_SITES
+    m = map_service.get_map_meta("illumination")
+    b = m["bounds"]
+    with rasterio.open(map_service.DATA / map_service.RASTERS["illumination"]) as ds:
+        tf = Transformer.from_crs(ds.crs.geodetic_crs, ds.crs, always_xy=True)
+    for s in SEED_SITES:
+        lon = s["lon"] - 360.0 if s["lon"] > 180.0 else s["lon"]
+        x, y = tf.transform(lon, s["lat"])
+        assert b["left"] <= x <= b["right"], s["name"]
+        assert b["bottom"] <= y <= b["top"], s["name"]
 
 
 @needs_rasters

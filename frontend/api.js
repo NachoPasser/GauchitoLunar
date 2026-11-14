@@ -31,3 +31,8 @@ export function getSite(lat, lon, { date, windowDays, marginDeg } = {}) {
 export function mapUrl(metric = "illumination") {
   return `${API_BASE}/api/map?metric=${metric}`;
 }
+
+// Geo-metadatos del fondo (bounds + proyección) para ubicar marcadores (H3).
+export function getMapMeta(metric = "illumination") {
+  return _get(`/api/map/meta?metric=${metric}`);
+}

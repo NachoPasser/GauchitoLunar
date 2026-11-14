@@ -61,6 +61,34 @@ def _psr_rgba(band: np.ndarray, valid: np.ndarray) -> Image.Image:
     return Image.fromarray(rgba, mode="RGBA")
 
 
+def get_map_meta(metric: str = "illumination") -> dict:
+    """Geo-metadatos del fondo del mapa para proyectar lat/lon → píxel en el front.
+
+    Lee CRS/bounds de los METADATOS del raster (no los asume, §3.0). El PNG se
+    decima pero conserva la extensión: los bounds proyectados valen para ambos.
+    `proj` describe la estereográfica polar sur esférica que el front reusa.
+    """
+    if metric not in RASTERS:
+        raise KeyError(metric)
+    with rasterio.open(DATA / RASTERS[metric]) as ds:
+        b = ds.bounds
+        crs = ds.crs.to_dict()
+        scale = max(ds.width, ds.height) / MAX_PX
+        size = [int(ds.width / scale), int(ds.height / scale)]
+    return {
+        "metric": metric,
+        "size_px": size,
+        "bounds": {"left": b.left, "bottom": b.bottom, "right": b.right, "top": b.top},
+        "proj": {
+            "type": "stere",
+            "R": crs.get("R", 1737400.0),
+            "lat0": crs.get("lat_0", -90.0),
+            "lat_ts": crs.get("lat_ts", -90.0),
+            "lon0": crs.get("lon_0", 0.0),
+        },
+    }
+
+
 def get_map_png(metric: str) -> bytes:
     """PNG (bytes) del raster pedido. Cache en memoria → disco → render."""
     if metric not in RASTERS:

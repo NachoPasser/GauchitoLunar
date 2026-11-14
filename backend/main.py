@@ -69,3 +69,14 @@ def map_(metric: str = Query("illumination")) -> Response:
                             detail="metric debe ser illumination|earth|psr")
     return Response(content=png, media_type="image/png",
                     headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/api/map/meta")
+def map_meta(metric: str = Query("illumination")) -> JSONResponse:
+    """Geo-metadatos del fondo (bounds + proyección) para ubicar marcadores (H3)."""
+    from map_service import get_map_meta
+    try:
+        return JSONResponse(get_map_meta(metric))
+    except KeyError:
+        raise HTTPException(status_code=400,
+                            detail="metric debe ser illumination|earth|psr")
