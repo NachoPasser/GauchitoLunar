@@ -26,6 +26,7 @@ async function showSite(lat, lon) {
     $("site-coords").textContent = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
     sky.setMask(mask.horizon_mask);
     sky.setTracks(site.sun_track, site.earth_track);
+    sky.setParams({ commsMargin: site.params.comms_margin_deg });
     sky.draw();
     setStatus("");
   } catch (e) {
