@@ -1,17 +1,13 @@
-"""FastAPI — esqueleto H0 (SPEC §5).
+"""FastAPI — API del contrato §5.
 
-Levanta y sirve el contrato de API contra las fixtures de mocks/ para desbloquear
-al frontend sin backend real. En H1 cada endpoint se reemplaza por el cálculo real
-(máscara, tracks, métricas) manteniendo EXACTAMENTE la misma forma de respuesta.
+/api/mask y /api/site sirven cálculo REAL (máscara, tracks, métricas); /api/map
+queda pendiente (H1.7). Las fixtures de mocks/ quedan como referencia del contrato.
 
 Correr:  uvicorn main:app --reload   (desde backend/)
 Docs:    http://127.0.0.1:8000/docs
 """
 
 from __future__ import annotations
-
-import json
-from pathlib import Path
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,9 +16,7 @@ from fastapi.responses import JSONResponse
 from constants import COMMS_MARGIN_DEFAULT_DEG, WINDOW_DAYS_DEFAULT
 from sites import SEED_SITES
 
-MOCKS_DIR = Path(__file__).resolve().parent / "mocks"
-
-app = FastAPI(title="Lunar Landing Site Navigator", version="0.0-h0")
+app = FastAPI(title="Lunar Landing Site Navigator", version="0.1-h1")
 
 # El frontend vanilla corre desde file:// o un server estático aparte.
 app.add_middleware(
@@ -33,13 +27,9 @@ app.add_middleware(
 )
 
 
-def _mock(name: str) -> dict:
-    return json.loads((MOCKS_DIR / name).read_text())
-
-
 @app.get("/")
 def health() -> dict:
-    return {"status": "ok", "service": "lunar-nav", "stage": "h0-mock"}
+    return {"status": "ok", "service": "lunar-nav", "stage": "h1"}
 
 
 @app.get("/api/sites")
@@ -61,14 +51,11 @@ def site(
     lon: float = Query(...),
     date: str = Query(None),
     window_days: int = Query(WINDOW_DAYS_DEFAULT),
+    comms_margin_deg: float = Query(COMMS_MARGIN_DEFAULT_DEG),
 ) -> JSONResponse:
-    """MOCK del contrato §5. H1: tracks desde Horizons + métricas reales."""
-    data = _mock("site.json")
-    data["site"]["lat"] = lat
-    data["site"]["lon"] = lon
-    data["params"]["window_days"] = window_days
-    data["params"]["comms_margin_deg"] = COMMS_MARGIN_DEFAULT_DEG
-    return JSONResponse(data)
+    """Tracks Sol/Tierra desde Horizons + métricas reales (§3.1, §3.2, §5)."""
+    from site_service import get_site
+    return JSONResponse(get_site(lat, lon, date, window_days, comms_margin_deg))
 
 
 @app.get("/api/map")

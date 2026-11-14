@@ -59,19 +59,19 @@ disponibles. A partir de acá los 3 pueden trabajar en paralelo.
 **Objetivo:** la pieza central. Máscara + tracks + métricas servidos como JSON. **TDD acá.**
 **Depende de:** H0.
 
-- [ ] Abrir DEM con `rasterio`, recortar ventana alrededor de un sitio (lat/lon → píxel con `pyproj`).
-- [ ] **Máscara `h(az)`**: ray casting sobre el raster, elevación `atan2(Δz_corregido, s)` con
+- [x] Abrir DEM con `rasterio`, recortar ventana alrededor de un sitio (lat/lon → píxel con `pyproj`).
+- [x] **Máscara `h(az)`**: ray casting sobre el raster, elevación `atan2(Δz_corregido, s)` con
       curvatura lunar `Δz_corr = Δz − s²/(2R)`. Guardar array 360/720. **Test** de sanity.
-- [ ] `GET /api/mask?lat=&lon=` devuelve `horizon_mask` según contrato (cache por sitio).
-- [ ] Tracks Sol/Tierra desde el cache de Horizons para el rango; marcar `visible` con la condición
+- [x] `GET /api/mask?lat=&lon=` devuelve `horizon_mask` según contrato (cache por sitio).
+- [x] Tracks Sol/Tierra desde el cache de Horizons para el rango; marcar `visible` con la condición
       `el_Tierra > h(az) + margen` y `el_Sol > h(az)`. **Test** (Tierra pegada al horizonte en el polo).
-- [ ] **Energía integrada** `E_total = ∫ S·max(0,sin e)·V dt` (horizontal y vertical sun-tracking).
+- [x] **Energía integrada** `E_total = ∫ S·max(0,sin e)·V dt` (horizontal y vertical sun-tracking).
       **Test** de la integración numérica.
-- [ ] Métricas: `lit_fraction`, `longest_night_h`, `earth_vis_fraction`, `longest_comms_gap_h`,
+- [x] Métricas: `lit_fraction`, `longest_night_h`, `earth_vis_fraction`, `longest_comms_gap_h`,
       `next_sunset_h`, `next_earthset_h`.
-- [ ] `GET /api/site?lat=&lon=&date=&window_days=` arma la respuesta completa del contrato.
+- [x] `GET /api/site?lat=&lon=&date=&window_days=` arma la respuesta completa del contrato.
 - [ ] `GET /api/map?metric=illumination|earth|psr` sirve el raster/PNG precalculado.
-- [ ] Cargar los **sitios semilla** (§4.5) para tener contenido de demo.
+- [x] Cargar los **sitios semilla** (§4.5) para tener contenido de demo.
 
 **DoD:** los 3 endpoints responden con datos reales y coherentes; tests del núcleo físico pasan.
 
