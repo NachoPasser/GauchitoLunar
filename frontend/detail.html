@@ -18,12 +18,10 @@
 
   <button id="open-btn" class="btn btn--primary">Ver detalle del sitio</button>
 
-  <!-- MODAL DE DETALLE PUNTUAL (reusable por el mapa, mismos ids) -->
-  <div id="detail-overlay"
-       class="fixed inset-0 flex items-center justify-center p-4 hidden z-40"
-       style="background:rgba(20,27,45,.45)">
-    <div id="detail-panel" class="panel w-full max-w-3xl max-h-[92vh] overflow-auto"
-         style="box-shadow:var(--shadow-lg)">
+  <!-- COLUMNA DE DETALLE (reusable por el mapa, mismos ids) -->
+  <div id="detail-overlay" class="detail-col">
+    <aside id="detail-panel" class="detail-col__inner panel" role="region"
+           aria-labelledby="site-name">
 
       <!-- Encabezado -->
       <div class="panel__head">
@@ -61,7 +59,7 @@
         <div id="metrics"></div>
         <div id="cartuchos"></div>
       </div>
-    </div>
+    </aside>
   </div>
 
   <script src="apibase.js"></script>

@@ -4,13 +4,14 @@
 
 import { getMask, getSite } from "./api.js";
 import { createSkyline } from "./skyline.js";
-import { renderMetrics, renderCartuchos } from "./panel.js";
+import { renderMetrics, renderCartuchos, instantLine } from "./panel.js";
 
 export function createDetailModal({ windowDays = 30, date = null } = {}) {
   const $ = (id) => document.getElementById(id);
   const sky = createSkyline($("skyline"));
   let fullSky = false;
   let data = null;          // respuesta /api/site del sitio activo (para el slider)
+  let updateMetrics = null; // updater(i) de las métricas por instante (ver panel.js)
 
   function setStatus(msg, isError = false) {
     const s = $("status");
@@ -23,12 +24,13 @@ export function createDetailModal({ windowDays = 30, date = null } = {}) {
     if (!data) return;
     sky.setCursor(i);
     sky.draw();
-    const s = data.sun_track[i], e = data.earth_track[i];
-    const t = s.t.slice(0, 16).replace("T", " ");
-    const tag = (p) => (p.visible ? "visible" : "tapado");
-    $("time-label").textContent =
-      `${t} UTC  ·  Sol ${s.el.toFixed(1)}° ${tag(s)}  ·  ` +
-      `Tierra ${e.el.toFixed(1)}° ${tag(e)}`;
+    if (updateMetrics) updateMetrics(i);
+    $("time-label").innerHTML = instantLine(data, i);
+    const needle = $("cartucho-needle");
+    if (needle) {
+      const max = Number($("time-slider").max) || 1;
+      needle.style.left = `${(i / max) * 100}%`;
+    }
   }
 
   async function showSite(lat, lon, name) {
@@ -49,9 +51,9 @@ export function createDetailModal({ windowDays = 30, date = null } = {}) {
       const slider = $("time-slider");
       slider.max = site.sun_track.length - 1;
       slider.value = 0;
+      updateMetrics = renderMetrics($("metrics"), site, mask.horizon_mask);
+      renderCartuchos($("cartuchos"), site);   // crea #cartucho-needle antes del cursor
       updateCursor(0);
-      renderMetrics($("metrics"), site);
-      renderCartuchos($("cartuchos"), site);
       setStatus("");
     } catch (e) {
       setStatus(`No se pudo cargar (¿backend activo?): ${e.message}`, true);
@@ -59,14 +61,11 @@ export function createDetailModal({ windowDays = 30, date = null } = {}) {
   }
 
   const overlay = () => $("detail-overlay");
-  function close() { overlay().classList.add("hidden"); }
-  function openEmpty() { overlay().classList.remove("hidden"); }
+  function close() { overlay().classList.remove("is-open"); }
+  function openEmpty() { overlay().classList.add("is-open"); }
 
   // Wiring de controles (una sola vez).
   $("close-btn").addEventListener("click", close);
-  overlay().addEventListener("click", (e) => {
-    if (e.target === overlay()) close();
-  });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") close();
   });

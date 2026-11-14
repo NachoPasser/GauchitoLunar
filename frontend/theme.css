@@ -122,7 +122,60 @@ input[type="range"].field-range { accent-color: var(--brand); width: 100%; paddi
 .marker.is-active { z-index: 6; }
 .marker.is-active .marker__ring { opacity: 1; }
 
+/* Modal centrado (Top 3): scrim que atenúa el mapa + panel que entra con un leve
+   fade/scale. Estado abierto = clase .is-open en el scrim. */
+.modal-scrim {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  background: rgba(20, 27, 45, .5);
+  opacity: 0; pointer-events: none; transition: opacity .2s ease;
+}
+.modal-scrim.is-open { opacity: 1; pointer-events: auto; }
+.modal {
+  width: min(940px, 96vw); max-height: 92vh;
+  display: flex; flex-direction: column;
+  transform: translateY(8px) scale(.985);
+  transition: transform .2s cubic-bezier(.4, 0, .2, 1);
+}
+.modal-scrim.is-open .modal { transform: none; }
+.modal .panel__head { flex: 0 0 auto; }
+.modal .panel__body { flex: 1 1 auto; overflow-y: auto; }
+@media (prefers-reduced-motion: reduce) { .modal, .modal-scrim { transition: none; } }
+
+/* Segmented control (pasos del carrusel) */
+.seg { display: inline-flex; gap: 2px; padding: 3px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-full); }
+.seg__btn { border: 0; background: transparent; cursor: pointer;
+  color: var(--ink-2); font-weight: 600; font-size: .8rem; font-family: var(--font);
+  padding: .4rem .85rem; border-radius: var(--r-full); transition: background .15s, color .15s; }
+.seg__btn:hover { color: var(--ink); }
+.seg__btn.is-active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+
+/* Disco de luna sobre el cielo estrellado: aro tenue + halo azulado (tipo earthshine) */
+#map-disk {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 0 34px rgba(120, 150, 255, .12),
+    inset 0 2px 20px rgba(0, 0, 0, .5);
+}
+
 /* Leyenda del mapa */
 .legend { display: flex; flex-wrap: wrap; gap: .9rem; align-items: center; }
 .legend__item { display: inline-flex; align-items: center; gap: .4rem;
   font-size: .72rem; color: var(--ink-2); }
+
+/* Columna de detalle: entra como card a la derecha y EMPUJA el mapa a la izquierda.
+   No es overlay — vive en el flujo, al lado del mapa (main es flex). El cierre
+   colapsa el ancho a 0. Estado abierto = clase .is-open. El inner tiene ancho fijo
+   para que el contenido no se deforme mientras anima el ancho de la columna. */
+.detail-col {
+  flex: 0 0 auto; width: 0; margin-left: 0; opacity: 0; overflow: hidden;
+  transition: width .32s cubic-bezier(.4, 0, .2, 1),
+    margin-left .32s cubic-bezier(.4, 0, .2, 1), opacity .22s ease;
+}
+.detail-col.is-open { width: min(74vmin, 680px); margin-left: 1rem; opacity: 1; }
+.detail-col__inner {
+  width: min(74vmin, 680px); position: sticky; top: 1rem;
+  max-height: calc(100vh - 2rem); display: flex; flex-direction: column;
+}
+.detail-col__inner .panel__head { flex: 0 0 auto; }
+.detail-col__inner .panel__body { flex: 1 1 auto; overflow-y: auto; }
+@media (prefers-reduced-motion: reduce) { .detail-col { transition: none; } }

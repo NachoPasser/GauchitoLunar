@@ -119,7 +119,7 @@ Regla: primero que el **skyline se entienda solo**; no agregar features si la ba
   `data/` (DEM + rasters PGDA + cache de Horizons), fuera del repo. **Sitios libres** (no semilla):
   `ephem.ensure_cache` hace **fetch en vivo on-miss** a Horizons y cachea; si no hay red lanza
   `EphemerisError` → `/api/site` responde **503 con CORS** (legible), nunca un 500 crudo.
-- **Frontend (`frontend/`): H2, H3 y H4 cerrados.** Vanilla. `index.html`/`script.js` son la
+- **Frontend (`frontend/`): H2–H5 cerrados.** Vanilla. `index.html`/`script.js` son la
   **bienvenida** real (tutorial de 3 pasos + date-range con límite 30 d): el submit fija el rango y
   navega al mapa. El detalle puntual (skyline + slider + métricas + cartuchos) vive en
   `detailModal.js` (lógica compartida) + `skyline.js` + `panel.js` + `api.js`, con
@@ -127,8 +127,12 @@ Regla: primero que el **skyline se entienda solo**; no agregar features si la ba
   raster de luz, ⭐ sitios + 📍 chinchetas ubicados por `proj.js` (estereográfica polar sur validada
   contra pyproj), click → modal, popup de zona libre, anillos/escala/flechas de Sol-Tierra. El
   **estado compartido** (H4) es `state.js`: `{ rangoFechas, sitios[], sitioActivo, ventanaAzimut }`,
-  única fuente de verdad que cruza páginas por `localStorage`. Backend sumó `/api/map/meta`. Falta:
-  H5 (Top 3 / ranking) y H6 (extras).
+  única fuente de verdad que cruza páginas por `localStorage`. Backend sumó `/api/map/meta`. El
+  **Top 3** (H5) es `rank.js` (ranking puro por criterio comms/energía/mixto, con test) + `top3.js`
+  (capa de datos + modal con carrusel de 3 pasos: podio + tabla de todos los sitios, "ver detalle"),
+  abierto desde el botón 🏆 del mapa. El panel de detalle sumó **métricas por instante** atadas al
+  slider: energía solar **acumulada** al cursor (Sol) y despeje sobre el horizonte `el−h(az)`
+  (Tierra), más aguja punteada sobre los cartuchos. Falta: H6 (extras).
 - Lo que contradiga la arquitectura del SPEC se adapta o se descarta.
 
 ## Honestidad (para no prometer de más)

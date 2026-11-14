@@ -5,12 +5,35 @@
 const SVGNS = "http://www.w3.org/2000/svg";
 const PAD = { t: 14, r: 14, b: 26, l: 34 };
 const W = 760, H = 340;
-const SUN = "#f59e0b", EARTH = "#0032a0";   // Sol ámbar / Tierra cobalto (marca)
+// Modo oscuro (cielo real): fondo navy, estrellas blancas, terreno negro silueteado.
+// Tracks en variantes brillantes para que resalten sobre el cielo oscuro.
+const SUN = "#fbbf24", EARTH = "#60a5fa";   // Sol ámbar / Tierra celeste (sobre oscuro)
+const SKY_TOP = "#070b1c", SKY_HORIZON = "#141d3a";
+const GROUND = "#05070f", RIM = "#5b6a86";
+const GRID = "rgba(255,255,255,.07)", GRID_HORIZON = "rgba(148,163,184,.45)";
+const AXIS_INK = "#8a97b2";
 
 function el(tag, attrs = {}) {
   const n = document.createElementNS(SVGNS, tag);
   for (const k in attrs) n.setAttribute(k, attrs[k]);
   return n;
+}
+
+// Estrellas deterministas (LCG con semilla fija): mismas posiciones en cada draw,
+// no bailan al mover el slider. Se generan una vez por instancia.
+function makeStars(n) {
+  let s = 0x2545f491;
+  const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  const stars = [];
+  for (let i = 0; i < n; i++) {
+    stars.push({
+      x: PAD.l + rnd() * (W - PAD.l - PAD.r),
+      y: PAD.t + rnd() * (H - PAD.t - PAD.b),
+      r: 0.4 + rnd() * 1.0,
+      o: 0.35 + rnd() * 0.6,
+    });
+  }
+  return stars;
 }
 
 function niceStep(rough) {
@@ -20,10 +43,28 @@ function niceStep(rough) {
 
 export function createSkyline(svg) {
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const stars = makeStars(90);
   const st = {
     mask: [], sun: [], earth: [], fullSky: false, commsMargin: 0, azWindow: null,
     cursor: null,
   };
+
+  // Cielo oscuro + estrellas de fondo. El terreno (opaco) se dibuja después y tapa
+  // las estrellas que caen "bajo el horizonte", así solo brillan en el cielo.
+  function drawSky(y, [lo, hi]) {
+    const defs = el("defs");
+    const grad = el("linearGradient", { id: "sky-grad", x1: 0, y1: 0, x2: 0, y2: 1 });
+    grad.appendChild(el("stop", { offset: 0, "stop-color": SKY_TOP }));
+    grad.appendChild(el("stop", { offset: 1, "stop-color": SKY_HORIZON }));
+    defs.appendChild(grad);
+    svg.appendChild(defs);
+    svg.appendChild(el("rect", { x: 0, y: 0, width: W, height: H, rx: 10,
+      fill: "url(#sky-grad)" }));
+    for (const s of stars) {
+      svg.appendChild(el("circle", { cx: s.x, cy: s.y, r: s.r,
+        fill: "#fff", opacity: s.o }));
+    }
+  }
 
   function setMask(mask) { st.mask = mask || []; }
   function setTracks(sun, earth) { st.sun = sun || []; st.earth = earth || []; }
@@ -55,11 +96,11 @@ export function createSkyline(svg) {
     for (const [az, lbl] of dirs) {
       svg.appendChild(el("line", {
         x1: x(az), y1: PAD.t, x2: x(az), y2: H - PAD.b,
-        stroke: "#e2e8f0", "stroke-width": 1,
+        stroke: GRID, "stroke-width": 1,
       }));
       const t = el("text", {
         x: x(az), y: H - PAD.b + 16, "text-anchor": "middle",
-        "font-size": 11, fill: "#64748b", "font-family": "JetBrains Mono, monospace",
+        "font-size": 11, fill: AXIS_INK, "font-family": "JetBrains Mono, monospace",
       });
       t.textContent = lbl;
       svg.appendChild(t);
@@ -70,12 +111,12 @@ export function createSkyline(svg) {
       const horizon = e === 0;
       svg.appendChild(el("line", {
         x1: PAD.l, y1: y(e), x2: W - PAD.r, y2: y(e),
-        stroke: horizon ? "#94a3b8" : "#f1f5f9",
+        stroke: horizon ? GRID_HORIZON : GRID,
         "stroke-width": horizon ? 1.5 : 1,
       }));
       const t = el("text", {
         x: PAD.l - 5, y: y(e) + 3, "text-anchor": "end",
-        "font-size": 10, fill: "#94a3b8", "font-family": "JetBrains Mono, monospace",
+        "font-size": 10, fill: AXIS_INK, "font-family": "JetBrains Mono, monospace",
       });
       t.textContent = `${e}°`;
       svg.appendChild(t);
@@ -88,10 +129,10 @@ export function createSkyline(svg) {
     pts.push(`${x(360)},${y(st.mask[0].h_deg)}`); // cierre al wrap 360→0
     const base = y(lo);
     const d = `M ${PAD.l},${base} L ${pts.join(" L ")} L ${W - PAD.r},${base} Z`;
-    svg.appendChild(el("path", { d, fill: "#cbd5e1", stroke: "none" }));
-    // borde superior del terreno (línea nítida)
+    svg.appendChild(el("path", { d, fill: GROUND, stroke: "none" }));
+    // borde superior del terreno: fina línea "iluminada" (rim) para silueta nítida
     svg.appendChild(el("polyline", {
-      points: pts.join(" "), fill: "none", stroke: "#475569", "stroke-width": 1.5,
+      points: pts.join(" "), fill: "none", stroke: RIM, "stroke-width": 1.5,
     }));
   }
 
@@ -112,7 +153,7 @@ export function createSkyline(svg) {
     const pts = st.mask.map((s) => `${x(s.az)},${y(s.h_deg + m)}`);
     pts.push(`${x(360)},${y(st.mask[0].h_deg + m)}`);
     svg.appendChild(el("polyline", {
-      points: pts.join(" "), fill: "none", stroke: "#1d4ed8",
+      points: pts.join(" "), fill: "none", stroke: "#93c5fd",
       "stroke-width": 1, "stroke-dasharray": "2 3", opacity: 0.6,
     }));
   }
@@ -166,7 +207,7 @@ export function createSkyline(svg) {
       const cx = Math.min(Math.max(x(mid.az), PAD.l + 54), W - PAD.r - 54);
       const t = el("text", {
         x: cx, y: y(mid.el) - 7, "text-anchor": "middle", "font-size": 10,
-        fill: "#5b6575", stroke: "#fff", "stroke-width": 3, "paint-order": "stroke",
+        fill: "#cbd5e1", stroke: GROUND, "stroke-width": 3, "paint-order": "stroke",
       });
       t.textContent = "tapado por el terreno";
       svg.appendChild(t);
@@ -180,7 +221,7 @@ export function createSkyline(svg) {
       svg.appendChild(el("line", {
         x1: gx, y1: gy, x2: gx + 14, y2: gy, stroke: c, "stroke-width": 2.5,
       }));
-      const t = el("text", { x: gx + 18, y: gy + 3, "font-size": 10, fill: "#475569" });
+      const t = el("text", { x: gx + 18, y: gy + 3, "font-size": 10, fill: AXIS_INK });
       t.textContent = lbl;
       svg.appendChild(t);
     });
@@ -194,7 +235,7 @@ export function createSkyline(svg) {
       if (!p) continue;
       svg.appendChild(el("circle", {
         cx: x(p.az), cy: y(p.el), r: 5,
-        fill: p.visible ? color : "#fff", stroke: color, "stroke-width": 2,
+        fill: p.visible ? color : SKY_HORIZON, stroke: color, "stroke-width": 2,
       }));
     }
   }
@@ -203,6 +244,7 @@ export function createSkyline(svg) {
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     const r = range();
     const y = yFn(r);
+    drawSky(y, r);
     drawAzWindow(y);
     drawGrid(y, r);
     drawTerrain(y, r);

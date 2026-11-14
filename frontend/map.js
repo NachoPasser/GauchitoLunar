@@ -6,12 +6,15 @@
 import { getSites, getSite, mapUrl, getMapMeta } from "./api.js";
 import { createProjection } from "./proj.js";
 import { createDetailModal } from "./detailModal.js";
+import { createTop3 } from "./top3.js";
 import { windowDays, startDate, addSitio, setSitioActivo, getState } from "./state.js";
 
 const $ = (id) => document.getElementById(id);
 const stage = $("map-stage");
+const disk = $("map-disk");
 const layer = $("map-markers");
 const modal = createDetailModal({ windowDays: windowDays(), date: startDate() });
+const top3 = createTop3({ onDetail: (lat, lon, name) => modal.open(lat, lon, name) });
 let proj = null;
 let pending = null;            // {lat, lon} del último click en zona libre
 
@@ -24,13 +27,40 @@ function svg(tag, attrs) {
   return el;
 }
 
-// Orientación: anillos de latitud + polo + barra de escala (SVG en unidades 0..1000,
-// que mapean al lienzo cuadrado por preserveAspectRatio="none"). El polo queda al
-// centro; el norte apunta radialmente hacia afuera (azimut 0=N, invariante).
+// Campo de estrellas determinista (LCG, semilla fija): mismas posiciones siempre.
+// Se dibuja en el margen oscuro, detrás del disco de luna (que las tapa en el centro).
+const STARS = (() => {
+  let s = 0x9e3779b1;
+  const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  const out = [];
+  for (let i = 0; i < 180; i++) {
+    out.push({ x: rnd() * 1000, y: rnd() * 1000, r: 0.6 + rnd() * 1.6,
+      o: 0.3 + rnd() * 0.6 });
+  }
+  return out;
+})();
+
+function drawStars(go) {
+  for (const st of STARS) {
+    // Saltamos las que caen dentro del disco (radio 400): el disco las taparía igual.
+    if ((st.x - 500) ** 2 + (st.y - 500) ** 2 < 405 ** 2) continue;
+    go.appendChild(svg("circle", { cx: st.x, cy: st.y, r: st.r,
+      fill: "#fff", opacity: st.o }));
+  }
+}
+
+// Orientación. El chrome se reparte en dos capas:
+//  · INTERIOR (#map-chrome, dentro del disco de luna): anillos de latitud + polo.
+//  · EXTERIOR (#map-chrome-outer, sobre el margen claro): globo, escala y flechas.
+// Ambos SVG en unidades 0..1000 sobre el stage cuadrado (preserveAspectRatio="none").
+// El disco ocupa el 80% central (inset 10%): centro=500, radio=400 en estas unidades.
 function drawChrome() {
-  const g = $("map-chrome");
+  const g = $("map-chrome");               // interior del disco (sobre textura)
+  const go = $("map-chrome-outer");        // margen oscuro estrellado del lienzo
   g.innerHTML = "";
-  const C = 500;                          // centro (polo sur) en unidades SVG
+  go.innerHTML = "";
+  drawStars(go);                           // estrellas detrás de todo el margen
+  const C = 500;                           // centro (polo sur) en unidades SVG
   const ring = (lat) => {
     const r = proj.latRingRadius(lat) * 1000;
     g.appendChild(svg("circle", { cx: C, cy: C, r, fill: "none",
@@ -42,48 +72,56 @@ function drawChrome() {
   };
   ring(-85);
   ring(-88);
-  drawGlobeInset();
-  // Polo sur (90°S): cruz + etiqueta.
+  // Polo sur (90°S): cruz + etiqueta (interior).
   g.appendChild(svg("path", { d: `M${C - 9} ${C}H${C + 9}M${C} ${C - 9}V${C + 9}`,
     stroke: "white", "stroke-opacity": 0.7, "stroke-width": 2 }));
   const pt = svg("text", { x: C + 12, y: C + 6, fill: "white", "fill-opacity": 0.75,
     "font-size": 18, "font-family": "JetBrains Mono" });
   pt.textContent = "polo S";
   g.appendChild(pt);
-  // Barra de escala: 100 km = 0.33 del ancho (escala ~fiel cerca del polo).
-  const len = (100000 / 303480) * 1000, x0 = 1000 - len - 40, y = 955;
-  g.appendChild(svg("path", {
-    d: `M${x0} ${y}h${len}M${x0} ${y - 7}v14M${x0 + len} ${y - 7}v14`,
-    stroke: "white", "stroke-opacity": 0.85, "stroke-width": 2.5 }));
-  const st = svg("text", { x: x0 + len / 2, y: y - 12, fill: "white", "fill-opacity": 0.9,
-    "font-size": 18, "text-anchor": "middle", "font-family": "JetBrains Mono" });
-  st.textContent = "100 km";
-  g.appendChild(st);
+  // Chrome del margen (sobre el lienzo claro): globo + barra de escala.
+  drawGlobeInset();
+  drawScaleBar();
 }
 
-// Inset de globo (arriba-izq): esquema de la Luna con el casquete sur resaltado,
-// para que se lea "vista cenital del polo sur". Decorativo, no a escala.
+// Inset de globo (arriba-izq, sobre el margen oscuro): esquema de la Luna con el
+// casquete sur resaltado, para que se lea "vista cenital del polo sur". Decorativo.
 function drawGlobeInset() {
-  const g = $("map-chrome"), cx = 78, cy = 78, r = 52;
-  g.appendChild(svg("circle", { cx, cy, r, fill: "rgba(255,255,255,.07)",
-    stroke: "white", "stroke-opacity": 0.55, "stroke-width": 2 }));
+  const g = $("map-chrome-outer"), cx = 72, cy = 72, r = 50;
+  g.appendChild(svg("circle", { cx, cy, r, fill: "rgba(255,255,255,.06)",
+    stroke: "rgba(255,255,255,.5)", "stroke-width": 2 }));
   // Casquete resaltado (~tercio inferior): arco del borde + cuerda.
   const cut = cy + r * 0.45, hw = Math.sqrt(r * r - (cut - cy) ** 2);
-  g.appendChild(svg("path", { fill: "rgba(96,165,250,.35)", stroke: "#60a5fa",
-    "stroke-opacity": 0.8, "stroke-width": 1.5,
+  g.appendChild(svg("path", { fill: "rgba(96,165,250,.3)", stroke: "#60a5fa",
+    "stroke-opacity": 0.9, "stroke-width": 1.5,
     d: `M${cx - hw} ${cut}A${r} ${r} 0 0 0 ${cx + hw} ${cut}Z` }));
-  g.appendChild(svg("circle", { cx, cy: cy + r, r: 3, fill: "white" }));
-  const t = svg("text", { x: cx, y: cy + r + 18, fill: "white", "fill-opacity": 0.8,
+  g.appendChild(svg("circle", { cx, cy: cy + r, r: 3, fill: "#fff" }));
+  const t = svg("text", { x: cx, y: cy + r + 18, fill: "#cbd5e1",
     "font-size": 15, "text-anchor": "middle", "font-family": "JetBrains Mono" });
   t.textContent = "vista polo S";
   g.appendChild(t);
 }
 
-// Flechas de DIRECCIÓN (no visibilidad) de Sol y Tierra en el margen. Una bearing A
-// (azimut 0=N horario) mapea a dirección de pantalla (sinA, -cosA) desde el polo.
-// Son la dirección en UN instante (inicio de ventana), rotulado para honestidad.
+// Barra de escala en el margen inferior. 100 km = (100/303.48) del ancho del DISCO,
+// y el disco mide 800 unidades de stage (80% del lado). Colores claros: va sobre oscuro.
+function drawScaleBar() {
+  const go = $("map-chrome-outer");
+  const len = (100000 / 303480) * 800, x0 = 500 - len / 2, y = 960;
+  go.appendChild(svg("path", {
+    d: `M${x0} ${y}h${len}M${x0} ${y - 7}v14M${x0 + len} ${y - 7}v14`,
+    stroke: "#cbd5e1", "stroke-opacity": 0.95, "stroke-width": 2.5 }));
+  const st = svg("text", { x: 500, y: y - 12, fill: "#cbd5e1",
+    "font-size": 18, "text-anchor": "middle", "font-family": "JetBrains Mono" });
+  st.textContent = "100 km";
+  go.appendChild(st);
+}
+
+// Flechas de DIRECCIÓN (no visibilidad) de Sol y Tierra, EN EL MARGEN claro, fuera
+// del disco de luna (radio 400). Una bearing A (azimut 0=N horario) mapea a dirección
+// de pantalla (sinA, -cosA) desde el polo. Son la dirección en UN instante (inicio de
+// ventana), rotulado para honestidad. Dibuja en la capa exterior (sobre fondo claro).
 function drawDirArrows(sunAz, earthAz, tLabel) {
-  const g = $("map-chrome"), C = 500, rIn = 430, rOut = 478;
+  const g = $("map-chrome-outer"), C = 500, rIn = 414, rOut = 464;
   const arrow = (azDeg, color, label) => {
     const a = azDeg * Math.PI / 180, dx = Math.sin(a), dy = -Math.cos(a);
     const x1 = C + dx * rIn, y1 = C + dy * rIn;
@@ -91,24 +129,24 @@ function drawDirArrows(sunAz, earthAz, tLabel) {
     g.appendChild(svg("line", { x1, y1, x2, y2, stroke: color,
       "stroke-width": 7, "stroke-linecap": "round" }));
     // Punta: dos trazos hacia atrás.
-    const px = -dx, py = -dy, qx = -dy, qy = dx, s = 16;
+    const px = -dx, py = -dy, qx = -dy, qy = dx, s = 13;
     g.appendChild(svg("path", { stroke: color, "stroke-width": 7, fill: "none",
       "stroke-linecap": "round",
       d: `M${x2 + (px + qx) * s} ${y2 + (py + qy) * s}L${x2} ${y2}` +
          `L${x2 + (px - qx) * s} ${y2 + (py - qy) * s}` }));
-    // Etiqueta: disco de color + texto (reemplaza el emoji).
-    const lx = C + dx * (rIn - 30), ly = C + dy * (rIn - 30);
-    g.appendChild(svg("circle", { cx: lx, cy: ly, r: 9, fill: color,
-      stroke: "#fff", "stroke-width": 2 }));
-    const t = svg("text", { x: lx, y: ly - 15, fill: "#fff", "fill-opacity": 0.95,
-      "font-size": 19, "text-anchor": "middle", "font-family": "Inter" });
+    // Etiqueta: disco de color (borde blanco) en la base + texto en tinta oscura.
+    const lx = C + dx * (rIn + 10), ly = C + dy * (rIn + 10);
+    g.appendChild(svg("circle", { cx: lx, cy: ly, r: 8, fill: color,
+      stroke: "#0d1426", "stroke-width": 2 }));
+    const t = svg("text", { x: lx, y: ly - 14, fill: "#f3f6fb", "fill-opacity": 0.96,
+      "font-size": 19, "text-anchor": "middle", "font-family": "Inter", "font-weight": 600 });
     t.textContent = label;
     g.appendChild(t);
   };
   arrow(sunAz, "#f59e0b", "Sol");
-  arrow(earthAz, "#0032a0", "Tierra");
-  const t = svg("text", { x: 40, y: 955, fill: "white", "fill-opacity": 0.7,
-    "font-size": 17, "font-family": "JetBrains Mono" });
+  arrow(earthAz, "#60a5fa", "Tierra");
+  const t = svg("text", { x: 20, y: 986, fill: "#8a97b2", "fill-opacity": 0.95,
+    "font-size": 16, "font-family": "JetBrains Mono" });
   t.textContent = `dirección al ${tLabel} UTC`;
   g.appendChild(t);
 }
@@ -128,14 +166,11 @@ function markerSVG(kind) {
 
 let activeEl = null;
 
-// Resalta el marcador activo y actualiza el chip "Seleccionado" del top-bar.
-function setActive(el, name) {
+// Resalta el marcador activo (el nombre del sitio ya lo muestra la card de detalle).
+function setActive(el) {
   if (activeEl) activeEl.classList.remove("is-active");
   activeEl = el;
   if (el) el.classList.add("is-active");
-  $("selected-chip").innerHTML =
-    `<span class="chip__dot" style="background:var(--earth)"></span>` +
-    (name ? `Seleccionado: ${name}` : "Ningún sitio seleccionado");
 }
 
 function addMarker(lon, lat, name, kind) {
@@ -148,7 +183,7 @@ function addMarker(lon, lat, name, kind) {
   m.title = `${name} · ${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
   m.addEventListener("click", (e) => {
     e.stopPropagation();
-    setActive(m, name);
+    setActive(m);
     setSitioActivo({ lat, lon, name });
     modal.open(lat, lon, name);
   });
@@ -158,7 +193,7 @@ function addMarker(lon, lat, name, kind) {
 
 // Click en zona libre: ubicar el popup flotante y recordar las coords.
 function onFreeClick(e) {
-  const r = stage.getBoundingClientRect();
+  const r = disk.getBoundingClientRect();
   const u = (e.clientX - r.left) / r.width;
   const v = (e.clientY - r.top) / r.height;
   if (u < 0 || u > 1 || v < 0 || v > 1) return;
@@ -195,7 +230,7 @@ async function init() {
   }
 }
 
-stage.addEventListener("click", (e) => {
+disk.addEventListener("click", (e) => {
   if (e.target.closest("#free-popup")) return;      // clicks del popup se manejan aparte
   onFreeClick(e);
 });
@@ -212,10 +247,12 @@ $("free-add").addEventListener("click", () => {
   hidePopup();
 });
 
+$("top3-btn").addEventListener("click", top3.open);
+
 $("free-detail").addEventListener("click", () => {
   if (!pending) return;
   const name = freeName(pending);
-  setActive(null, name);
+  setActive(null);
   setSitioActivo({ lat: pending.lat, lon: pending.lon, name });
   modal.open(pending.lat, pending.lon, name);
   hidePopup();

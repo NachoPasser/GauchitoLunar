@@ -11,24 +11,16 @@
 <body class="app-bg min-h-screen">
 
   <!-- Top-bar -->
-  <header class="max-w-5xl mx-auto px-5 pt-6 pb-3 flex items-end justify-between gap-4">
-    <div>
-      <h1 class="text-xl font-bold" style="color:var(--ink)">Lunar Landing Site Navigator</h1>
-      <p class="text-sm" style="color:var(--ink-2)">
-        ¿Dónde aterrizar en el polo sur lunar? Tocá un sitio para ver su cielo y métricas.
-      </p>
-    </div>
-    <span id="selected-chip" class="chip chip--earth whitespace-nowrap">
-      <span class="chip__dot" style="background:var(--earth)"></span>Ningún sitio seleccionado
-    </span>
+  <header class="max-w-[1460px] mx-auto px-5 pt-6 pb-3 flex items-center justify-between gap-4">
+    <h1 class="text-xl font-bold" style="color:var(--ink)">Lunar Landing Site Navigator</h1>
+    <button id="top3-btn" class="btn btn--primary">🏆 Top 3</button>
   </header>
 
-  <main class="max-w-5xl mx-auto px-5 pb-10">
-    <div class="panel">
+  <main class="max-w-[1460px] mx-auto px-5 pb-10 flex justify-center items-start">
+    <div class="panel shrink-0">
       <div class="panel__head">
         <div>
           <div class="panel__title">Mapa del polo sur</div>
-          <div class="panel__sub">~83°S–90°S · ~300 km de lado · fondo = luz promedio (18.6 años)</div>
         </div>
         <div class="legend">
           <span class="legend__item"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2l2.6 6.3 6.8.5-5.2 4.4 1.7 6.6L12 16.9 6.1 20.3l1.7-6.6L2.6 9.3l6.8-.5z" fill="#0032a0" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>predefinido</span>
@@ -37,41 +29,50 @@
         </div>
       </div>
 
-      <!-- Lienzo del mapa (cuadrado, centrado) -->
-      <div class="panel__body" style="padding:1rem">
-        <div id="map-stage"
-             class="relative aspect-square mx-auto rounded-xl overflow-hidden"
-             style="width:min(74vmin,680px);background:#0b1020">
-          <img id="map-bg" alt="Mapa de luz promedio del polo sur lunar"
-               class="absolute inset-0 w-full h-full object-cover select-none"
-               draggable="false" style="filter:contrast(.92) brightness(1.04)" />
-          <!-- Viñeta sutil para integrar al UI claro -->
-          <div class="absolute inset-0 pointer-events-none"
-               style="background:radial-gradient(circle at 50% 50%,transparent 58%,rgba(11,16,32,.5) 100%)"></div>
-          <svg id="map-chrome" class="absolute inset-0 w-full h-full pointer-events-none"
-               viewBox="0 0 1000 1000" preserveAspectRatio="none"
-               style="filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9))"></svg>
-          <div id="map-markers" class="absolute inset-0"></div>
+      <!-- Lienzo del mapa: stage cuadrado (cielo estrellado) + disco circular de luna.
+           La textura vive en el disco; las estrellas y las flechas Sol/Tierra, en el margen. -->
+      <div class="panel__body" style="padding:1.25rem;background:#0a0f22">
+        <div id="map-stage" class="relative aspect-square mx-auto rounded-lg overflow-hidden"
+             style="width:min(74vmin,680px);background:radial-gradient(circle at 50% 44%,#16203f 0%,#0b1124 62%,#070a16 100%)">
+          <!-- Chrome EXTERIOR: flechas de dirección + globo, sobre el margen claro -->
+          <svg id="map-chrome-outer" class="absolute inset-0 w-full h-full pointer-events-none"
+               viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
 
-          <!-- Botón flotante al clickear zona libre -->
-          <div id="free-popup" class="card absolute z-20 hidden -translate-x-1/2 -translate-y-full p-1"
-               style="box-shadow:var(--shadow-md)">
-            <button id="free-add" class="btn btn--ghost btn--sm w-full justify-start">📍 Agregar este sitio</button>
-            <button id="free-detail" class="btn btn--ghost btn--sm w-full justify-start">🔭 Ver detalle acá</button>
+          <!-- Disco de luna (circular, recorta la textura cuadrada) -->
+          <div id="map-disk" class="absolute rounded-full overflow-hidden"
+               style="inset:10%;background:#0d1426">
+            <img id="map-bg" alt="Mapa de luz promedio del polo sur lunar"
+                 class="absolute inset-0 w-full h-full object-cover select-none"
+                 draggable="false"
+                 style="filter:contrast(.68) brightness(1.12) saturate(.85)" />
+            <!-- Velo que calma el contraste y asienta el borde del disco -->
+            <div class="absolute inset-0 pointer-events-none"
+                 style="background:radial-gradient(circle at 50% 46%,rgba(13,20,38,0) 52%,rgba(13,20,38,.42) 100%)"></div>
+            <svg id="map-chrome" class="absolute inset-0 w-full h-full pointer-events-none"
+                 viewBox="0 0 1000 1000" preserveAspectRatio="none"
+                 style="filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9))"></svg>
+            <div id="map-markers" class="absolute inset-0"></div>
+
+            <!-- Botón flotante al clickear zona libre -->
+            <div id="free-popup"
+                 class="card absolute z-20 hidden -translate-x-1/2 -translate-y-full p-1"
+                 style="box-shadow:var(--shadow-md)">
+              <button id="free-add" class="btn btn--ghost btn--sm w-full justify-start">📍 Agregar este sitio</button>
+              <button id="free-detail" class="btn btn--ghost btn--sm w-full justify-start">🔭 Ver detalle acá</button>
+            </div>
+
+            <p id="map-status" class="mono absolute left-3 bottom-3 text-[11px]"
+               style="color:rgba(255,255,255,.8)"></p>
           </div>
-
-          <p id="map-status" class="mono absolute left-2 bottom-2 text-[11px]"
-             style="color:rgba(255,255,255,.75)"></p>
         </div>
       </div>
     </div>
-  </main>
 
-  <!-- MODAL DE DETALLE PUNTUAL (compartido con detail.html, mismos ids) -->
-  <div id="detail-overlay" class="fixed inset-0 flex items-center justify-center p-4 hidden z-40"
-       style="background:rgba(20,27,45,.45)">
-    <div id="detail-panel" class="panel w-full max-w-3xl max-h-[92vh] overflow-auto"
-         style="box-shadow:var(--shadow-lg)">
+    <!-- COLUMNA DE DETALLE: entra como card a la derecha y empuja el mapa a la
+         izquierda (no es overlay; vive en el flujo). Mismos ids que detail.html. -->
+    <div id="detail-overlay" class="detail-col">
+      <aside id="detail-panel" class="detail-col__inner panel" role="region"
+             aria-labelledby="site-name">
       <div class="panel__head">
         <div>
           <h2 id="site-name" class="panel__title text-lg">—</h2>
@@ -96,6 +97,29 @@
         </div>
         <div id="metrics"></div>
         <div id="cartuchos"></div>
+      </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- MODAL TOP 3: comparación de sitios (carrusel comms / energía / mixto) -->
+  <div id="top3-overlay" class="modal-scrim">
+    <div class="modal panel" role="dialog" aria-modal="true" aria-labelledby="top3-title">
+      <div class="panel__head">
+        <div>
+          <h2 id="top3-title" class="panel__title text-lg">Top 3 · dónde aterrizar</h2>
+          <p class="panel__sub">Ranking de todos los sitios según el criterio elegido.</p>
+        </div>
+        <button id="top3-close" class="btn btn--ghost btn--sm" aria-label="Cerrar"
+                style="font-size:1.1rem;padding:.3rem .55rem">×</button>
+      </div>
+      <div class="panel__body space-y-4">
+        <div class="seg" id="top3-tabs" role="tablist">
+          <button class="seg__btn is-active" data-step="comms" role="tab">Comunicación</button>
+          <button class="seg__btn" data-step="energy" role="tab">Energía solar</button>
+          <button class="seg__btn" data-step="mixed" role="tab">Mixto</button>
+        </div>
+        <div id="top3-content"></div>
       </div>
     </div>
   </div>
