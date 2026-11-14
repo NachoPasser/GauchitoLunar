@@ -103,7 +103,7 @@ Vista por defecto del cielo: **skyline** (más legible que la cenital para un ca
 2. Detalle puntual: skyline + métricas con slider de tiempo.
 3. Mapa polar hub + sitios predefinidos + click + orientación.
 4. Bienvenida + date-range + wiring del estado compartido.
-5. Top 3: carrusel + ranking + semáforos.
+5. Top 3: carrusel + ranking.
 6. Extra: cono/sincronización por azimut, Monte Carlo de dispersión, eclipses, modo guiado, export.
 
 **Línea de corte MVP:** máscara por sitio + tracks Sol/Tierra + detalle puntual legible con cuenta

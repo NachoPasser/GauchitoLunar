@@ -92,7 +92,7 @@ disponibles. A partir de acá los 3 pueden trabajar en paralelo.
 - [ ] Margen de comms punteado + ventana de azimut (banda).
 - [ ] Rango vertical dinámico (piso ~5°) + botón "cielo completo" (0–90°).
 - [ ] Slider de tiempo que mueve Sol/Tierra sobre el skyline.
-- [ ] Panel de métricas en **lenguaje llano** + **semáforos** potencia/comms.
+- [ ] Panel de métricas en **lenguaje llano** (potencia/comms).
 - [ ] Cuenta regresiva a ocaso ("sunset") y "Earthset".
 - [ ] Cartuchos de tiempo (días con/sin iluminación; con/sin visibilidad a Tierra).
 

@@ -27,7 +27,7 @@ Lo que el brief marcaba como opcional ("you may"): mapas 2D, vistas 3D, animacio
 Consecuencias de diseño (atan al resto del doc):
 - **Lenguaje llano en la UI**, jerga solo como etiqueta secundaria: "cuánta luz de sol recibe" antes que "irradiancia integrada"; "¿se puede hablar con la Tierra?" antes que "ventana de visibilidad".
 - **Cero configuración obligatoria:** defaults sensatos (margen de comms, rango de fechas). Los parámetros finos (slider de margen, superficie del panel) van como "ver más", no en el camino principal.
-- **Entender en ~30 s:** semáforos, rankings y comparaciones visuales antes que tablas densas.
+- **Entender en ~30 s:** rankings y comparaciones visuales antes que tablas densas.
 - **El rigor no se sacrifica, se traduce:** la física correcta sigue por debajo; la UI la muestra *legible* (visual, con explicación a un clic), no escondida pero tampoco impuesta. Así se resuelve la tensión con la tesis: "mostrar la física" = mostrarla entendible, no en bruto.
 
 El marco "planificador de misión / ingeniero" es **narrativa de credibilidad** ante el jurado (por qué esto importa), NO un usuario real de la interfaz. No diseñamos pantallas para expertos.
@@ -291,7 +291,7 @@ Stack: HTML + CSS + JS Vanilla (2D; sin 3D). Pantallas según el flujo del §2.
 - **South pole map (hub):** canvas 2D o PNG precalculado como fondo. ⭐ sitios predefinidos, 📍 chinchetas del usuario. Click en marcador → detalle (modal); click en zona libre → botón flotante (agregar 📍 / ver detalle). Cono de visión (cuña de azimut) en el sitio activo [secundario, §2.3], flechas de Sol/Tierra en el margen (muestran DIRECCIÓN, no visibilidad). Orientación: inset de globo, anillos de latitud (80°S borde, 85°S, 90°S centro), barra de escala (100 km), subtítulo "80°S–90°S · ~600 km".
 - **Detalle puntual (modal sobre el mapa):** = skyline + panel de métricas del sitio. Skyline (SVG/canvas): eje x = azimut 0–360°, eje y = elevación. Silueta del terreno `h(az)`, trayectoria Sol y Tierra, cuenta regresiva a ocaso/Earthset, margen de comms punteado, ventana de azimut (banda). Legibilidad: Sol/Tierra **brillante = visible / apagado = tapado**, tramo tapado punteado, label "blocked by terrain". Rango vertical dinámico (piso ~5°) + botón "cielo completo" (0–90°).
 - **Top 3 (modal sobre el mapa):** carrusel de 3 pasos (comms / energía / mixto). Cada paso: 3 tarjetas top + tabla de ranking de todos los sitios seleccionados; tarjetas y filas con botón "ver detalle".
-- **Semáforos** potencia/comms y **lenguaje llano** en todas las etiquetas (ver §1.1).
+- **Lenguaje llano** en todas las etiquetas de potencia/comms (ver §1.1).
 
 Vista por defecto del cielo: **skyline** (más legible que la cenital para un casual).
 
@@ -305,7 +305,7 @@ El hackathon es hoy. Cortar el diseño y construir. El jurado premia **correcto 
 2. **Detalle puntual**: skyline + panel de métricas, con slider de tiempo (cumple el requisito de horizonte por sí solo).
 3. **Mapa polar (hub)** (fondo = raster de iluminación) + sitios predefinidos ⭐ + click (marcador → detalle; zona libre → botón flotante agregar 📍 / detalle) + orientación.
 4. **Bienvenida + date-range** (fija el rango global) y wiring del estado compartido (§2.1).
-5. **Top 3**: carrusel (comms / energía / mixto) + tabla de ranking + semáforos potencia/comms.
+5. **Top 3**: carrusel (comms / energía / mixto) + tabla de ranking potencia/comms.
 6. Extra (si sobra tiempo): cono/sincronización por azimut (§2.3), Monte Carlo de dispersión, eclipses, modo guiado, exportar/compartir.
 
 **Línea de corte MVP (lo que SÍ tiene que andar en la demo):** máscara de horizonte por sitio + tracks Sol/Tierra (vía Horizons) + detalle puntual (skyline + métricas) legible con cuenta regresiva + mapa hub con sitios predefinidos y poder agregar propios + Top 3 con ranking. El resto es mejora.
