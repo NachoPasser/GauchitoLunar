@@ -30,6 +30,12 @@ Tracks de Sol/Tierra + métricas. **Dependen de la fecha.** `window_days` defaul
   "site": { "lat": -89.9, "lon": 0.0, "name": "Shackleton (borde)" },
   "sun_track":   [ { "t": "...Z", "az": 0.0, "el": 1.5, "visible": true }, ... ],
   "earth_track": [ { "t": "...Z", "az": 10.0, "el": 0.3, "visible": false }, ... ],
+  "sun_intervals":   [ { "state": "lit",     "start": "...Z", "end": "...Z",
+                         "duration_h": 320.0, "duration_days": 13.33,
+                         "clipped_start": true, "clipped_end": false }, ... ],
+  "earth_intervals": [ { "state": "visible", "start": "...Z", "end": "...Z",
+                         "duration_h": 40.0, "duration_days": 1.67,
+                         "clipped_start": true, "clipped_end": false }, ... ],
   "metrics": {
     "energy_kwh_m2": { "horizontal": 0.0, "vertical_sun_tracking": 0.0 },
     "lit_fraction": 0.0,
@@ -44,6 +50,10 @@ Tracks de Sol/Tierra + métricas. **Dependen de la fecha.** `window_days` defaul
 ```
 
 - `visible`: Sol → `el > h(az)`. Tierra → `el > h(az) + comms_margin_deg`.
+- `sun_intervals` / `earth_intervals`: tramos contiguos de estado ("cartuchos", §3.1),
+  derivados de los tracks (consistentes por construcción). `state` ∈ `{lit,dark}` /
+  `{visible,hidden}`. `clipped_start/clipped_end` = el tramo toca el borde de la ventana
+  (dibujar abierto). `longest_night_h` = mayor tramo `dark`; `longest_comms_gap_h` = mayor `hidden`.
 - Métricas integradas (`energy_*`, `longest_night_h`) solo representativas si
   `window_days ≥ 29.5`; con ventanas cortas, el frontend etiqueta "en la ventana elegida".
 

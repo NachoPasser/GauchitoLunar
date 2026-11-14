@@ -25928,6 +25928,73 @@
    "visible": true
   }
  ],
+ "sun_intervals": [
+  {
+   "state": "dark",
+   "start": "2026-11-14T00:00:00+00:00",
+   "end": "2026-11-23T03:40:00+00:00",
+   "duration_h": 219.67,
+   "duration_days": 9.15,
+   "clipped_start": true,
+   "clipped_end": false
+  },
+  {
+   "state": "lit",
+   "start": "2026-11-23T03:40:00+00:00",
+   "end": "2026-12-04T09:00:00+00:00",
+   "duration_h": 269.33,
+   "duration_days": 11.22,
+   "clipped_start": false,
+   "clipped_end": false
+  },
+  {
+   "state": "dark",
+   "start": "2026-12-04T09:00:00+00:00",
+   "end": "2026-12-13T23:40:00+00:00",
+   "duration_h": 230.67,
+   "duration_days": 9.61,
+   "clipped_start": false,
+   "clipped_end": true
+  }
+ ],
+ "earth_intervals": [
+  {
+   "state": "hidden",
+   "start": "2026-11-14T00:00:00+00:00",
+   "end": "2026-11-15T03:40:00+00:00",
+   "duration_h": 27.67,
+   "duration_days": 1.15,
+   "clipped_start": true,
+   "clipped_end": false
+  },
+  {
+   "state": "visible",
+   "start": "2026-11-15T03:40:00+00:00",
+   "end": "2026-11-26T21:00:00+00:00",
+   "duration_h": 281.33,
+   "duration_days": 11.72,
+   "clipped_start": false,
+   "clipped_end": false
+  },
+  {
+   "state": "hidden",
+   "start": "2026-11-26T21:00:00+00:00",
+   "end": "2026-12-13T04:40:00+00:00",
+   "duration_h": 391.67,
+   "duration_days": 16.32,
+   "clipped_start": false,
+   "clipped_end": false
+  },
+  {
+   "state": "visible",
+   "start": "2026-12-13T04:40:00+00:00",
+   "end": "2026-12-13T23:40:00+00:00",
+   "duration_h": 19.0,
+   "duration_days": 0.79,
+   "clipped_start": false,
+   "clipped_end": true
+  }
+ ],
  "metrics": {
   "energy_kwh_m2": {
    "horizontal": 16.743,

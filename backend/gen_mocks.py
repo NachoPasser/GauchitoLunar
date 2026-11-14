@@ -16,6 +16,7 @@ from pathlib import Path
 
 from constants import (COMMS_MARGIN_DEFAULT_DEG, INTEGRATION_STEP_MIN,
                        MASK_SAMPLES, SOLAR_CONSTANT_W_M2, WINDOW_DAYS_DEFAULT)
+from intervals import earth_intervals, sun_intervals
 
 MOCKS = Path(__file__).resolve().parent / "mocks"
 SITE = {"lat": -89.9, "lon": 0.0, "name": "Shackleton (borde)"}
@@ -77,6 +78,8 @@ def make_site(mask: list[dict]) -> dict:
         "site": SITE,
         "sun_track": sun_track,
         "earth_track": earth_track,
+        "sun_intervals": sun_intervals(sun_track),
+        "earth_intervals": earth_intervals(earth_track),
         "metrics": {
             "energy_kwh_m2": {
                 "horizontal": round(energy_h / 1000.0, 3),

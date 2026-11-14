@@ -69,6 +69,9 @@ disponibles. A partir de acá los 3 pueden trabajar en paralelo.
       **Test** de la integración numérica.
 - [x] Métricas: `lit_fraction`, `longest_night_h`, `earth_vis_fraction`, `longest_comms_gap_h`,
       `next_sunset_h`, `next_earthset_h`.
+- [x] **Cartuchos** (§3.1): `sun_intervals`/`earth_intervals` = tramos contiguos de estado
+      (lit/dark, visible/hidden) derivados de los tracks, para la vista de detalle. **Test** de
+      consistencia con `longest_night_h`/`longest_comms_gap_h`.
 - [x] `GET /api/site?lat=&lon=&date=&window_days=` arma la respuesta completa del contrato.
 - [x] `GET /api/map?metric=illumination|earth|psr` sirve el raster/PNG precalculado.
 - [x] Cargar los **sitios semilla** (§4.5) para tener contenido de demo.

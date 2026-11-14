@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from constants import (COMMS_MARGIN_DEFAULT_DEG, INTEGRATION_STEP_MIN,
                        WINDOW_DAYS_DEFAULT)
+from intervals import earth_intervals, sun_intervals
 from mask_service import get_mask
 from metrics import compute_metrics
 from tracks import build_tracks
@@ -43,6 +44,8 @@ def get_site(
         "site": mask["site"],
         "sun_track": sun_track,
         "earth_track": earth_track,
+        "sun_intervals": sun_intervals(sun_track),       # cartuchos lit/dark (§3.1)
+        "earth_intervals": earth_intervals(earth_track),  # cartuchos visible/hidden
         "metrics": compute_metrics(sun_track, earth_track, step_min),
         "params": {"comms_margin_deg": comms_margin_deg, "window_days": window_days},
     }
