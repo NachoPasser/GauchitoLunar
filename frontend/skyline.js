@@ -5,7 +5,7 @@
 const SVGNS = "http://www.w3.org/2000/svg";
 const PAD = { t: 14, r: 14, b: 26, l: 34 };
 const W = 760, H = 340;
-const SUN = "#f59e0b", EARTH = "#2563eb";   // ámbar / azul
+const SUN = "#f59e0b", EARTH = "#0032a0";   // Sol ámbar / Tierra cobalto (marca)
 
 function el(tag, attrs = {}) {
   const n = document.createElementNS(SVGNS, tag);
@@ -161,9 +161,12 @@ export function createSkyline(svg) {
       const seg = segments(track).find((s) => !s.visible && s.pts.length > 2);
       if (!seg) continue;
       const mid = seg.pts[Math.floor(seg.pts.length / 2)];
+      // Clamp para que la etiqueta no se recorte en los bordes (no medimos ancho:
+      // ~54px de medio-texto) y halo blanco para legibilidad sobre el terreno.
+      const cx = Math.min(Math.max(x(mid.az), PAD.l + 54), W - PAD.r - 54);
       const t = el("text", {
-        x: x(mid.az), y: y(mid.el) - 6, "text-anchor": "middle",
-        "font-size": 9, fill: "#64748b",
+        x: cx, y: y(mid.el) - 7, "text-anchor": "middle", "font-size": 10,
+        fill: "#5b6575", stroke: "#fff", "stroke-width": 3, "paint-order": "stroke",
       });
       t.textContent = "tapado por el terreno";
       svg.appendChild(t);

@@ -84,7 +84,7 @@ function drawGlobeInset() {
 // Son la dirección en UN instante (inicio de ventana), rotulado para honestidad.
 function drawDirArrows(sunAz, earthAz, tLabel) {
   const g = $("map-chrome"), C = 500, rIn = 430, rOut = 478;
-  const arrow = (azDeg, color, emoji) => {
+  const arrow = (azDeg, color, label) => {
     const a = azDeg * Math.PI / 180, dx = Math.sin(a), dy = -Math.cos(a);
     const x1 = C + dx * rIn, y1 = C + dy * rIn;
     const x2 = C + dx * rOut, y2 = C + dy * rOut;
@@ -96,32 +96,59 @@ function drawDirArrows(sunAz, earthAz, tLabel) {
       "stroke-linecap": "round",
       d: `M${x2 + (px + qx) * s} ${y2 + (py + qy) * s}L${x2} ${y2}` +
          `L${x2 + (px - qx) * s} ${y2 + (py - qy) * s}` }));
-    const t = svg("text", { x: C + dx * (rIn - 24), y: C + dy * (rIn - 24) + 7,
-      "font-size": 30, "text-anchor": "middle" });
-    t.textContent = emoji;
+    // Etiqueta: disco de color + texto (reemplaza el emoji).
+    const lx = C + dx * (rIn - 30), ly = C + dy * (rIn - 30);
+    g.appendChild(svg("circle", { cx: lx, cy: ly, r: 9, fill: color,
+      stroke: "#fff", "stroke-width": 2 }));
+    const t = svg("text", { x: lx, y: ly - 15, fill: "#fff", "fill-opacity": 0.95,
+      "font-size": 19, "text-anchor": "middle", "font-family": "Inter" });
+    t.textContent = label;
     g.appendChild(t);
   };
-  arrow(sunAz, "#f59e0b", "☀️");
-  arrow(earthAz, "#2563eb", "🌍");
+  arrow(sunAz, "#f59e0b", "Sol");
+  arrow(earthAz, "#0032a0", "Tierra");
   const t = svg("text", { x: 40, y: 955, fill: "white", "fill-opacity": 0.7,
     "font-size": 17, "font-family": "JetBrains Mono" });
   t.textContent = `dirección al ${tLabel} UTC`;
   g.appendChild(t);
 }
 
-// Crea un marcador absoluto en (lon,lat). `kind`: "seed" (⭐) o "pin" (📍).
+// Marcadores SVG (no emoji): estrella = predefinido, chincheta = del usuario.
+function markerSVG(kind) {
+  if (kind === "pin") {
+    return `<svg width="22" height="28" viewBox="0 0 22 28">` +
+      `<path d="M11 27C11 27 20 16 20 10a9 9 0 10-18 0c0 6 9 17 9 17z" ` +
+      `fill="#fc3d21" stroke="#fff" stroke-width="2"/>` +
+      `<circle cx="11" cy="10" r="3.2" fill="#fff"/></svg>`;
+  }
+  return `<svg width="24" height="24" viewBox="0 0 24 24">` +
+    `<path d="M12 2l2.6 6.3 6.8.5-5.2 4.4 1.7 6.6L12 16.9 6.1 20.3l1.7-6.6L2.6 9.3l6.8-.5z" ` +
+    `fill="#0032a0" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+}
+
+let activeEl = null;
+
+// Resalta el marcador activo y actualiza el chip "Seleccionado" del top-bar.
+function setActive(el, name) {
+  if (activeEl) activeEl.classList.remove("is-active");
+  activeEl = el;
+  if (el) el.classList.add("is-active");
+  $("selected-chip").innerHTML =
+    `<span class="chip__dot" style="background:var(--earth)"></span>` +
+    (name ? `Seleccionado: ${name}` : "Ningún sitio seleccionado");
+}
+
 function addMarker(lon, lat, name, kind) {
   const [u, v] = proj.lonlatToNorm(lon, lat);
   const m = document.createElement("button");
-  m.className =
-    "absolute -translate-x-1/2 -translate-y-1/2 text-lg leading-none drop-shadow " +
-    "hover:scale-125 transition-transform focus:outline-none";
+  m.className = "marker";
   m.style.left = `${u * 100}%`;
   m.style.top = `${v * 100}%`;
-  m.textContent = kind === "pin" ? "📍" : "⭐";
+  m.innerHTML = `<span class="marker__ring"></span>${markerSVG(kind)}`;
   m.title = `${name} · ${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
   m.addEventListener("click", (e) => {
     e.stopPropagation();
+    setActive(m, name);
     setSitioActivo({ lat, lon, name });
     modal.open(lat, lon, name);
   });
@@ -187,8 +214,10 @@ $("free-add").addEventListener("click", () => {
 
 $("free-detail").addEventListener("click", () => {
   if (!pending) return;
-  setSitioActivo({ lat: pending.lat, lon: pending.lon, name: freeName(pending) });
-  modal.open(pending.lat, pending.lon, freeName(pending));
+  const name = freeName(pending);
+  setActive(null, name);
+  setSitioActivo({ lat: pending.lat, lon: pending.lon, name });
+  modal.open(pending.lat, pending.lon, name);
   hidePopup();
 });
 

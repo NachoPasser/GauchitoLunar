@@ -1,0 +1,128 @@
+/* theme.css — sistema de diseño compartido (light). Tokens + componentes reusables
+   por bienvenida / mapa / detalle. Acentos de marca sobre base neutra:
+   cobalto = acción/identidad, rojo = énfasis puntual, Sol = ámbar, Tierra = cobalto.
+   Inter para texto; JetBrains Mono SOLO para datos numéricos. */
+
+:root {
+  /* superficies */
+  --bg: #eef1f5;
+  --surface: #ffffff;
+  --surface-2: #f7f8fa;
+  --border: #e4e8ee;
+  --border-strong: #d2d8e0;
+  /* tinta */
+  --ink: #141b2d;
+  --ink-2: #5b6575;
+  --ink-3: #99a2b2;
+  /* marca y semánticos */
+  --brand: #0032a0;
+  --brand-600: #002a86;
+  --accent-red: #fc3d21;
+  --sun: #f59e0b;
+  --sun-soft: #fff6e8;
+  --earth: #0032a0;
+  --earth-soft: #eaf0fb;
+  --good: #1a9b54;
+  /* radios y sombras */
+  --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-full: 999px;
+  --shadow-sm: 0 1px 2px rgba(20, 27, 45, .05);
+  --shadow-md: 0 8px 24px rgba(20, 27, 45, .08);
+  --shadow-lg: 0 24px 60px rgba(20, 27, 45, .20);
+  /* tipografía */
+  --font: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.app-bg { background: var(--bg); color: var(--ink); font-family: var(--font); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* Panel: contenedor titulado (cabecera + cuerpo) */
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-sm); overflow: hidden;
+}
+.panel__head {
+  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  padding: .85rem 1.15rem; border-bottom: 1px solid var(--border);
+}
+.panel__title { font-weight: 600; font-size: .95rem; color: var(--ink); }
+.panel__sub { font-size: .75rem; color: var(--ink-3); }
+.panel__body { padding: 1.15rem; }
+
+/* Card simple */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 1rem;
+}
+
+/* Chip / pill */
+.chip {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .25rem .6rem; border-radius: var(--r-full);
+  font-size: .75rem; font-weight: 500; color: var(--ink-2);
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.chip__dot { width: .5rem; height: .5rem; border-radius: var(--r-full); }
+.chip--sun { background: var(--sun-soft); color: #9a5b00; border-color: #f4d9a8; }
+.chip--earth { background: var(--earth-soft); color: var(--brand); border-color: #c8d6f2; }
+
+/* Botones */
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem; cursor: pointer;
+  font-size: .82rem; font-weight: 600; line-height: 1;
+  padding: .6rem .9rem; border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink);
+  transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+.btn:hover { background: var(--surface-2); }
+.btn--primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.btn--primary:hover { background: var(--brand-600); }
+.btn--ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
+.btn--ghost:hover { background: var(--surface-2); color: var(--ink); }
+.btn--sm { padding: .4rem .65rem; font-size: .76rem; }
+.btn[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+/* Controles de formulario unificados */
+.field {
+  appearance: none; font-family: var(--font); font-size: .85rem; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm); padding: .5rem .7rem; transition: border-color .15s, box-shadow .15s;
+}
+.field:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(0, 50, 160, .15); }
+select.field {
+  padding-right: 2rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%235b6575' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right .6rem center;
+}
+
+/* Rango / slider */
+input[type="range"].field-range { accent-color: var(--brand); width: 100%; padding: 0; border: 0; background: transparent; }
+
+/* Métrica: etiqueta / valor / sub */
+.metric__label { font-size: .72rem; color: var(--ink-3); letter-spacing: .01em; }
+.metric__value { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600;
+  font-size: 1.6rem; line-height: 1.1; color: var(--ink); }
+.metric__sub { font-size: .72rem; color: var(--ink-3); }
+.metric__value--sun { color: #b5720a; }
+
+/* Marcadores del mapa (SVG, no emoji) con estado seleccionado */
+.marker {
+  position: absolute; transform: translate(-50%, -50%); cursor: pointer;
+  display: grid; place-items: center; background: none; border: 0; padding: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55));
+  transition: transform .12s ease;
+}
+.marker:hover { transform: translate(-50%, -50%) scale(1.18); z-index: 5; }
+.marker > svg { grid-area: 1 / 1; }
+.marker__ring {
+  grid-area: 1 / 1; width: 30px; height: 30px; border-radius: var(--r-full);
+  border: 2.5px solid var(--sun); opacity: 0; transition: opacity .12s;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .6);
+}
+.marker.is-active { z-index: 6; }
+.marker.is-active .marker__ring { opacity: 1; }
+
+/* Leyenda del mapa */
+.legend { display: flex; flex-wrap: wrap; gap: .9rem; align-items: center; }
+.legend__item { display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .72rem; color: var(--ink-2); }

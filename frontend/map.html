@@ -6,90 +6,97 @@
   <title>Mapa polar sur · Lunar Landing Site Navigator</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <!--
-    Hub del mapa polar (H3). Requiere el backend corriendo:
-        cd backend && .venv/bin/uvicorn main:app --reload
-    y servir este frontend por HTTP (no file://, por CORS):
-        cd frontend && python3 -m http.server 5500   → http://localhost:5500/map.html
-  -->
+  <link rel="stylesheet" href="theme.css" />
 </head>
-<body class="bg-slate-950 min-h-screen text-slate-100 font-['Inter']">
+<body class="app-bg min-h-screen">
 
-  <!-- Encabezado -->
-  <header class="px-6 pt-5 pb-2">
-    <h1 class="text-lg font-bold">¿Dónde aterrizar en el polo sur lunar?</h1>
-    <p class="text-sm text-slate-400">
-      Tocá un sitio para ver su cielo y sus métricas.
-      <span class="text-slate-500">~83°S–90°S · ~300 km de lado · fondo = luz promedio</span>
-    </p>
+  <!-- Top-bar -->
+  <header class="max-w-5xl mx-auto px-5 pt-6 pb-3 flex items-end justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-bold" style="color:var(--ink)">Lunar Landing Site Navigator</h1>
+      <p class="text-sm" style="color:var(--ink-2)">
+        ¿Dónde aterrizar en el polo sur lunar? Tocá un sitio para ver su cielo y métricas.
+      </p>
+    </div>
+    <span id="selected-chip" class="chip chip--earth whitespace-nowrap">
+      <span class="chip__dot" style="background:var(--earth)"></span>Ningún sitio seleccionado
+    </span>
   </header>
 
-  <!-- Lienzo del mapa (cuadrado, centrado) -->
-  <main class="flex items-center justify-center p-4">
-    <div id="map-stage"
-         class="relative aspect-square bg-slate-900 rounded-xl overflow-hidden
-                shadow-2xl ring-1 ring-white/10"
-         style="width: min(88vmin, 820px);">
-      <img id="map-bg" alt="Mapa de luz promedio del polo sur lunar"
-           class="absolute inset-0 w-full h-full object-cover select-none" draggable="false" />
-      <!-- Capas de chrome (anillos/escala) y marcadores se dibujan en JS -->
-      <svg id="map-chrome" class="absolute inset-0 w-full h-full pointer-events-none"
-           viewBox="0 0 1000 1000" preserveAspectRatio="none"
-           style="filter: drop-shadow(0 0 1.5px rgba(0,0,0,.9));"></svg>
-      <div id="map-markers" class="absolute inset-0"></div>
-
-      <!-- Botón flotante al clickear zona libre -->
-      <div id="free-popup"
-           class="absolute z-20 hidden -translate-x-1/2 -translate-y-full
-                  bg-white text-slate-800 rounded-lg shadow-xl text-xs overflow-hidden">
-        <button id="free-add" class="block w-full px-3 py-2 text-left hover:bg-slate-100">
-          📍 Agregar este sitio
-        </button>
-        <button id="free-detail"
-                class="block w-full px-3 py-2 text-left hover:bg-slate-100 border-t border-slate-100">
-          🔭 Ver detalle acá
-        </button>
+  <main class="max-w-5xl mx-auto px-5 pb-10">
+    <div class="panel">
+      <div class="panel__head">
+        <div>
+          <div class="panel__title">Mapa del polo sur</div>
+          <div class="panel__sub">~83°S–90°S · ~300 km de lado · fondo = luz promedio (18.6 años)</div>
+        </div>
+        <div class="legend">
+          <span class="legend__item"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2l2.6 6.3 6.8.5-5.2 4.4 1.7 6.6L12 16.9 6.1 20.3l1.7-6.6L2.6 9.3l6.8-.5z" fill="#0032a0" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>predefinido</span>
+          <span class="legend__item"><svg width="13" height="17" viewBox="0 0 22 28"><path d="M11 27C11 27 20 16 20 10a9 9 0 10-18 0c0 6 9 17 9 17z" fill="#fc3d21" stroke="#fff" stroke-width="2"/><circle cx="11" cy="10" r="3.2" fill="#fff"/></svg>tuyo</span>
+          <span class="legend__item"><span style="display:inline-block;width:13px;height:13px;border-radius:999px;border:2.5px solid var(--sun)"></span>seleccionado</span>
+        </div>
       </div>
 
-      <p id="map-status"
-         class="absolute left-2 bottom-2 text-[11px] text-slate-400 font-['JetBrains_Mono']"></p>
+      <!-- Lienzo del mapa (cuadrado, centrado) -->
+      <div class="panel__body" style="padding:1rem">
+        <div id="map-stage"
+             class="relative aspect-square mx-auto rounded-xl overflow-hidden"
+             style="width:min(74vmin,680px);background:#0b1020">
+          <img id="map-bg" alt="Mapa de luz promedio del polo sur lunar"
+               class="absolute inset-0 w-full h-full object-cover select-none"
+               draggable="false" style="filter:contrast(.92) brightness(1.04)" />
+          <!-- Viñeta sutil para integrar al UI claro -->
+          <div class="absolute inset-0 pointer-events-none"
+               style="background:radial-gradient(circle at 50% 50%,transparent 58%,rgba(11,16,32,.5) 100%)"></div>
+          <svg id="map-chrome" class="absolute inset-0 w-full h-full pointer-events-none"
+               viewBox="0 0 1000 1000" preserveAspectRatio="none"
+               style="filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9))"></svg>
+          <div id="map-markers" class="absolute inset-0"></div>
+
+          <!-- Botón flotante al clickear zona libre -->
+          <div id="free-popup" class="card absolute z-20 hidden -translate-x-1/2 -translate-y-full p-1"
+               style="box-shadow:var(--shadow-md)">
+            <button id="free-add" class="btn btn--ghost btn--sm w-full justify-start">📍 Agregar este sitio</button>
+            <button id="free-detail" class="btn btn--ghost btn--sm w-full justify-start">🔭 Ver detalle acá</button>
+          </div>
+
+          <p id="map-status" class="mono absolute left-2 bottom-2 text-[11px]"
+             style="color:rgba(255,255,255,.75)"></p>
+        </div>
+      </div>
     </div>
   </main>
 
-  <!-- MODAL DE DETALLE PUNTUAL (compartido con H2, ids idénticos) -->
-  <div id="detail-overlay"
-       class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 hidden z-40">
-    <div id="detail-panel"
-         class="bg-white text-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl
-                max-h-[92vh] overflow-auto">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+  <!-- MODAL DE DETALLE PUNTUAL (compartido con detail.html, mismos ids) -->
+  <div id="detail-overlay" class="fixed inset-0 flex items-center justify-center p-4 hidden z-40"
+       style="background:rgba(20,27,45,.45)">
+    <div id="detail-panel" class="panel w-full max-w-3xl max-h-[92vh] overflow-auto"
+         style="box-shadow:var(--shadow-lg)">
+      <div class="panel__head">
         <div>
-          <h2 id="site-name" class="text-lg font-bold text-slate-800">—</h2>
-          <p id="site-coords" class="text-xs text-slate-400 font-['JetBrains_Mono']"></p>
+          <h2 id="site-name" class="panel__title text-lg">—</h2>
+          <p id="site-coords" class="mono text-xs" style="color:var(--ink-3)"></p>
         </div>
-        <button id="close-btn"
-                class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 text-xl leading-none">
-          ×
-        </button>
+        <button id="close-btn" class="btn btn--ghost btn--sm" aria-label="Cerrar"
+                style="font-size:1.1rem;padding:.3rem .55rem">×</button>
       </div>
-      <div class="flex flex-wrap items-center gap-3 px-6 pt-4">
-        <button id="fullsky-btn"
-                class="text-xs px-2.5 py-1 rounded border border-slate-200 text-slate-600 hover:bg-slate-50">
-          Cielo completo (0–90°)
-        </button>
-        <span id="status" class="text-xs text-slate-400"></span>
+      <div class="panel__body space-y-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <button id="fullsky-btn" class="btn btn--sm" aria-pressed="false">Cielo completo (0–90°)</button>
+          <span id="status" class="text-xs" style="color:var(--ink-3)"></span>
+        </div>
+        <div>
+          <svg id="skyline" class="w-full" role="img"
+               aria-label="Skyline: elevación del Sol y la Tierra sobre el horizonte"></svg>
+          <div class="mt-2">
+            <input id="time-slider" type="range" min="0" max="0" value="0"
+                   class="field-range" aria-label="Instante dentro de la ventana" />
+            <p id="time-label" class="mono text-xs mt-1" style="color:var(--ink-2)"></p>
+          </div>
+        </div>
+        <div id="metrics"></div>
+        <div id="cartuchos"></div>
       </div>
-      <div class="px-4 py-3">
-        <svg id="skyline" class="w-full" role="img"
-             aria-label="Skyline: elevación del Sol y la Tierra sobre el horizonte"></svg>
-      </div>
-      <div class="px-6 pb-1">
-        <input id="time-slider" type="range" min="0" max="0" value="0"
-               class="w-full accent-[#0032A0]" aria-label="Instante dentro de la ventana" />
-        <p id="time-label" class="text-xs text-slate-500 font-['JetBrains_Mono'] mt-1"></p>
-      </div>
-      <div id="metrics" class="px-6"></div>
-      <div id="cartuchos" class="px-6 pb-6"></div>
     </div>
   </div>
 
