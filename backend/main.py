@@ -9,9 +9,9 @@ Docs:    http://127.0.0.1:8000/docs
 
 from __future__ import annotations
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from constants import COMMS_MARGIN_DEFAULT_DEG, WINDOW_DAYS_DEFAULT
 from sites import SEED_SITES
@@ -59,6 +59,13 @@ def site(
 
 
 @app.get("/api/map")
-def map_(metric: str = Query("illumination")) -> dict:
-    """Placeholder del contrato §5. H1: sirve el raster/PNG precalculado."""
-    return {"metric": metric, "status": "not-implemented-h0"}
+def map_(metric: str = Query("illumination")) -> Response:
+    """Fondo del mapa: raster PGDA precalculado como PNG (§4.1). Promedio, sin fecha."""
+    from map_service import get_map_png
+    try:
+        png = get_map_png(metric)
+    except KeyError:
+        raise HTTPException(status_code=400,
+                            detail="metric debe ser illumination|earth|psr")
+    return Response(content=png, media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=86400"})
