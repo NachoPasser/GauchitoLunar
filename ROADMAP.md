@@ -85,18 +85,22 @@ disponibles. A partir de acá los 3 pueden trabajar en paralelo.
 **Objetivo:** vista más importante para el jurado. Cumple el requisito de horizonte por sí sola.
 **Depende de:** contrato H0 (arranca contra mock; conecta a H1 cuando esté).
 
-- [ ] Modal de detalle puntual sobre el mapa (estructura + abrir/cerrar).
-- [ ] **Skyline** SVG/canvas: eje x = azimut 0–360°, eje y = elevación. Silueta del terreno `h(az)`.
-- [ ] Trayectorias de Sol y Tierra: **brillante = visible / apagado = tapado**, tramo tapado
-      punteado, label "blocked by terrain".
-- [ ] Margen de comms punteado + ventana de azimut (banda).
-- [ ] Rango vertical dinámico (piso ~5°) + botón "cielo completo" (0–90°).
-- [ ] Slider de tiempo que mueve Sol/Tierra sobre el skyline.
-- [ ] Panel de métricas en **lenguaje llano** (potencia/comms).
-- [ ] Cuenta regresiva a ocaso ("sunset") y "Earthset".
-- [ ] Cartuchos de tiempo (días con/sin iluminación; con/sin visibilidad a Tierra).
+- [x] Modal de detalle puntual sobre el mapa (estructura + abrir/cerrar).
+- [x] **Skyline** SVG/canvas: eje x = azimut 0–360°, eje y = elevación. Silueta del terreno `h(az)`.
+- [x] Trayectorias de Sol y Tierra: **brillante = visible / apagado = tapado**, tramo tapado
+      punteado, label "tapado por el terreno".
+- [x] Margen de comms punteado + ventana de azimut (banda).
+- [x] Rango vertical dinámico (piso ~5°) + botón "cielo completo" (0–90°).
+- [x] Slider de tiempo que mueve Sol/Tierra sobre el skyline.
+- [x] Panel de métricas en **lenguaje llano** (potencia/comms).
+- [x] Cuenta regresiva a ocaso ("sunset") y "Earthset".
+- [x] Cartuchos de tiempo (días con/sin iluminación; con/sin visibilidad a Tierra).
 
-**DoD:** el skyline se entiende solo, sin explicación; conecta a `/api/site`.
+**DoD:** el skyline se entiende solo, sin explicación; conecta a `/api/site`. ✅
+
+> H2 implementado en `frontend/`: `detail.html` (harness/modal) + `detail.js` + `skyline.js`
+> (SVG reusable) + `panel.js` (métricas + cartuchos) + `api.js`. Verificado con captura real
+> (Chrome headless) contra el backend. H3 montará este mismo skyline/panel como modal del mapa.
 
 ---
 

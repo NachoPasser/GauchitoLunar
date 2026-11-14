@@ -3,7 +3,7 @@
 
 import { getSites, getMask, getSite } from "./api.js";
 import { createSkyline } from "./skyline.js";
-import { renderMetrics } from "./panel.js";
+import { renderMetrics, renderCartuchos } from "./panel.js";
 
 const $ = (id) => document.getElementById(id);
 const sky = createSkyline($("skyline"));
@@ -48,6 +48,7 @@ async function showSite(lat, lon) {
     slider.value = 0;
     updateCursor(0);
     renderMetrics($("metrics"), site);
+    renderCartuchos($("cartuchos"), site);
     setStatus("");
   } catch (e) {
     setStatus(`No se pudo cargar (¿backend activo?): ${e.message}`, true);

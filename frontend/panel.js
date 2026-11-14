@@ -10,6 +10,46 @@ function fmtH(h) {
   return h < 48 ? `${Math.round(h)} h` : `${(h / 24).toFixed(1)} días`;
 }
 
+// Estilo por estado de los cartuchos (SPEC §3.1).
+const STATE = {
+  lit: { bg: "bg-amber-400", tx: "text-amber-900", name: "con luz" },
+  dark: { bg: "bg-slate-300", tx: "text-slate-600", name: "sin luz" },
+  visible: { bg: "bg-blue-500", tx: "text-white", name: "a la vista" },
+  hidden: { bg: "bg-slate-300", tx: "text-slate-600", name: "sin enlace" },
+};
+
+// Una tira de cartuchos: cada tramo con ancho ∝ duración; "≥" = recortado.
+function strip(title, intervals) {
+  const segs = intervals.map((iv, i) => {
+    const s = STATE[iv.state];
+    const first = i === 0, last = i === intervals.length - 1;
+    const round = `${first ? "rounded-l-md " : ""}${last ? "rounded-r-md " : ""}`;
+    const clipped = iv.clipped_start || iv.clipped_end;
+    const label = iv.duration_days >= 0.4 ? `${clipped ? "≥" : ""}${iv.duration_days} d` : "";
+    const tip = `${s.name} · ${iv.duration_days} días${clipped ? " (recortado por la ventana)" : ""}`;
+    return `<div title="${tip}" style="flex:${iv.duration_h} 0 0"
+      class="h-7 flex items-center justify-center text-[10px] font-medium
+             overflow-hidden whitespace-nowrap ${s.bg} ${s.tx} ${round}">${label}</div>`;
+  }).join("");
+  return `<div>
+    <p class="text-xs text-slate-500 mb-1">${title}</p>
+    <div class="flex gap-px rounded-md overflow-hidden bg-slate-100">${segs}</div>
+  </div>`;
+}
+
+// Dos tiras de cartuchos (días con/sin luz, días con/sin enlace).
+export function renderCartuchos(root, site) {
+  root.innerHTML = `
+    <div class="space-y-3 pt-3 pb-2">
+      ${strip("Días con / sin luz solar", site.sun_intervals)}
+      ${strip("Días con / sin enlace a la Tierra", site.earth_intervals)}
+      <p class="text-[11px] text-slate-400">
+        Cada bloque es un tramo continuo; el ancho es su duración.
+        “≥” = recortado por los bordes de la ventana. Pasá el mouse para ver los días.
+      </p>
+    </div>`;
+}
+
 export function renderMetrics(root, site) {
   const m = site.metrics;
   const p = site.params;
