@@ -113,10 +113,12 @@ Regla: primero que el **skyline se entienda solo**; no agregar features si la ba
 ## Estado actual del repo
 
 - **Backend (`backend/`): H0 y H1 cerrados.** FastAPI con los 3 endpoints del contrato §5
-  (`/api/mask`, `/api/site`, `/api/map`) sirviendo datos reales: máscara `h(az)` por ray casting
-  sobre el DEM, tracks Sol/Tierra desde Horizons, energía integrada + métricas + cartuchos
-  (`sun_intervals`/`earth_intervals`). Núcleo físico con tests (pytest). Datos pesados en `data/`
-  (DEM + rasters PGDA + cache de Horizons), fuera del repo.
+  (`/api/mask`, `/api/site`, `/api/map`) + `/api/map/meta` sirviendo datos reales: máscara `h(az)`
+  por ray casting sobre el DEM, tracks Sol/Tierra desde Horizons, energía integrada + métricas +
+  cartuchos (`sun_intervals`/`earth_intervals`). Núcleo físico con tests (pytest). Datos pesados en
+  `data/` (DEM + rasters PGDA + cache de Horizons), fuera del repo. **Sitios libres** (no semilla):
+  `ephem.ensure_cache` hace **fetch en vivo on-miss** a Horizons y cachea; si no hay red lanza
+  `EphemerisError` → `/api/site` responde **503 con CORS** (legible), nunca un 500 crudo.
 - **Frontend (`frontend/`): H2, H3 y H4 cerrados.** Vanilla. `index.html`/`script.js` son la
   **bienvenida** real (tutorial de 3 pasos + date-range con límite 30 d): el submit fija el rango y
   navega al mapa. El detalle puntual (skyline + slider + métricas + cartuchos) vive en

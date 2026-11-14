@@ -21,9 +21,37 @@ CACHE_DIR = DATA_DIR / "horizons"
 _CACHE: dict[tuple, list[tuple[float, float, float]]] = {}
 
 
+class EphemerisError(RuntimeError):
+    """No se pudieron obtener efemérides (sin cache y sin red/Horizons caído)."""
+
+
 def _cache_path(lat: float, lon: float, target: str) -> Path:
     """Ruta del JSON cacheado para un sitio y target ('sun' | 'earth')."""
     return CACHE_DIR / f"{lat:+.4f}_{lon:+.4f}_{target}.json"
+
+
+def has_cache(lat: float, lon: float, target: str = "sun") -> bool:
+    return _cache_path(lat, lon, target).exists()
+
+
+def ensure_cache(lat: float, lon: float, start: datetime, days: int = 35,
+                 step: str = "20m") -> None:
+    """Garantiza cache de sun+earth para el sitio. Si falta (sitio libre), baja de
+    Horizons EN VIVO (fetch on-miss, SPEC §4.3) y lo guarda. Lanza EphemerisError si
+    no hay red / Horizons no responde, para que la API devuelva un error legible."""
+    if has_cache(lat, lon, "sun") and has_cache(lat, lon, "earth"):
+        return
+    from datetime import timedelta
+    stop = (start + timedelta(days=days)).strftime("%Y-%m-%d")
+    try:
+        from fetch_horizons import fetch_site
+        fetch_site(lat, lon, start.strftime("%Y-%m-%d"), stop, step)
+    except Exception as e:                      # red caída, timeout, parse vacío, etc.
+        raise EphemerisError(
+            f"Sin cache y falló el fetch en vivo a Horizons para ({lat}, {lon}): {e}"
+        ) from e
+    for tgt in ("sun", "earth"):                # invalidar memo por las dudas
+        _CACHE.pop((round(lat, 4), round(lon, 4), tgt), None)
 
 
 def _load(lat: float, lon: float, target: str) -> list[tuple[float, float, float]]:

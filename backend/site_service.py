@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from constants import (COMMS_MARGIN_DEFAULT_DEG, INTEGRATION_STEP_MIN,
                        WINDOW_DAYS_DEFAULT)
+from ephem import ensure_cache
 from intervals import earth_intervals, sun_intervals
 from mask_service import get_mask
 from metrics import compute_metrics
@@ -36,6 +37,10 @@ def get_site(
     mask = get_mask(lat, lon)                     # usa cache por sitio
     h = [p["h_deg"] for p in mask["horizon_mask"]]
     start = _parse_start(date)
+
+    # Sitio libre sin cache de Horizons → fetch en vivo on-miss (+2 d de colchón
+    # para no quedar corto al final de la ventana). Lanza EphemerisError si no hay red.
+    ensure_cache(lat, lon, start, days=window_days + 2)
 
     sun_track, earth_track = build_tracks(
         {"lat": lat, "lon": lon}, h, start, window_days, comms_margin_deg, step_min)

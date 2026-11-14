@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QA · Lunar Landing Site Navigator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <!--
+    Smoke-test del frontend contra el backend real (detecta regresiones tipo
+    "Failed to fetch" en sitios libres). Requiere backend + server estático:
+        cd backend && .venv/bin/uvicorn main:app --port 8099
+        cd frontend && python3 -m http.server 5599
+    → http://localhost:5599/qa.html?api=http://127.0.0.1:8099
+  -->
+</head>
+<body class="bg-slate-950 text-slate-100 font-['Inter'] min-h-screen p-6">
+  <h1 class="text-xl font-bold">QA · smoke-test frontend ↔ backend</h1>
+  <p id="meta" class="text-xs text-slate-400 font-['JetBrains_Mono'] mt-1"></p>
+  <div id="banner" class="mt-4 rounded-lg px-4 py-3 font-bold bg-slate-800">Corriendo…</div>
+  <table class="mt-4 w-full max-w-3xl text-sm border-collapse">
+    <thead><tr class="text-left text-slate-400 border-b border-slate-700">
+      <th class="py-1 pr-3">#</th><th class="pr-3">Caso</th>
+      <th class="pr-3">Estado</th><th class="pr-3">ms</th><th>Detalle</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <script src="apibase.js"></script>
+  <script type="module">
+    import { getMapMeta, getSites, getMask, getSite } from "./api.js";
+    import { createProjection } from "./proj.js";
+
+    const rows = document.getElementById("rows");
+    const results = [];
+
+    async function run(name, fn) {
+      const t0 = performance.now();
+      let pass = true, detail = "ok";
+      try {
+        detail = (await fn()) || "ok";
+      } catch (e) {
+        pass = false;
+        detail = e.message;
+        if (/Failed to fetch/i.test(e.message)) detail = `⚠ Failed to fetch — ${e.message}`;
+      }
+      const ms = Math.round(performance.now() - t0);
+      results.push(pass);
+      const tr = document.createElement("tr");
+      tr.className = "border-b border-slate-800 align-top";
+      tr.innerHTML =
+        `<td class="py-1 pr-3 text-slate-500">${results.length}</td>` +
+        `<td class="pr-3">${name}</td>` +
+        `<td class="pr-3 font-bold ${pass ? "text-green-400" : "text-red-400"}">` +
+        `${pass ? "PASS" : "FAIL"}</td>` +
+        `<td class="pr-3 text-slate-400 font-['JetBrains_Mono']">${ms}</td>` +
+        `<td class="text-slate-400 font-['JetBrains_Mono'] text-xs">${detail}</td>`;
+      rows.appendChild(tr);
+    }
+
+    document.getElementById("meta").textContent = `API_BASE = ${window.API_BASE}`;
+
+    let proj = null;
+
+    await run("map/meta responde con bounds+proj", async () => {
+      const m = await getMapMeta("illumination");
+      proj = createProjection(m);
+      if (!m.bounds || !m.proj) throw new Error("meta incompleta");
+      return `size ${m.size_px.join("×")}`;
+    });
+
+    await run("proj round-trip (seed)", async () => {
+      const [u, v] = proj.lonlatToNorm(0, -89.9);
+      const [lon, lat] = proj.normToLonlat(u, v);
+      const err = Math.abs(lat - -89.9) + Math.abs(((lon + 360) % 360) - 0);
+      if (err > 1e-6) throw new Error(`error ${err}`);
+      return `u,v=${u.toFixed(3)},${v.toFixed(3)}`;
+    });
+
+    let seed0 = null;
+    await run("/api/sites no vacío", async () => {
+      const { sites } = await getSites();
+      if (!sites.length) throw new Error("lista vacía");
+      seed0 = sites[0];
+      return `${sites.length} sitios`;
+    });
+
+    await run("sitio SEMILLA: mask + site cargan", async () => {
+      const [mask, site] = await Promise.all([
+        getMask(seed0.lat, seed0.lon),
+        getSite(seed0.lat, seed0.lon, { windowDays: 14 }),
+      ]);
+      if (!mask.horizon_mask.length || !site.sun_track.length)
+        throw new Error("sin datos");
+      return `${seed0.name}: ${site.sun_track.length} muestras`;
+    });
+
+    await run("sitio LIBRE: detalle carga (fetch en vivo on-miss)", async () => {
+      const lat = -86.5, lon = 120;      // no es semilla; 1ª vez baja de Horizons
+      const [mask, site] = await Promise.all([
+        getMask(lat, lon),
+        getSite(lat, lon, { windowDays: 14 }),
+      ]);
+      if (!mask.horizon_mask.length || !site.sun_track.length)
+        throw new Error("sin datos");
+      const [u, v] = proj.lonlatToNorm(lon, lat);
+      if (u < 0 || u > 1 || v < 0 || v > 1) throw new Error("fuera del lienzo");
+      return `${site.sun_track.length} muestras · u,v=${u.toFixed(2)},${v.toFixed(2)}`;
+    });
+
+    const allPass = results.every(Boolean);
+    const banner = document.getElementById("banner");
+    banner.textContent = allPass
+      ? `✅ TODO OK — ${results.length}/${results.length} casos`
+      : `❌ FALLOS — ${results.filter(Boolean).length}/${results.length} casos`;
+    banner.className = `mt-4 rounded-lg px-4 py-3 font-bold ${
+      allPass ? "bg-green-900 text-green-200" : "bg-red-900 text-red-200"}`;
+    banner.id = "banner";
+    document.title = allPass ? "QA OK" : "QA FAIL";
+  </script>
+</body>
+</html>

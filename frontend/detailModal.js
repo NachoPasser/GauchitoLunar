@@ -32,7 +32,9 @@ export function createDetailModal({ windowDays = 30, date = null } = {}) {
   }
 
   async function showSite(lat, lon, name) {
-    setStatus("Cargando…");
+    // Un sitio nuevo (libre) baja efemérides de Horizons en vivo la 1ª vez (~unos
+    // segundos); luego queda cacheado. Avisamos para que la espera no confunda.
+    setStatus("Cargando… (un sitio nuevo puede tardar unos segundos la 1ª vez)");
     try {
       const [mask, site] = await Promise.all([
         getMask(lat, lon),

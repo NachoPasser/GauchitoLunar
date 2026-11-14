@@ -54,8 +54,14 @@ def site(
     comms_margin_deg: float = Query(COMMS_MARGIN_DEFAULT_DEG),
 ) -> JSONResponse:
     """Tracks Sol/Tierra desde Horizons + métricas reales (§3.1, §3.2, §5)."""
+    from ephem import EphemerisError
     from site_service import get_site
-    return JSONResponse(get_site(lat, lon, date, window_days, comms_margin_deg))
+    try:
+        return JSONResponse(get_site(lat, lon, date, window_days, comms_margin_deg))
+    except EphemerisError as e:
+        # Sitio libre sin cache y sin red para bajarlo. 503 (con CORS) → mensaje
+        # legible en el frontend, no un 500 crudo que el browser ve como "Failed to fetch".
+        raise HTTPException(status_code=503, detail=str(e))
 
 
 @app.get("/api/map")

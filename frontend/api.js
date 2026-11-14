@@ -4,7 +4,11 @@ const API_BASE = window.API_BASE || "http://127.0.0.1:8000";
 
 async function _get(path) {
   const r = await fetch(API_BASE + path);
-  if (!r.ok) throw new Error(`${path} → HTTP ${r.status}`);
+  if (!r.ok) {
+    let detail = "";
+    try { detail = (await r.json()).detail || ""; } catch { /* sin body JSON */ }
+    throw new Error(detail || `HTTP ${r.status}`);
+  }
   return r.json();
 }
 
