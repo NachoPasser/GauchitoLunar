@@ -10,6 +10,7 @@ let fragment = null;   // markup cacheado: se pide una sola vez
 async function mountWelcome(root, { onSubmit } = {}) {
   fragment ??= await (await fetch("welcome.html")).text();
   root.innerHTML = fragment;
+  window.i18n?.apply(root);                 // traduce el fragmento recién insertado
   return initWelcome(root, { onSubmit });
 }
 

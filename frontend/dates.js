@@ -26,14 +26,18 @@ export function daysBetween(a, b) {
   return da && db ? Math.round((db - da) / MS_PER_DAY) : null;
 }
 
-// "20 nov 2026" (año opcional: "20 nov"). Se arma por partes: el formato largo de es-AR
-// da "20 de nov. de 2026" / "20-nov" según el navegador.
+// "20 nov 2026" / "Nov 20, 2026" según el idioma activo (i18n.js define 'locale.date').
+// En español se arma por partes: el formato largo de es-AR da "20 de nov. de 2026" / "20-nov"
+// según el navegador. Año opcional.
 export function formatReadable(iso, { year = true } = {}) {
-  const parts = new Intl.DateTimeFormat("es", { day: "2-digit", month: "short",
-    year: "numeric", timeZone: "UTC" }).formatToParts(parseISO(iso));
+  const loc = (typeof window !== "undefined" && window.i18n?.t("locale.date")) || "es";
+  const fmt = { day: "2-digit", month: "short", ...(year ? { year: "numeric" } : {}),
+    timeZone: "UTC" };
+  const date = parseISO(iso);
+  if (!loc.toLowerCase().startsWith("es")) return date.toLocaleDateString(loc, fmt);
+  const parts = new Intl.DateTimeFormat("es", { ...fmt, year: "numeric" }).formatToParts(date);
   const get = (t) => parts.find((p) => p.type === t)?.value ?? "";
-  const mes = get("month").replace(".", "");
-  return `${get("day")} ${mes}${year ? ` ${get("year")}` : ""}`;
+  return `${get("day")} ${get("month").replace(".", "")}${year ? ` ${get("year")}` : ""}`;
 }
 
 // Valida un rango. Devuelve { ok, days, error } (error = mensaje llano o null).
