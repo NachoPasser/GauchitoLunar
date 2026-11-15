@@ -29,8 +29,12 @@
           <h2 id="site-name" class="panel__title text-lg">—</h2>
           <p id="site-coords" class="mono text-xs" style="color:var(--ink-3)"></p>
         </div>
-        <button id="close-btn" class="btn btn--ghost btn--sm" aria-label="Cerrar"
-                style="font-size:1.1rem;padding:.3rem .55rem">×</button>
+        <div class="flex items-center gap-1">
+          <button id="delete-btn" class="btn btn--ghost btn--sm hidden" aria-label="Eliminar sitio"
+                  style="color:var(--accent-red)">🗑 Eliminar</button>
+          <button id="close-btn" class="btn btn--ghost btn--sm" aria-label="Cerrar"
+                  style="font-size:1.1rem;padding:.3rem .55rem">×</button>
+        </div>
       </div>
 
       <div class="panel__body space-y-4">

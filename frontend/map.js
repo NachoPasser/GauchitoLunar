@@ -7,7 +7,8 @@ import { getSites, getSite, mapUrl, getMapMeta } from "./api.js";
 import { createProjection } from "./proj.js";
 import { createDetailModal } from "./detailModal.js";
 import { createTop3 } from "./top3.js";
-import { windowDays, startDate, addSitio, setSitioActivo, getState } from "./state.js";
+import { windowDays, startDate, addSitio, removeSitio, setSitioActivo, getState }
+  from "./state.js";
 
 const $ = (id) => document.getElementById(id);
 const stage = $("map-stage");
@@ -16,7 +17,6 @@ const stage = $("map-stage");
 const disk = $("map-overlay");
 const layer = $("map-markers");
 let proj = null;
-let pending = null;            // {lat, lon} del último click en zona libre
 let activeSite = null;         // {lat, lon} del sitio activo (apoyo de la cuña, §2.3)
 const modal = createDetailModal({
   windowDays: windowDays(), date: startDate(),
@@ -209,7 +209,7 @@ function drawScaleBar() {
 // de pantalla (sinA, -cosA) desde el polo. Son la dirección en UN instante (inicio de
 // ventana), rotulado para honestidad. Dibuja en la capa exterior (sobre fondo claro).
 function drawDirArrows(sunAz, earthAz, tLabel, frame) {
-  const g = $("map-chrome-outer"), C = 500, R = DISK_R + 50;  // órbita fija en el polo
+  const g = $("map-chrome-fg"), C = 500, R = DISK_R + 50;  // órbita fija en el polo
   const old = $("map-arrows");
   if (old) old.remove();                     // redibujo por tick: reemplaza el grupo
   const grp = svg("g", { id: "map-arrows" });
@@ -247,10 +247,6 @@ function drawDirArrows(sunAz, earthAz, tLabel, frame) {
   };
   arrow(sunAz, "#f59e0b", "Sol");
   arrow(earthAz, "#60a5fa", "Tierra");
-  const cap = svg("text", { x: 20, y: 986, fill: "#8a97b2", "fill-opacity": 0.95,
-    "font-size": 16, "font-family": "JetBrains Mono" });
-  cap.textContent = `dirección al ${tLabel} UTC`;
-  grp.appendChild(cap);
   g.appendChild(grp);
 }
 
@@ -366,28 +362,41 @@ function addMarker(lon, lat, name, kind) {
     setActive(m);
     activeSite = { lat, lon };
     setSitioActivo({ lat, lon, name });
-    modal.open(lat, lon, name);
+    modal.open(lat, lon, name,
+      kind === "pin" ? { onDelete: () => deletePin(lat, lon, m) } : {});
   });
   layer.appendChild(m);
   return m;
 }
 
-// Click en zona libre: ubicar el popup flotante y recordar las coords.
+// Borra una chincheta propia: del estado, del mapa, y cierra el detalle.
+function deletePin(lat, lon, m) {
+  removeSitio(lat, lon);
+  if (m) m.remove();
+  if (activeEl === m) setActive(null);
+  activeSite = null;
+  modal.close();
+}
+
+// Click en zona libre (dentro del disco): agrega una chincheta 📍 y abre su detalle.
+// Sin paso intermedio: el detalle carga en vivo (ver loader en detailModal).
 function onFreeClick(e) {
+  if (!proj) return;
   const r = disk.getBoundingClientRect();
   const u = (e.clientX - r.left) / r.width;
   const v = (e.clientY - r.top) / r.height;
-  if (u < 0 || u > 1 || v < 0 || v > 1) return;
+  // Solo dentro del disco circular (como el tooltip): afuera no hay terreno mapeado.
+  if (Math.hypot(u - 0.5, v - 0.5) > 0.5) return;
   const [lon, lat] = proj.normToLonlat(u, v);
-  pending = { lat, lon };
-  const pop = $("free-popup");
-  pop.style.left = `${u * 100}%`;
-  pop.style.top = `${v * 100}%`;
-  pop.classList.remove("hidden");
-  setStatus(`Sitio libre: ${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`);
+  const name = freeName({ lat, lon });
+  addSitio({ name, lat, lon, kind: "pin" });
+  const m = addMarker(lon, lat, name, "pin");
+  setActive(m);
+  activeSite = { lat, lon };
+  setSitioActivo({ lat, lon, name });
+  modal.open(lat, lon, name, { onDelete: () => deletePin(lat, lon, m) });
+  setStatus("");
 }
-
-function hidePopup() { $("free-popup").classList.add("hidden"); }
 
 // Luna de fondo (hillshade del DEM): rodea el casquete para leerlo como "tapa de una
 // esfera". Se centra/escala desde los bounds de ambos rasters (mismo polo, misma
@@ -421,7 +430,6 @@ async function init() {
     // Chinchetas 📍 del usuario persistidas en el estado compartido.
     const pins = getState().sitios;
     pins.forEach((s) => addMarker(s.lon, s.lat, s.name, "pin"));
-    setStatus(`${sites.length} sitios · ${pins.length} propios`);
     // Flechas de dirección: sitio de referencia cerca del polo, al inicio del rango.
     const ref = sites[0] || { lat: -89.9, lon: 0 };
     const rs = await getSite(ref.lat, ref.lon, { windowDays: 1, date: startDate() });
@@ -433,10 +441,7 @@ async function init() {
   }
 }
 
-disk.addEventListener("click", (e) => {
-  if (e.target.closest("#free-popup")) return;      // clicks del popup se manejan aparte
-  onFreeClick(e);
-});
+disk.addEventListener("click", onFreeClick);
 
 // Lectura lat/lon viva que sigue al cursor (Opción A). Solo dentro del disco circular:
 // afuera la proyección no mapea terreno real. Latitud siempre sur (Math.abs + "°S").
@@ -459,24 +464,6 @@ function freeName(p) {
   return `Sitio ${p.lat.toFixed(1)}°, ${p.lon.toFixed(1)}°E`;
 }
 
-$("free-add").addEventListener("click", () => {
-  if (!pending) return;
-  const name = freeName(pending);
-  addSitio({ name, lat: pending.lat, lon: pending.lon, kind: "pin" });
-  addMarker(pending.lon, pending.lat, name, "pin");
-  hidePopup();
-});
-
 $("top3-btn").addEventListener("click", top3.open);
-
-$("free-detail").addEventListener("click", () => {
-  if (!pending) return;
-  const name = freeName(pending);
-  setActive(null);
-  activeSite = { lat: pending.lat, lon: pending.lon };
-  setSitioActivo({ lat: pending.lat, lon: pending.lon, name });
-  modal.open(pending.lat, pending.lon, name);
-  hidePopup();
-});
 
 init();

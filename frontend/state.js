@@ -53,6 +53,13 @@ export function addSitio(sitio) {
   return sitio;
 }
 
+// Elimina una chincheta propia por coordenadas (tolerancia por floats).
+export function removeSitio(lat, lon) {
+  const keep = state.sitios.filter(
+    (s) => Math.abs(s.lat - lat) > 1e-6 || Math.abs(s.lon - lon) > 1e-6);
+  commit({ ...state, sitios: keep });
+}
+
 export function setSitioActivo(s) {
   commit({ ...state, sitioActivo: s });
 }

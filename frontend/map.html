@@ -77,14 +77,6 @@
                  viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
             <div id="map-markers" class="absolute inset-0"></div>
 
-            <!-- Botón flotante al clickear zona libre -->
-            <div id="free-popup"
-                 class="card absolute z-20 hidden -translate-x-1/2 -translate-y-full p-1"
-                 style="box-shadow:var(--shadow-md)">
-              <button id="free-add" class="btn btn--ghost btn--sm w-full justify-start">📍 Agregar este sitio</button>
-              <button id="free-detail" class="btn btn--ghost btn--sm w-full justify-start">🔭 Ver detalle acá</button>
-            </div>
-
             <p id="map-status" class="mono absolute left-3 bottom-3 text-[11px]"
                style="color:rgba(255,255,255,.8)"></p>
 
@@ -114,8 +106,12 @@
           <h2 id="site-name" class="panel__title text-lg">—</h2>
           <p id="site-coords" class="mono text-xs" style="color:var(--ink-3)"></p>
         </div>
-        <button id="close-btn" class="btn btn--ghost btn--sm" aria-label="Cerrar"
-                style="font-size:1.1rem;padding:.3rem .55rem">×</button>
+        <div class="flex items-center gap-1">
+          <button id="delete-btn" class="btn btn--ghost btn--sm hidden" aria-label="Eliminar sitio"
+                  style="color:var(--accent-red)">🗑 Eliminar</button>
+          <button id="close-btn" class="btn btn--ghost btn--sm" aria-label="Cerrar"
+                  style="font-size:1.1rem;padding:.3rem .55rem">×</button>
+        </div>
       </div>
       <div class="panel__body space-y-4">
         <div class="flex flex-wrap items-center gap-3">

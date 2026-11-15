@@ -71,6 +71,15 @@ export function createDetailModal({ windowDays = 30, date = null,
   function close() { overlay().classList.remove("is-open"); }
   function openEmpty() { overlay().classList.add("is-open"); }
 
+  // Botón 🗑: visible solo si el sitio es borrable (chincheta propia). onclick se
+  // reemplaza en cada apertura (no acumula listeners).
+  function setupDelete(onDelete) {
+    const btn = $("delete-btn");
+    if (!btn) return;
+    btn.onclick = onDelete || null;
+    btn.classList.toggle("hidden", !onDelete);
+  }
+
   // Wiring de controles (una sola vez).
   $("close-btn").addEventListener("click", close);
   document.addEventListener("keydown", (e) => {
@@ -87,7 +96,11 @@ export function createDetailModal({ windowDays = 30, date = null,
   });
 
   return {
-    open(lat, lon, name) { openEmpty(); showSite(lat, lon, name); },
+    open(lat, lon, name, opts = {}) {
+      openEmpty();
+      setupDelete(opts.onDelete);
+      showSite(lat, lon, name);
+    },
     show: showSite,
     openEmpty,
     close,
