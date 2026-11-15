@@ -5,7 +5,7 @@
 const SVGNS = "http://www.w3.org/2000/svg";
 const PAD = { t: 14, r: 14, b: 26, l: 34 };
 const W = 760, H = 340;
-const AZ_WIN_WIDTH = 120;   // ancho fijo de la ventana de azimut (§2.3), en grados
+const AZ_WIN_WIDTH = 90;   // FOV / ancho fijo de la ventana de azimut (§2.3), en grados
 // Modo oscuro (cielo real): fondo navy, estrellas blancas, terreno negro silueteado.
 // Tracks en variantes brillantes para que resalten sobre el cielo oscuro.
 const SUN = "#fbbf24", EARTH = "#60a5fa";   // Sol ámbar / Tierra celeste (sobre oscuro)
@@ -29,7 +29,7 @@ function makeStars(n) {
   const stars = [];
   for (let i = 0; i < n; i++) {
     stars.push({
-      x: PAD.l + rnd() * (W - PAD.l - PAD.r),
+      az: rnd() * 360,     // azimut propio ⇒ se proyecta por x(az) y gira en 1ª persona
       y: PAD.t + rnd() * (H - PAD.t - PAD.b),
       r: 0.4 + rnd() * 1.0,
       o: 0.35 + rnd() * 0.6,
@@ -47,15 +47,18 @@ export function createSkyline(svg, { onWindowChange } = {}) {
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   svg.style.cursor = "ew-resize";   // afforda "arrastrable en horizontal"
   svg.style.touchAction = "none";   // el drag no scrollea en touch
-  const stars = makeStars(90);
+  const stars = makeStars(150);
   const st = {
     mask: [], sun: [], earth: [], fullSky: false, commsMargin: 0, azWindow: null,
-    cursor: null,
+    cursor: null, firstPerson: false,
   };
+  const innerW = W - PAD.l - PAD.r;
+  let zoomRoot = svg;   // capa recortada al área de ploteo (ver clippedLayer en draw)
 
   // Cielo oscuro + estrellas de fondo. El terreno (opaco) se dibuja después y tapa
   // las estrellas que caen "bajo el horizonte", así solo brillan en el cielo.
-  function drawSky(y, [lo, hi]) {
+  // Fondo del cielo: gradiente vertical fijo (uniforme en horizontal, no necesita girar).
+  function drawSkyBg() {
     const defs = el("defs");
     const grad = el("linearGradient", { id: "sky-grad", x1: 0, y1: 0, x2: 0, y2: 1 });
     grad.appendChild(el("stop", { offset: 0, "stop-color": SKY_TOP }));
@@ -64,8 +67,13 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     svg.appendChild(defs);
     svg.appendChild(el("rect", { x: 0, y: 0, width: W, height: H, rx: 10,
       fill: "url(#sky-grad)" }));
+  }
+
+  // Estrellas proyectadas por x(az): en 1ª persona el cielo gira con la mira (parallax),
+  // no solo el terreno. Van en zoomRoot (recortadas al FOV). El terreno las tapa abajo.
+  function drawStars() {
     for (const s of stars) {
-      svg.appendChild(el("circle", { cx: s.x, cy: s.y, r: s.r,
+      zoomRoot.appendChild(el("circle", { cx: x(s.az), cy: s.y, r: s.r,
         fill: "#fff", opacity: s.o }));
     }
   }
@@ -73,6 +81,7 @@ export function createSkyline(svg, { onWindowChange } = {}) {
   function setMask(mask) { st.mask = mask || []; }
   function setTracks(sun, earth) { st.sun = sun || []; st.earth = earth || []; }
   function setFullSky(b) { st.fullSky = !!b; }
+  function setFirstPerson(b) { st.firstPerson = !!b; }
   function setCursor(i) { st.cursor = i; }   // índice del instante actual (slider)
   function setParams({ commsMargin } = {}) {
     if (commsMargin != null) st.commsMargin = commsMargin;
@@ -94,14 +103,20 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     draw();
     if (onWindowChange) onWindowChange(st.azWindow);
   }
-  let dragging = false;
+  let dragging = false, panStartX = 0, panStartC = 0;
   svg.addEventListener("pointerdown", (e) => {
     dragging = true;
     svg.setPointerCapture(e.pointerId);
-    centerWindow(azAtClientX(e.clientX));
+    if (st.firstPerson) { panStartX = e.clientX; panStartC = viewCenter(); }
+    else centerWindow(azAtClientX(e.clientX));   // panorámica: aim absoluto al puntero
   });
   svg.addEventListener("pointermove", (e) => {
-    if (dragging) centerWindow(azAtClientX(e.clientX));
+    if (!dragging) return;
+    if (st.firstPerson) {                        // 1ª persona: arrastrar = girar la cabeza
+      const r = svg.getBoundingClientRect();
+      const dAz = ((e.clientX - panStartX) / r.width) * AZ_WIN_WIDTH;
+      centerWindow(normAz(panStartC - dAz));     // arrastrar a la derecha → mirar a la izq.
+    } else centerWindow(azAtClientX(e.clientX));
   });
   const endDrag = () => { dragging = false; };
   svg.addEventListener("pointerup", endDrag);
@@ -117,34 +132,54 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     return [lo, hi];
   }
 
-  const x = (az) => PAD.l + (az / 360) * (W - PAD.l - PAD.r);
+  // Centro de mira = centro de la ventana de azimut (la dirección a la que "mirás").
+  function viewCenter() {
+    return st.azWindow ? normAz(st.azWindow.desde + AZ_WIN_WIDTH / 2) : 0;
+  }
+  // Diferencia angular con signo en [-180,180] (0 = al frente).
+  const angDiff = (a, c) => ((a - c + 540) % 360) - 180;
+  const COMPASS = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
+  const compass = (az) => COMPASS[Math.round(normAz(az) / 45) % 8];
+
+  // x(az): panorámica mapea 0–360° a todo el ancho; primera persona hace zoom al FOV
+  // (= la ventana), con el centro de mira al medio. Todo el dibujo pasa por acá, así
+  // que terreno/tracks/cursor se reproyectan solos. Lo que cae fuera del FOV queda
+  // fuera del área de ploteo y lo recorta zoomRoot (clip).
+  function x(az) {
+    if (!st.firstPerson) return PAD.l + (az / 360) * innerW;
+    const d = angDiff(az, viewCenter());
+    return PAD.l + ((d + AZ_WIN_WIDTH / 2) / AZ_WIN_WIDTH) * innerW;
+  }
   function yFn([lo, hi]) {
     return (e) => PAD.t + (hi - e) / (hi - lo) * (H - PAD.t - PAD.b);
   }
 
-  function drawGrid(y, [lo, hi]) {
-    // verticales N/E/S/O + etiquetas
-    const dirs = [[0, "N"], [90, "E"], [180, "S"], [270, "O"], [360, "N"]];
-    for (const [az, lbl] of dirs) {
-      svg.appendChild(el("line", {
-        x1: x(az), y1: PAD.t, x2: x(az), y2: H - PAD.b,
-        stroke: GRID, "stroke-width": 1,
-      }));
-      const t = el("text", {
-        x: x(az), y: H - PAD.b + 16, "text-anchor": "middle",
-        "font-size": 11, fill: AXIS_INK, "font-family": "JetBrains Mono, monospace",
-      });
-      t.textContent = lbl;
-      svg.appendChild(t);
+  // Secuencia de puntos del terreno lista para dibujar: {ax, v} con v = elevación.
+  // Panorámica: orden 0→360 + cierre al wrap. 1ª persona: solo el FOV, ordenado por
+  // ángulo respecto al centro (evita el "seam" de 180° detrás de la mira).
+  function maskSeq(vOf) {
+    if (!st.mask.length) return [];
+    if (!st.firstPerson) {
+      const s = st.mask.map((m) => ({ ax: x(m.az), v: vOf(m) }));
+      s.push({ ax: x(360), v: vOf(st.mask[0]) });
+      return s;
     }
-    // horizontales de elevación
+    const c = viewCenter(), half = AZ_WIN_WIDTH / 2;
+    return st.mask
+      .map((m) => ({ d: angDiff(m.az, c), v: vOf(m) }))
+      .filter((o) => Math.abs(o.d) <= half + 1)
+      .sort((a, b) => a.d - b.d)
+      .map((o) => ({ ax: PAD.l + ((o.d + half) / AZ_WIN_WIDTH) * innerW, v: o.v }));
+  }
+
+  // Horizontales de elevación + etiquetas del eje Y (siempre a svg, ancho fijo).
+  function drawElevGrid(y, [lo, hi]) {
     const step = niceStep((hi - lo) / 5);
     for (let e = Math.ceil(lo / step) * step; e <= hi; e += step) {
       const horizon = e === 0;
       svg.appendChild(el("line", {
         x1: PAD.l, y1: y(e), x2: W - PAD.r, y2: y(e),
-        stroke: horizon ? GRID_HORIZON : GRID,
-        "stroke-width": horizon ? 1.5 : 1,
+        stroke: horizon ? GRID_HORIZON : GRID, "stroke-width": horizon ? 1.5 : 1,
       }));
       const t = el("text", {
         x: PAD.l - 5, y: y(e) + 3, "text-anchor": "end",
@@ -155,15 +190,51 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     }
   }
 
+  // Verticales de azimut. Líneas → zoomRoot (recortadas al FOV); etiquetas → svg (viven
+  // bajo el plot). Panorámica: N/E/S/O fijos. 1ª persona: ticks locales + línea de mira.
+  function azLabel(ax, txt, strong) {
+    const t = el("text", { x: ax, y: H - PAD.b + 16, "text-anchor": "middle",
+      "font-size": 11, fill: AXIS_INK, opacity: strong ? 1 : 0.7,
+      "font-family": "JetBrains Mono, monospace" });
+    t.textContent = txt;
+    svg.appendChild(t);
+  }
+  function drawAzGrid() {
+    if (!st.firstPerson) {
+      for (const [az, lbl] of [[0, "N"], [90, "E"], [180, "S"], [270, "O"], [360, "N"]]) {
+        zoomRoot.appendChild(el("line", { x1: x(az), y1: PAD.t, x2: x(az), y2: H - PAD.b,
+          stroke: GRID, "stroke-width": 1 }));
+        azLabel(x(az), lbl, true);
+      }
+      return;
+    }
+    const c = viewCenter(), half = AZ_WIN_WIDTH / 2, step = 15;
+    for (let a = Math.ceil((c - half) / step) * step; a <= c + half; a += step) {
+      const az = normAz(a), card = az % 90 === 0;
+      zoomRoot.appendChild(el("line", { x1: x(az), y1: PAD.t, x2: x(az), y2: H - PAD.b,
+        stroke: GRID, "stroke-width": card ? 1.3 : 1, opacity: card ? 1 : 0.7 }));
+      azLabel(x(az), card ? compass(az) : `${Math.round(az)}°`, card);
+    }
+    // Línea de mira central (al frente) + rótulo "mirando X° · rumbo".
+    const cx = x(c);
+    zoomRoot.appendChild(el("line", { x1: cx, y1: PAD.t, x2: cx, y2: H - PAD.b,
+      stroke: AZWIN_EDGE, "stroke-width": 1.4, opacity: 0.9, "stroke-dasharray": "4 4" }));
+    const t = el("text", { x: cx, y: PAD.t + 12, "text-anchor": "middle", "font-size": 11,
+      fill: AZWIN_EDGE, "font-family": "JetBrains Mono, monospace",
+      stroke: SKY_TOP, "stroke-width": 3, "paint-order": "stroke" });
+    t.textContent = `mirando ${Math.round(c)}° · ${compass(c)}`;
+    svg.appendChild(t);
+  }
+
   function drawTerrain(y, [lo]) {
-    if (!st.mask.length) return;
-    const pts = st.mask.map((m) => `${x(m.az)},${y(m.h_deg)}`);
-    pts.push(`${x(360)},${y(st.mask[0].h_deg)}`); // cierre al wrap 360→0
-    const base = y(lo);
-    const d = `M ${PAD.l},${base} L ${pts.join(" L ")} L ${W - PAD.r},${base} Z`;
-    svg.appendChild(el("path", { d, fill: GROUND, stroke: "none" }));
+    const seq = maskSeq((m) => m.h_deg);
+    if (!seq.length) return;
+    const base = y(lo), pts = seq.map((o) => `${o.ax},${y(o.v)}`);
+    const left = seq[0].ax, right = seq[seq.length - 1].ax;
+    const d = `M ${left},${base} L ${pts.join(" L ")} L ${right},${base} Z`;
+    zoomRoot.appendChild(el("path", { d, fill: GROUND, stroke: "none" }));
     // borde superior del terreno: fina línea "iluminada" (rim) para silueta nítida
-    svg.appendChild(el("polyline", {
+    zoomRoot.appendChild(el("polyline", {
       points: pts.join(" "), fill: "none", stroke: RIM, "stroke-width": 1.5,
     }));
   }
@@ -211,12 +282,12 @@ export function createSkyline(svg, { onWindowChange } = {}) {
   // Umbral de comms (h(az) + margen) punteado; solo visible si el margen > 0.
   function drawCommsMargin(y) {
     const m = st.commsMargin || 0;
-    if (!st.mask.length || m <= 0) return;
-    const pts = st.mask.map((s) => `${x(s.az)},${y(s.h_deg + m)}`);
-    pts.push(`${x(360)},${y(st.mask[0].h_deg + m)}`);
-    svg.appendChild(el("polyline", {
-      points: pts.join(" "), fill: "none", stroke: "#93c5fd",
-      "stroke-width": 1, "stroke-dasharray": "2 3", opacity: 0.6,
+    if (m <= 0) return;
+    const seq = maskSeq((s) => s.h_deg + m);
+    if (!seq.length) return;
+    zoomRoot.appendChild(el("polyline", {
+      points: seq.map((o) => `${o.ax},${y(o.v)}`).join(" "), fill: "none",
+      stroke: "#93c5fd", "stroke-width": 1, "stroke-dasharray": "2 3", opacity: 0.6,
     }));
   }
 
@@ -238,23 +309,40 @@ export function createSkyline(svg, { onWindowChange } = {}) {
   }
 
   // Track: brillante = visible, punteado apagado = tapado por el terreno.
+  // En 1ª persona parte el track en tramos de puntos dentro del FOV (evita que una línea
+  // cruce el "seam" de 180° de atrás). En panorámica es un único tramo con todo el track.
+  function fovRuns(track) {
+    if (!st.firstPerson) return [track];
+    const c = viewCenter(), half = AZ_WIN_WIDTH / 2, runs = [];
+    let cur = null;
+    for (const p of track) {
+      if (Math.abs(angDiff(p.az, c)) <= half) {
+        if (!cur) runs.push((cur = []));
+        cur.push(p);
+      } else cur = null;
+    }
+    return runs;
+  }
+
   function drawTrack(y, track, color) {
-    for (const seg of segments(track)) {
-      if (seg.pts.length < 2) {
-        const p = seg.pts[0];
-        svg.appendChild(el("circle", {
-          cx: x(p.az), cy: y(p.el), r: 1.6, stroke: color, "stroke-width": 1,
-          fill: seg.visible ? color : "none", opacity: seg.visible ? 1 : 0.4,
-        }));
-        continue;
+    for (const run of fovRuns(track)) {
+      for (const seg of segments(run)) {
+        if (seg.pts.length < 2) {
+          const p = seg.pts[0];
+          zoomRoot.appendChild(el("circle", {
+            cx: x(p.az), cy: y(p.el), r: 1.6, stroke: color, "stroke-width": 1,
+            fill: seg.visible ? color : "none", opacity: seg.visible ? 1 : 0.4,
+          }));
+          continue;
+        }
+        const attrs = {
+          points: seg.pts.map((p) => `${x(p.az)},${y(p.el)}`).join(" "),
+          fill: "none", stroke: color,
+          "stroke-width": seg.visible ? 2.2 : 1.4, opacity: seg.visible ? 1 : 0.4,
+        };
+        if (!seg.visible) attrs["stroke-dasharray"] = "3 4";
+        zoomRoot.appendChild(el("polyline", attrs));
       }
-      const attrs = {
-        points: seg.pts.map((p) => `${x(p.az)},${y(p.el)}`).join(" "),
-        fill: "none", stroke: color,
-        "stroke-width": seg.visible ? 2.2 : 1.4, opacity: seg.visible ? 1 : 0.4,
-      };
-      if (!seg.visible) attrs["stroke-dasharray"] = "3 4";
-      svg.appendChild(el("polyline", attrs));
     }
   }
 
@@ -292,34 +380,53 @@ export function createSkyline(svg, { onWindowChange } = {}) {
   // Marcador del instante actual: relleno = visible, hueco = tapado.
   function drawCursor(y) {
     if (st.cursor == null) return;
+    const half = AZ_WIN_WIDTH / 2, c = viewCenter();
     for (const [track, color] of [[st.earth, EARTH], [st.sun, SUN]]) {
       const p = track[st.cursor];
       if (!p) continue;
-      svg.appendChild(el("circle", {
+      if (st.firstPerson && Math.abs(angDiff(p.az, c)) > half) continue;  // fuera de campo
+      zoomRoot.appendChild(el("circle", {
         cx: x(p.az), cy: y(p.el), r: 5,
         fill: p.visible ? color : SKY_HORIZON, stroke: color, "stroke-width": 2,
       }));
     }
   }
 
+  // Grupo recortado al área de ploteo. En 1ª persona impide que el terreno/tracks fuera
+  // del FOV se derramen en los márgenes; inofensivo en panorámica.
+  function clippedLayer() {
+    const defs = el("defs");
+    const cp = el("clipPath", { id: "plot-clip" });
+    cp.appendChild(el("rect", { x: PAD.l, y: PAD.t, width: innerW,
+      height: H - PAD.t - PAD.b }));
+    defs.appendChild(cp);
+    svg.appendChild(defs);
+    const g = el("g", { "clip-path": "url(#plot-clip)" });
+    svg.appendChild(g);
+    return g;
+  }
+
   function draw() {
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     const r = range();
     const y = yFn(r);
-    drawSky(y, r);
-    drawAzWindow();
-    drawGrid(y, r);
+    drawSkyBg();
+    if (!st.firstPerson) drawAzWindow();   // la ventana fucsia solo aplica en panorámica
+    drawElevGrid(y, r);
+    zoomRoot = clippedLayer();
+    drawStars();
+    drawAzGrid();
     drawTerrain(y, r);
     drawCommsMargin(y);
     drawTrack(y, st.earth, EARTH);
     drawTrack(y, st.sun, SUN);
-    drawBlockedLabel(y);
+    if (!st.firstPerson) drawBlockedLabel(y);
     drawCursor(y);
     drawLegend();
   }
 
   return {
-    setMask, setTracks, setFullSky, setParams, setAzimuthWindow, centerWindow,
-    setCursor, draw,
+    setMask, setTracks, setFullSky, setFirstPerson, setParams, setAzimuthWindow,
+    centerWindow, setCursor, draw,
   };
 }

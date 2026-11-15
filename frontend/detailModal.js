@@ -11,6 +11,7 @@ export function createDetailModal({ windowDays = 30, date = null,
   const $ = (id) => document.getElementById(id);
   const sky = createSkyline($("skyline"), { onWindowChange: onAzimuthWindow });
   let fullSky = false;
+  let firstPerson = false;
   let data = null;          // respuesta /api/site del sitio activo (para el slider)
   let updateMetrics = null; // updater(i) de las métricas por instante (ver panel.js)
 
@@ -81,6 +82,13 @@ export function createDetailModal({ windowDays = 30, date = null,
     sky.setFullSky(fullSky);
     sky.draw();
     $("fullsky-btn").classList.toggle("bg-slate-100", fullSky);
+  });
+  $("fpv-btn").addEventListener("click", () => {
+    firstPerson = !firstPerson;
+    sky.setFirstPerson(firstPerson);
+    sky.draw();
+    $("fpv-btn").classList.toggle("bg-slate-100", firstPerson);
+    $("fpv-btn").setAttribute("aria-pressed", String(firstPerson));
   });
   $("time-slider").addEventListener("input", (e) => {
     updateCursor(Number(e.target.value));

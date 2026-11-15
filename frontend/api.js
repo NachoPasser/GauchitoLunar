@@ -31,6 +31,14 @@ export function getSite(lat, lon, { date, windowDays, marginDeg } = {}) {
   return _get(`/api/site?${p.toString()}`);
 }
 
+// Parche de DEM (heightfield local ENU) para el render 3D de 1ª persona.
+export function getDemPatch(lat, lon, { radiusKm, res } = {}) {
+  const p = new URLSearchParams({ lat, lon });
+  if (radiusKm != null) p.set("radius_km", radiusKm);
+  if (res != null) p.set("res", res);
+  return _get(`/api/dem-patch?${p.toString()}`);
+}
+
 // URL del raster de fondo del mapa (para H3).
 export function mapUrl(metric = "illumination") {
   return `${API_BASE}/api/map?metric=${metric}`;
