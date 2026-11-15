@@ -16,29 +16,62 @@
        viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" style="z-index:-1"></svg>
 
   <!-- Top-bar -->
-  <header class="max-w-[1600px] mx-auto px-5 pt-6 pb-3 flex items-center justify-between gap-4">
+  <header class="max-w-[1600px] mx-auto px-5 pt-6 pb-3 flex items-center gap-4">
     <h1 class="text-xl font-bold" style="color:#e8eefc">Lunar Landing Site Navigator</h1>
-    <button id="top3-btn" class="btn btn--primary">🏆 Top 3</button>
   </header>
 
   <main class="max-w-[1600px] mx-auto px-5 pb-10 flex justify-center items-start">
     <div class="panel shrink-0">
-      <div class="panel__head">
-        <div>
-          <div class="panel__title">Mapa del polo sur</div>
-        </div>
-        <div class="legend">
-          <span class="legend__item"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2l2.6 6.3 6.8.5-5.2 4.4 1.7 6.6L12 16.9 6.1 20.3l1.7-6.6L2.6 9.3l6.8-.5z" fill="#0032a0" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>predefinido</span>
-          <span class="legend__item"><svg width="13" height="17" viewBox="0 0 22 28"><path d="M11 27C11 27 20 16 20 10a9 9 0 10-18 0c0 6 9 17 9 17z" fill="#E03C31" stroke="#fff" stroke-width="2"/><circle cx="11" cy="10" r="3.2" fill="#fff"/></svg>tuyo</span>
-          <span class="legend__item"><span style="display:inline-block;width:13px;height:13px;border-radius:999px;border:2.5px solid var(--sun)"></span>seleccionado</span>
-        </div>
-      </div>
-
       <!-- Lienzo del mapa: stage cuadrado (cielo estrellado) + disco circular de luna.
            La textura vive en el disco; las estrellas y las flechas Sol/Tierra, en el margen. -->
       <div class="panel__body" style="padding:0;background:#0a0f22">
         <div id="map-stage" class="relative aspect-square mx-auto overflow-hidden select-none"
              style="width:min(74vmin,680px);background:radial-gradient(circle at 50% 44%,#16203f 0%,#0b1124 62%,#070a16 100%)">
+          <!-- Isla izquierda: sliders de lat/lon -->
+          <div id="coords-island" class="absolute top-3 left-3 z-30 rounded-xl px-3 py-2.5"
+               style="background:rgba(11,17,36,.88);border:1px solid rgba(255,255,255,.18);
+                      backdrop-filter:blur(6px)">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span id="lat-display" class="mono text-xs select-none"
+                    style="color:#cbd5e1;min-width:4rem;text-align:right">88.0°S</span>
+              <input id="coords-lat" type="range" min="-90" max="-85" step="0.1" value="-88"
+                     class="zoom-range w-20" />
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="lon-display" class="mono text-xs select-none"
+                    style="color:#cbd5e1;min-width:4rem;text-align:right">0°E</span>
+              <input id="coords-lon" type="range" min="0" max="359" step="1" value="0"
+                     class="zoom-range w-20" />
+              <button id="coords-add" type="button" title="Agregar sitio"
+                      class="w-6 h-6 flex items-center justify-center rounded-full text-sm font-bold"
+                      style="background:rgba(96,165,250,.2);color:#60a5fa;
+                             border:1px solid rgba(96,165,250,.4);line-height:1">+</button>
+            </div>
+          </div>
+
+          <!-- Isla derecha: leyenda -->
+          <div id="legend-island" class="absolute top-3 right-3 z-30 flex items-center gap-3 px-3 py-2 rounded-xl"
+               style="background:rgba(11,17,36,.88);border:1px solid rgba(255,255,255,.18);
+                      backdrop-filter:blur(6px)">
+            <span class="legend__item" style="color:rgba(203,213,225,.85)">
+              <svg width="14" height="14" viewBox="0 0 24 24"><path d="M12 2l2.6 6.3 6.8.5-5.2 4.4 1.7 6.6L12 16.9 6.1 20.3l1.7-6.6L2.6 9.3l6.8-.5z" fill="#60a5fa" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>predefinido</span>
+            <span class="legend__item" style="color:rgba(203,213,225,.85)">
+              <svg width="11" height="15" viewBox="0 0 22 28"><path d="M11 27C11 27 20 16 20 10a9 9 0 10-18 0c0 6 9 17 9 17z" fill="#E03C31" stroke="#fff" stroke-width="2"/><circle cx="11" cy="10" r="3.2" fill="#fff"/></svg>tuyo</span>
+            <span class="legend__item" style="color:rgba(203,213,225,.85)">
+              <span style="display:inline-block;width:11px;height:11px;border-radius:999px;
+                           border:2.5px solid #f59e0b"></span>activo</span>
+          </div>
+
+          <!-- Botón Comparar: debajo del disco, centrado; color que contraste con el fondo -->
+          <button id="top3-btn" type="button" class="btn absolute z-30"
+                  style="bottom:9%;left:50%;transform:translateX(-50%);
+                         padding:.3rem 1rem;font-size:.82rem;
+                         background:#2563eb;color:#fff;
+                         border:1.5px solid rgba(255,255,255,.22);border-radius:9999px"
+                  title="Comparar sitios">
+            🏆 Comparar
+          </button>
+
           <!-- Capa de fondo: estrellas del cielo (detrás de la luna) -->
           <svg id="map-chrome-outer" class="absolute inset-0 w-full h-full pointer-events-none"
                viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
@@ -76,17 +109,22 @@
                  cuña/pines/popup/tooltip no se esconden pasando el borde del disco. -->
             <div id="map-overlay" class="absolute" style="inset:14%">
               <svg id="map-chrome" class="absolute inset-0 w-full h-full pointer-events-none"
-                   viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
+                   viewBox="0 0 1000 1000" preserveAspectRatio="none" overflow="visible"></svg>
               <div id="map-markers" class="absolute inset-0"></div>
-
-              <!-- Lectura lat/lon viva: sigue al cursor sobre el disco (honesta a la
-                   proyección polar; la grilla cartesiana sería engañosa acá). -->
-              <div id="map-cursor" class="mono absolute z-20 hidden pointer-events-none"
-                   style="background:rgba(11,17,36,.82);border:1px solid rgba(255,255,255,.18);
-                          color:#e8eefc;padding:2px 7px;border-radius:6px;font-size:11px;
-                          white-space:nowrap;transform:translate(12px,-130%)"></div>
             </div>
           </div>
+
+          <!-- Viñetado fijo del marco: oscurece el margen exterior del disco,
+               no escala con el zoom. Transparente dentro del disco (r≈36% del stage). -->
+          <div class="absolute inset-0 pointer-events-none"
+               style="background:radial-gradient(circle at 50% 50%,
+                      transparent 62%,rgba(2,4,14,.2) 78%,rgba(2,4,14,.55) 100%)"></div>
+
+          <!-- Lectura lat/lon viva: fuera de #map-world para no escalar con el zoom. -->
+          <div id="map-cursor" class="mono absolute z-30 hidden pointer-events-none"
+               style="background:rgba(11,17,36,.82);border:1px solid rgba(255,255,255,.18);
+                      color:#e8eefc;padding:2px 7px;border-radius:6px;font-size:11px;
+                      white-space:nowrap;transform:translate(12px,-130%)"></div>
 
           <!-- Chrome de FRENTE (sobre la luna): globo-localizador, barra de escala y
                flechas Sol/Tierra. Deben quedar por encima del anillo lunar. -->
@@ -147,8 +185,18 @@
         <!-- INTERIOR BLANCO (estilo z14) -->
         <div class="panel detail-panel__card relative z-10 w-full flex flex-col overflow-hidden">
           <header class="panel__head detail-head">
-            <div class="min-w-0">
-              <h2 id="site-name" class="detail-head__title">—</h2>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1 min-w-0">
+                <h2 id="site-name" class="detail-head__title min-w-0 truncate">—</h2>
+                <button id="rename-btn" type="button" class="btn btn--ghost btn--sm hidden shrink-0"
+                        aria-label="Renombrar sitio" style="padding:0.2rem;line-height:1">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+              </div>
               <p id="site-coords" class="mono detail-head__coords"></p>
               <p id="status" class="text-xs mt-1" style="color:var(--ink-3)"></p>
             </div>

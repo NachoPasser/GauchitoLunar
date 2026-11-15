@@ -45,7 +45,7 @@ function niceStep(rough) {
 
 export function createSkyline(svg, { onWindowChange } = {}) {
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.style.cursor = "ew-resize";   // afforda "arrastrable en horizontal"
+  svg.style.cursor = "crosshair";    // la ventana sigue el cursor en hover
   svg.style.touchAction = "none";   // el drag no scrollea en touch
   const stars = makeStars(90);
   const st = {
@@ -94,18 +94,9 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     draw();
     if (onWindowChange) onWindowChange(st.azWindow);
   }
-  let dragging = false;
-  svg.addEventListener("pointerdown", (e) => {
-    dragging = true;
-    svg.setPointerCapture(e.pointerId);
+  svg.addEventListener("pointermove", (e) => {
     centerWindow(azAtClientX(e.clientX));
   });
-  svg.addEventListener("pointermove", (e) => {
-    if (dragging) centerWindow(azAtClientX(e.clientX));
-  });
-  const endDrag = () => { dragging = false; };
-  svg.addEventListener("pointerup", endDrag);
-  svg.addEventListener("pointercancel", endDrag);
 
   // Rango vertical dinámico (piso ~5°) o cielo completo (0–90°).
   function range() {
@@ -220,7 +211,7 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     }));
   }
 
-  // Parte un track en subtramos por wrap de azimut y por cambio de visibilidad.
+  // Parte un track en subtramos por wrap de azimut (>180°) y por cambio de visibilidad.
   function segments(track) {
     const segs = [];
     let cur = null;
@@ -237,7 +228,7 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     return segs;
   }
 
-  // Track: brillante = visible, punteado apagado = tapado por el terreno.
+  // Track: sólido y opaco donde el astro está visible; punteado y tenue donde está tapado.
   function drawTrack(y, track, color) {
     for (const seg of segments(track)) {
       if (seg.pts.length < 2) {
@@ -258,25 +249,6 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     }
   }
 
-  // Etiqueta "tapado por el terreno" sobre el primer tramo bloqueado.
-  function drawBlockedLabel(y) {
-    for (const track of [st.earth, st.sun]) {
-      const seg = segments(track).find((s) => !s.visible && s.pts.length > 2);
-      if (!seg) continue;
-      const mid = seg.pts[Math.floor(seg.pts.length / 2)];
-      // Clamp para que la etiqueta no se recorte en los bordes (no medimos ancho:
-      // ~54px de medio-texto) y halo blanco para legibilidad sobre el terreno.
-      const cx = Math.min(Math.max(x(mid.az), PAD.l + 54), W - PAD.r - 54);
-      const t = el("text", {
-        x: cx, y: y(mid.el) - 7, "text-anchor": "middle", "font-size": 10,
-        fill: "#cbd5e1", stroke: GROUND, "stroke-width": 3, "paint-order": "stroke",
-      });
-      t.textContent = "tapado por el terreno";
-      svg.appendChild(t);
-      return;
-    }
-  }
-
   function drawLegend() {
     [["Sol", SUN], ["Tierra", EARTH]].forEach(([lbl, c], i) => {
       const gx = W - PAD.r - 118 + i * 62, gy = PAD.t + 8;
@@ -289,7 +261,7 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     });
   }
 
-  // Marcador del instante actual: relleno = visible, hueco = tapado.
+  // Marcador del instante actual: relleno si visible, hueco si tapado.
   function drawCursor(y) {
     if (st.cursor == null) return;
     for (const [track, color] of [[st.earth, EARTH], [st.sun, SUN]]) {
@@ -313,7 +285,6 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     drawCommsMargin(y);
     drawTrack(y, st.earth, EARTH);
     drawTrack(y, st.sun, SUN);
-    drawBlockedLabel(y);
     drawCursor(y);
     drawLegend();
   }

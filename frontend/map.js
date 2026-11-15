@@ -7,8 +7,8 @@ import { getSites, getSite, mapUrl, getMapMeta } from "./api.js";
 import { createProjection } from "./proj.js";
 import { createDetailModal } from "./detailModal.js";
 import { createTop3 } from "./top3.js";
-import { windowDays, startDate, addSitio, removeSitio, setSitioActivo, getState }
-  from "./state.js";
+import { windowDays, startDate, addSitio, removeSitio, setSitioActivo, getState,
+  renameSitio } from "./state.js";
 
 const $ = (id) => document.getElementById(id);
 const stage = $("map-stage");
@@ -214,15 +214,28 @@ function drawGlobe() {
   };
   lbl("S", cy - r - 9, 0.95);
   lbl("N", cy + r + 22, 0.5);
-  // Ícono de perspectiva (ojo de perfil) sobre la S: dos trazos que se cruzan arriba
-  // (la mira) + base curva. Sin relleno, solo contorno.
-  const yT = cy - r - 60, yB = cy - r - 30, hw = 15, tl = 6;
-  const d =
-    `M${cx - hw} ${yB} L${cx + tl} ${yT}` +                 // abajo-izq → arriba-der
-    `M${cx + hw} ${yB} L${cx - tl} ${yT}` +                 // abajo-der → arriba-izq (cruzan)
-    `M${cx - hw} ${yB} Q${cx} ${yB + 5} ${cx + hw} ${yB}`;  // base curva
-  g.appendChild(svg("path", { d, fill: "none", stroke: "#cbd5e1", "stroke-opacity": 0.95,
-    "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+  // Ícono de perspectiva (ojo): vértice único arriba, dos líneas que abren hacia abajo
+  // (3× más grande, más estrecho), pestañas cortas hacia abajo. Sin cruce.
+  const EYE_HW = 22, EXT_Y = 8, EXT_X = 5, CURVE = 9;
+  const yV = cy - r - 80;     // vértice (punto único, punta del ojo)
+  const yBe = cy - r - 30;    // base (parte ancha, con pestañas)
+  const de =
+    `M${cx} ${yV} L${cx - EYE_HW} ${yBe}` +
+    `M${cx} ${yV} L${cx + EYE_HW} ${yBe}` +
+    `M${cx - EYE_HW} ${yBe} l${-EXT_X} ${EXT_Y}` +
+    `M${cx + EYE_HW} ${yBe} l${EXT_X} ${EXT_Y}` +
+    `M${cx - EYE_HW} ${yBe} Q${cx} ${yBe + CURVE} ${cx + EYE_HW} ${yBe}`;
+  g.appendChild(svg("path", { d: de, fill: "none", stroke: "#cbd5e1", "stroke-opacity": 0.95,
+    "stroke-width": 2.2, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+  // Iris de perfil: almendra horizontal (el ojo visto de costado) + pupila.
+  const irisY = yBe - 3, iW = 6, iH = 3.5;
+  const dIris = `M${cx - iW} ${irisY}` +
+    `Q${cx} ${irisY - iH} ${cx + iW} ${irisY}` +
+    `Q${cx} ${irisY + iH} ${cx - iW} ${irisY} Z`;
+  g.appendChild(svg("path", { d: dIris, fill: "none", stroke: "#cbd5e1",
+    "stroke-opacity": 0.88, "stroke-width": 1.5 }));
+  g.appendChild(svg("circle", { cx, cy: irisY, r: 2.2,
+    fill: "#cbd5e1", "fill-opacity": 0.65 }));
 }
 
 // Barra de escala en el margen inferior. 100 km = (100/303.48) del ancho del DISCO,
@@ -266,31 +279,34 @@ function drawDirArrows(sunAz, earthAz, tLabel, frame) {
   const ox = baseOx * zoom + (panX / stageW) * 1000;
   const oy = baseOy * zoom + (panY / stageW) * 1000;
   const fx = ox - C, fy = oy - C;            // sitio relativo al centro
-  const START = 26;
+  const ASTRO_R = 11, AL = ASTRO_R * 2.8;    // ~50% más grande; AL = flecha corta
   const arrow = (azDeg, color, label) => {
     const a = (azDeg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
-    const dx = c * nx + s * ex, dy = c * ny + s * ey;   // azimut DESDE EL SITIO → dir unitaria
+    const dx = c * nx + s * ex, dy = c * ny + s * ey;
     // Astro = donde el rayo desde el sitio cruza el anillo fijo (o margen si hay zoom)
     const targetR = zoom > 1 ? Math.max(R, Math.hypot(fx, fy) + 90) : R;
     const fd = fx * dx + fy * dy;
     const disc = fd * fd - (fx * fx + fy * fy - targetR * targetR);
     const t = disc >= 0 ? -fd + Math.sqrt(disc) : targetR;
-    const bx = ox + dx * START, by = oy + dy * START;   // arranca despegado del marcador
-    const tx = ox + dx * t, ty = oy + dy * t;           // punta = astro sobre la órbita
-    const line = (w, col, op) => svg("line", { x1: bx, y1: by, x2: tx, y2: ty,
-      stroke: col, "stroke-width": w, "stroke-linecap": "round", "stroke-opacity": op });
-    grp.appendChild(line(9, "#0b1124", 0.5));           // halo oscuro (legible sobre terreno)
-    grp.appendChild(line(6, color, 1));
-    // Punta: dos trazos hacia atrás.
-    const px = -dx, py = -dy, qx = -dy, qy = dx, sz = 12;
-    grp.appendChild(svg("path", { stroke: color, "stroke-width": 6, fill: "none",
+    const tx = ox + dx * t, ty = oy + dy * t;    // posición del astro
+    // Flecha corta centrada en el astro: AL unidades antes y después del centro.
+    const ax1 = tx - dx * AL, ay1 = ty - dy * AL;
+    const ax2 = tx + dx * AL, ay2 = ty + dy * AL;
+    grp.appendChild(svg("line", { x1: ax1, y1: ay1, x2: ax2, y2: ay2,
+      stroke: "#0b1124", "stroke-width": 10, "stroke-linecap": "round",
+      "stroke-opacity": 0.5 }));
+    grp.appendChild(svg("line", { x1: ax1, y1: ay1, x2: ax2, y2: ay2,
+      stroke: color, "stroke-width": 7, "stroke-linecap": "round" }));
+    // Punta (en el extremo que apunta lejos del sitio).
+    const px = -dx, py = -dy, qx = -dy, qy = dx, sz = 13;
+    grp.appendChild(svg("path", { stroke: color, "stroke-width": 7, fill: "none",
       "stroke-linecap": "round", "stroke-linejoin": "round",
-      d: `M${tx + (px + qx) * sz} ${ty + (py + qy) * sz}L${tx} ${ty}` +
-         `L${tx + (px - qx) * sz} ${ty + (py - qy) * sz}` }));
-    // Astro: disco de color + rótulo con halo (se lee sobre margen o terreno).
-    grp.appendChild(svg("circle", { cx: tx, cy: ty, r: 7, fill: color,
-      stroke: "#0b1124", "stroke-width": 2 }));
-    const lbl = svg("text", { x: tx, y: ty - 13, fill: "#f3f6fb", "text-anchor": "middle",
+      d: `M${ax2 + (px + qx) * sz} ${ay2 + (py + qy) * sz}L${ax2} ${ay2}` +
+         `L${ax2 + (px - qx) * sz} ${ay2 + (py - qy) * sz}` }));
+    // Astro: disco de color + rótulo con halo.
+    grp.appendChild(svg("circle", { cx: tx, cy: ty, r: ASTRO_R, fill: color,
+      stroke: "#0b1124", "stroke-width": 2.5 }));
+    const lbl = svg("text", { x: tx, y: ty - 18, fill: "#f3f6fb", "text-anchor": "middle",
       "font-size": 18, "font-family": "Inter", "font-weight": 600,
       stroke: "#0b1124", "stroke-width": 3, "paint-order": "stroke" });
     lbl.textContent = label;
@@ -416,31 +432,39 @@ function addMarker(lon, lat, name, kind) {
     }
     setActive(m);
     activeSite = { lat, lon };
-    setSitioActivo({ lat, lon, name });
-    modal.open(lat, lon, name,
-      kind === "pin" ? { onDelete: () => deletePin(lat, lon, m) } : {});
+    // Para pins, leer el nombre actual del estado (puede haber sido renombrado).
+    const currentName = kind === "pin"
+      ? (getState().sitios.find(
+           (s) => Math.abs(s.lat - lat) < 1e-6 && Math.abs(s.lon - lon) < 1e-6
+         )?.name ?? name)
+      : name;
+    setSitioActivo({ lat, lon, name: currentName });
+    const pinOpts = kind === "pin" ? {
+      onDelete: () => deletePin(lat, lon, m),
+      onRename: makeRenameCallback(lat, lon, m),
+    } : {};
+    modal.open(lat, lon, currentName, pinOpts);
   });
   layer.appendChild(m);
   return m;
 }
 
-// Borra una chincheta propia: del estado, del mapa, y cierra el detalle.
+// Borra una chincheta propia: del estado, del mapa, la cuña y cierra el detalle.
 function deletePin(lat, lon, m) {
   removeSitio(lat, lon);
   if (m) m.remove();
   if (activeEl === m) setActive(null);
   activeSite = null;
   modal.close();
+  const cone = $("map-cone");
+  if (cone) cone.remove();
 }
 
 // Click en zona libre (dentro del disco): agrega una chincheta 📍 y abre su detalle.
 // Sin paso intermedio: el detalle carga en vivo (ver loader en detailModal).
 function onFreeClick(e) {
   if (!proj || isDragging || justDragged || modal.isLoading()) return;
-  const r = disk.getBoundingClientRect();
-  const u = (e.clientX - r.left) / r.width;
-  const v = (e.clientY - r.top) / r.height;
-  // Solo dentro del disco circular (como el tooltip): afuera no hay terreno mapeado.
+  const [u, v] = screenToNorm(e.clientX, e.clientY);
   if (Math.hypot(u - 0.5, v - 0.5) > 0.5) return;
   const [lon, lat] = proj.normToLonlat(u, v);
   const name = `${Math.abs(lat).toFixed(1)}°S ${Math.round(((lon % 360) + 360) % 360)}°E`;
@@ -449,7 +473,10 @@ function onFreeClick(e) {
   setActive(m);
   activeSite = { lat, lon };
   setSitioActivo({ lat, lon, name });
-  modal.open(lat, lon, name, { onDelete: () => deletePin(lat, lon, m) });
+  modal.open(lat, lon, name, {
+    onDelete: () => deletePin(lat, lon, m),
+    onRename: makeRenameCallback(lat, lon, m),
+  });
   setStatus("");
 }
 
@@ -498,18 +525,30 @@ async function init() {
 
 disk.addEventListener("click", onFreeClick);
 
-// Lectura lat/lon viva que sigue al cursor (Opción A). Solo dentro del disco circular:
-// afuera la proyección no mapea terreno real. Latitud siempre sur (Math.abs + "°S").
+// Convierte coordenadas de pantalla → normalizadas del disco completo [0,1], corrigiendo
+// zoom y pan. `stage` no está transformado, `#map-world` sí → usamos la rect del stage.
+function screenToNorm(clientX, clientY) {
+  const sr = stage.getBoundingClientRect();
+  const inset = DISK_MARGIN / 1000;          // 0.14
+  const relX = (clientX - sr.left - panX) / zoom;
+  const relY = (clientY - sr.top - panY) / zoom;
+  const u = (relX / sr.width - inset) / (1 - 2 * inset);
+  const v = (relY / sr.height - inset) / (1 - 2 * inset);
+  return [u, v];
+}
+
+// Lectura lat/lon viva que sigue al cursor. Solo dentro del disco circular.
+// Posicionado en coords del stage (no del disco) → no escala con el zoom del mundo.
 function onHover(e) {
   const cur = $("map-cursor");
   if (!proj || isDragging) { cur.classList.add("hidden"); return; }
-  const r = disk.getBoundingClientRect();
-  const u = (e.clientX - r.left) / r.width, v = (e.clientY - r.top) / r.height;
+  const [u, v] = screenToNorm(e.clientX, e.clientY);
   if (Math.hypot(u - 0.5, v - 0.5) > 0.5) { cur.classList.add("hidden"); return; }
   const [lon, lat] = proj.normToLonlat(u, v);
   cur.textContent = `${Math.abs(lat).toFixed(1)}°S · ${Math.round(lon) % 360}°E`;
-  cur.style.left = `${u * 100}%`;
-  cur.style.top = `${v * 100}%`;
+  const sr = stage.getBoundingClientRect();
+  cur.style.left = `${((e.clientX - sr.left) / sr.width) * 100}%`;
+  cur.style.top = `${((e.clientY - sr.top) / sr.height) * 100}%`;
   cur.classList.remove("hidden");
 }
 disk.addEventListener("mousemove", onHover);
@@ -780,5 +819,64 @@ if (zoomSlider) {
     setZoom(parseFloat(e.target.value));
   });
 }
+
+// Botón Comparar: abre el modal de ranking.
+const top3Btn = $("top3-btn");
+if (top3Btn) top3Btn.addEventListener("click", (e) => { e.stopPropagation(); top3.open(); });
+
+// Callback de renombre: valida que el nuevo nombre no duplique otra chincheta del usuario.
+// Devuelve true si se guardó, false si se rechazó (detailModal.js revierte el nombre en UI).
+function makeRenameCallback(lat, lon, m) {
+  return (newName) => {
+    const dup = getState().sitios.some(
+      (s) => s.name === newName &&
+             (Math.abs(s.lat - lat) > 1e-6 || Math.abs(s.lon - lon) > 1e-6));
+    if (dup) return false;
+    renameSitio(lat, lon, newName);
+    if (m) m.title = `${newName} · ${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
+    return true;
+  };
+}
+
+// Actualiza los valores mostrados junto a los sliders de coordenadas.
+function updateCoordsDisplay() {
+  const lat = parseFloat($("coords-lat")?.value);
+  const lon = parseFloat($("coords-lon")?.value);
+  const ld = $("lat-display"), lotd = $("lon-display");
+  if (ld && isFinite(lat)) ld.textContent = `${Math.abs(lat).toFixed(1)}°S`;
+  if (lotd && isFinite(lon)) lotd.textContent = `${Math.round(lon)}°E`;
+}
+
+// Agrega una chincheta desde los sliders de coordenadas.
+function addCoordsPin() {
+  if (!proj) return;
+  const lat = parseFloat($("coords-lat")?.value);
+  const lon = parseFloat($("coords-lon")?.value);
+  if (!isFinite(lat) || !isFinite(lon)) return;
+  const [u, v] = proj.lonlatToNorm(lon, lat);
+  if (Math.hypot(u - 0.5, v - 0.5) > 0.5) return;
+  const name = `${Math.abs(lat).toFixed(1)}°S ${Math.round(lon)}°E`;
+  addSitio({ name, lat, lon, kind: "pin" });
+  const m = addMarker(lon, lat, name, "pin");
+  setActive(m);
+  activeSite = { lat, lon };
+  setSitioActivo({ lat, lon, name });
+  modal.open(lat, lon, name, {
+    onDelete: () => deletePin(lat, lon, m),
+    onRename: makeRenameCallback(lat, lon, m),
+  });
+  setStatus("");
+}
+
+const coordsAdd = $("coords-add");
+if (coordsAdd) coordsAdd.addEventListener("click", (e) => { e.stopPropagation(); addCoordsPin(); });
+["coords-lat", "coords-lon"].forEach((id) => {
+  const inp = $(id);
+  if (!inp) return;
+  ["click", "pointerdown", "pointermove", "pointerup"].forEach(ev =>
+    inp.addEventListener(ev, (e) => e.stopPropagation()));
+  inp.addEventListener("input", (e) => { e.stopPropagation(); updateCoordsDisplay(); });
+});
+updateCoordsDisplay();   // muestra los valores iniciales
 
 init();

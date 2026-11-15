@@ -148,13 +148,61 @@ export function createDetailModal({ windowDays = 30, date = null,
     requestAnimationFrame(() => updateFrame());
   }
 
-  // Botón 🗑: visible solo si el sitio es borrable (chincheta propia). onclick se
-  // reemplaza en cada apertura (no acumula listeners).
+  // Botón 🗑: visible solo si el sitio es borrable (chincheta propia).
   function setupDelete(onDelete) {
     const btn = $("delete-btn");
     if (!btn) return;
     btn.onclick = onDelete || null;
     btn.classList.toggle("hidden", !onDelete);
+  }
+
+  // Botón ✏: visible solo para chinchetas propias. Abre un input inline sobre el h2.
+  // onRename(newName) debe devolver true si acepta, false si rechaza (duplicado).
+  function setupRename(onRename) {
+    const btn = $("rename-btn");
+    if (!btn) return;
+    btn.onclick = null;
+    btn.classList.toggle("hidden", !onRename);
+    if (!onRename) return;
+    btn.onclick = () => {
+      const nameEl = $("site-name");
+      if (!nameEl) return;
+      const original = nameEl.textContent.trim();
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.value = original;
+      inp.maxLength = 40;
+      inp.className = nameEl.className;
+      inp.style.cssText =
+        "font:inherit;color:inherit;background:transparent;" +
+        "border:none;border-bottom:1.5px solid #60a5fa;outline:none;" +
+        "width:100%;min-width:0;";
+      nameEl.style.display = "none";
+      nameEl.insertAdjacentElement("afterend", inp);
+      inp.focus(); inp.select();
+      const finish = (save) => {
+        inp.remove();
+        nameEl.style.display = "";
+        if (save) {
+          const v = inp.value.trim() || original;
+          if (v !== original) {
+            const accepted = onRename(v);
+            if (accepted !== false) {
+              nameEl.textContent = v;
+            } else {
+              nameEl.textContent = original;
+              setStatus("Ya existe un sitio con ese nombre", true);
+              setTimeout(() => setStatus(""), 2500);
+            }
+          }
+        }
+      };
+      inp.addEventListener("blur", () => finish(true));
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); inp.blur(); }
+        if (e.key === "Escape") { finish(false); }
+      });
+    };
   }
 
   // Wiring de controles (una sola vez).
@@ -182,6 +230,7 @@ export function createDetailModal({ windowDays = 30, date = null,
     open(lat, lon, name, opts = {}) {
       openEmpty();
       setupDelete(opts.onDelete);
+      setupRename(opts.onRename);
       showSite(lat, lon, name);
     },
     show: showSite,
