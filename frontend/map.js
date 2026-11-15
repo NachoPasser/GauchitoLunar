@@ -33,6 +33,12 @@ function setStatus(msg) { $("map-status").textContent = msg || ""; }
 
 const SVGNS = "http://www.w3.org/2000/svg";
 const CONE = "#d946ef", CONE_EDGE = "#f0abfc";   // cuña de azimut (fucsia, §2.3)
+
+// Geometría del disco de luna en unidades del stage (viewBox 0..1000, centro=500).
+// DEBE coincidir con `inset` de #map-disk en map.html. Disco más chico ⇒ más cielo.
+const DISK_MARGIN = 140;                          // inset 14%
+const DISK_SPAN = 1000 - 2 * DISK_MARGIN;         // ancho del disco (720)
+const DISK_R = DISK_SPAN / 2;                      // radio del disco (360)
 function svg(tag, attrs) {
   const el = document.createElementNS(SVGNS, tag);
   for (const k in attrs) el.setAttribute(k, attrs[k]);
@@ -54,8 +60,8 @@ const STARS = (() => {
 
 function drawStars(go) {
   for (const st of STARS) {
-    // Saltamos las que caen dentro del disco (radio 400): el disco las taparía igual.
-    if ((st.x - 500) ** 2 + (st.y - 500) ** 2 < 405 ** 2) continue;
+    // Saltamos las que caen dentro del disco: el disco las taparía igual.
+    if ((st.x - 500) ** 2 + (st.y - 500) ** 2 < (DISK_R + 5) ** 2) continue;
     go.appendChild(svg("circle", { cx: st.x, cy: st.y, r: st.r,
       fill: "#fff", opacity: st.o }));
   }
@@ -92,33 +98,80 @@ function drawChrome() {
   pt.textContent = "polo S";
   g.appendChild(pt);
   // Chrome del margen (sobre el lienzo claro): globo + barra de escala.
-  drawGlobeInset();
+  drawGlobe();
   drawScaleBar();
 }
 
-// Inset de globo (arriba-izq, sobre el margen oscuro): esquema de la Luna con el
-// casquete sur resaltado, para que se lea "vista cenital del polo sur". Decorativo.
-function drawGlobeInset() {
-  const g = $("map-chrome-outer"), cx = 72, cy = 72, r = 50;
-  g.appendChild(svg("circle", { cx, cy, r, fill: "rgba(255,255,255,.06)",
-    stroke: "rgba(255,255,255,.5)", "stroke-width": 2 }));
-  // Casquete resaltado (~tercio inferior): arco del borde + cuerda.
-  const cut = cy + r * 0.45, hw = Math.sqrt(r * r - (cut - cy) ** 2);
-  g.appendChild(svg("path", { fill: "rgba(96,165,250,.3)", stroke: "#60a5fa",
-    "stroke-opacity": 0.9, "stroke-width": 1.5,
-    d: `M${cx - hw} ${cut}A${r} ${r} 0 0 0 ${cx + hw} ${cut}Z` }));
-  g.appendChild(svg("circle", { cx, cy: cy + r, r: 3, fill: "#fff" }));
-  const t = svg("text", { x: cx, y: cy + r + 18, fill: "#cbd5e1",
-    "font-size": 15, "text-anchor": "middle", "font-family": "JetBrains Mono" });
-  t.textContent = "vista polo S";
-  g.appendChild(t);
+// Globo-localizador (abajo-derecha): esfera ortográfica SVG "esqueleto/transparente"
+// con el casquete sur coloreado arriba, inclinada hacia el observador. Comunica que el
+// disco grande es la MISMA tapa vista a pico (no todo el hemisferio). Sin 3D real:
+// proyectamos puntos de la esfera a mano. La sincronía hover↔mapa es una fase posterior.
+const GLOBE = { cx: 894, cy: 882, r: 84, tilt: 28, cap: 18 };
+
+// Proyección ortográfica de (lat,lon) con el eje polar inclinado para que el polo SUR
+// quede arriba y de cara al observador. Devuelve coords en la unidad-esfera (x der, y
+// abajo como SVG) y profundidad (depth>0 = cara frontal).
+function globePt(latDeg, lonDeg) {
+  const la = (latDeg * Math.PI) / 180, lo = (lonDeg * Math.PI) / 180;
+  const t = ((90 + GLOBE.tilt) * Math.PI) / 180;    // >90° ⇒ polo sur arriba y frontal
+  const x = Math.cos(la) * Math.sin(lo);
+  const y = Math.cos(la) * Math.cos(lo);
+  const z = Math.sin(la);
+  const y2 = y * Math.cos(t) - z * Math.sin(t);
+  const z2 = y * Math.sin(t) + z * Math.cos(t);
+  return { x, y: -y2, depth: z2 };
+}
+
+function drawGlobe() {
+  const g = $("map-chrome-outer"), { cx, cy, r } = GLOBE;
+  const sx = (p) => cx + r * p.x, sy = (p) => cy + r * p.y;
+  const poly = (pts) =>
+    pts.map((p, i) => `${i ? "L" : "M"}${sx(p).toFixed(1)} ${sy(p).toFixed(1)}`).join("");
+  // Limbo de la esfera (vidrio): relleno casi nulo + borde tenue ⇒ look esquelético.
+  g.appendChild(svg("circle", { cx, cy, r, fill: "rgba(255,255,255,.05)",
+    stroke: "rgba(255,255,255,.5)", "stroke-width": 1.5 }));
+  // Una curva se parte en tramos frontales (nítidos) y traseros (tenues): transparencia.
+  const curve = (pts) => {
+    let run = [], front = pts[0].depth > 0;
+    const flush = () => { if (run.length > 1) g.appendChild(svg("path", { d: poly(run),
+      fill: "none", stroke: "#cfe0ff", "stroke-width": 1,
+      "stroke-opacity": front ? 0.38 : 0.12 })); };
+    for (const p of pts) {
+      const f = p.depth > 0;
+      if (f !== front) { flush(); run = run.length ? [run[run.length - 1]] : []; front = f; }
+      run.push(p);
+    }
+    flush();
+  };
+  const sample = (fn) => { const a = []; for (let k = 0; k <= 36; k++) a.push(fn(k)); return a; };
+  for (let lon = 0; lon < 360; lon += 45)                       // meridianos
+    curve(sample((k) => globePt(-90 + (k * 180) / 36, lon)));
+  for (let lat = -60; lat <= 60; lat += 30)                     // paralelos
+    curve(sample((k) => globePt(lat, (k * 360) / 36)));
+  // Casquete sur: borde del paralelo a `cap`° del polo, cerrado y relleno (la tapa).
+  const capPts = sample((k) => globePt(-(90 - GLOBE.cap), (k * 360) / 36));
+  g.appendChild(svg("path", { d: `${poly(capPts)}Z`, fill: "rgba(96,165,250,.4)",
+    stroke: "#60a5fa", "stroke-opacity": 0.95, "stroke-width": 1.5 }));
+  const pole = globePt(-90, 0);
+  g.appendChild(svg("circle", { cx: sx(pole), cy: sy(pole), r: 2.5, fill: "#fff" }));
+  // Polos rotulados: S arriba (de cara, casquete) y N abajo (oculto, tenue). Deja claro
+  // que la vista está "dada vuelta" respecto de la convención humana (N arriba).
+  const lbl = (txt, y, op) => {
+    const e = svg("text", { x: cx, y, fill: "#cbd5e1", "fill-opacity": op,
+      "font-size": 18, "font-weight": 700, "text-anchor": "middle",
+      "font-family": "JetBrains Mono" });
+    e.textContent = txt;
+    g.appendChild(e);
+  };
+  lbl("S", cy - r - 9, 0.95);
+  lbl("N", cy + r + 22, 0.5);
 }
 
 // Barra de escala en el margen inferior. 100 km = (100/303.48) del ancho del DISCO,
-// y el disco mide 800 unidades de stage (80% del lado). Colores claros: va sobre oscuro.
+// que mide DISK_SPAN unidades de stage. Colores claros: va sobre oscuro.
 function drawScaleBar() {
   const go = $("map-chrome-outer");
-  const len = (100000 / 303480) * 800, x0 = 500 - len / 2, y = 960;
+  const len = (100000 / 303480) * DISK_SPAN, x0 = 500 - len / 2, y = 960;
   go.appendChild(svg("path", {
     d: `M${x0} ${y}h${len}M${x0} ${y - 7}v14M${x0 + len} ${y - 7}v14`,
     stroke: "#cbd5e1", "stroke-opacity": 0.95, "stroke-width": 2.5 }));
@@ -133,13 +186,13 @@ function drawScaleBar() {
 // de pantalla (sinA, -cosA) desde el polo. Son la dirección en UN instante (inicio de
 // ventana), rotulado para honestidad. Dibuja en la capa exterior (sobre fondo claro).
 function drawDirArrows(sunAz, earthAz, tLabel, frame) {
-  const g = $("map-chrome-outer"), C = 500, R = 450;   // órbita fija, centrada en el polo
+  const g = $("map-chrome-outer"), C = 500, R = DISK_R + 50;  // órbita fija en el polo
   const old = $("map-arrows");
   if (old) old.remove();                     // redibujo por tick: reemplaza el grupo
   const grp = svg("g", { id: "map-arrows" });
   const { nx, ny, ex, ey } = frame;
-  // Sitio activo en coordenadas de stage (el disco ocupa el 80% central → inset 10%).
-  const ox = 100 + frame.P[0] * 800, oy = 100 + frame.P[1] * 800;
+  // Sitio activo en coordenadas de stage (el disco ocupa el centro, ver DISK_*).
+  const ox = DISK_MARGIN + frame.P[0] * DISK_SPAN, oy = DISK_MARGIN + frame.P[1] * DISK_SPAN;
   const fx = ox - C, fy = oy - C;            // sitio relativo al polo
   const START = 26;
   const arrow = (azDeg, color, label) => {
@@ -333,6 +386,23 @@ disk.addEventListener("click", (e) => {
   if (e.target.closest("#free-popup")) return;      // clicks del popup se manejan aparte
   onFreeClick(e);
 });
+
+// Lectura lat/lon viva que sigue al cursor (Opción A). Solo dentro del disco circular:
+// afuera la proyección no mapea terreno real. Latitud siempre sur (Math.abs + "°S").
+function onHover(e) {
+  const cur = $("map-cursor");
+  if (!proj) return;
+  const r = disk.getBoundingClientRect();
+  const u = (e.clientX - r.left) / r.width, v = (e.clientY - r.top) / r.height;
+  if (Math.hypot(u - 0.5, v - 0.5) > 0.5) { cur.classList.add("hidden"); return; }
+  const [lon, lat] = proj.normToLonlat(u, v);
+  cur.textContent = `${Math.abs(lat).toFixed(1)}°S · ${Math.round(lon) % 360}°E`;
+  cur.style.left = `${u * 100}%`;
+  cur.style.top = `${v * 100}%`;
+  cur.classList.remove("hidden");
+}
+disk.addEventListener("mousemove", onHover);
+disk.addEventListener("mouseleave", () => $("map-cursor").classList.add("hidden"));
 
 function freeName(p) {
   return `Sitio ${p.lat.toFixed(1)}°, ${p.lon.toFixed(1)}°E`;

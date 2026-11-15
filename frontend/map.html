@@ -40,7 +40,7 @@
 
           <!-- Disco de luna (circular, recorta la textura cuadrada) -->
           <div id="map-disk" class="absolute rounded-full overflow-hidden"
-               style="inset:10%;background:#0d1426">
+               style="inset:14%;background:#0d1426">
             <img id="map-bg" alt="Mapa de luz promedio del polo sur lunar"
                  class="absolute inset-0 w-full h-full object-cover select-none"
                  draggable="false"
@@ -63,6 +63,13 @@
 
             <p id="map-status" class="mono absolute left-3 bottom-3 text-[11px]"
                style="color:rgba(255,255,255,.8)"></p>
+
+            <!-- Lectura lat/lon viva: sigue al cursor sobre el disco (honesta a la
+                 proyección polar; la grilla cartesiana sería engañosa acá). -->
+            <div id="map-cursor" class="mono absolute z-20 hidden pointer-events-none"
+                 style="background:rgba(11,17,36,.82);border:1px solid rgba(255,255,255,.18);
+                        color:#e8eefc;padding:2px 7px;border-radius:6px;font-size:11px;
+                        white-space:nowrap;transform:translate(12px,-130%)"></div>
           </div>
         </div>
       </div>
