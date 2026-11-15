@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resultados Top 3 // El Sextante Polar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --nasa-blue: #0032A0;
+      --nasa-blue-hover: #00257A;
+      --nasa-red: #E63946;
+      --solar-amber: #D97706;
+      --solar-bg: #FEF3C7;
+      --earth-blue-bg: #DBEAFE;
+      --slate-950: #0F172A;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748B;
+      --slate-400: #94A3B8;
+      --slate-200: #E2E8F0;
+      --slate-100: #F1F5F9;
+      --slate-50: #F8FAFC;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      font-family: var(--font-sans);
+      background-color: #05070E;
+      color: var(--slate-950);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 28px;
+    }
+
+    /* =========================================================
+       CONTENEDOR EXTERIOR: CONSOLA DE RACK / TELEMETRÍA
+       (Distinto al visor de la Luna y a la sonda)
+       ========================================================= */
+    .console-outer-shell {
+      position: relative;
+      width: 100%;
+      max-width: 1120px;
+      padding: 12px;
+      background: linear-gradient(180deg, #192030 0%, #11151F 100%);
+      border: 1.5px solid #2A354D;
+      border-top: 2px solid #0032A0;
+      border-radius: 22px;
+      box-shadow: 
+        0 26px 65px rgba(0, 0, 0, 0.88),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      z-index: 2;
+    }
+
+    /* =========================================================
+       HARDWARE DE CONSOLA DE RACK (POSICIONADO EN PX FIJOS)
+       Nunca se deforma ni se mete adentro al expandir la tabla
+       ========================================================= */
+    /* Puente LED superior centrado */
+    .rack-top-bridge {
+      position: absolute;
+      top: -9px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 92px;
+      height: 9px;
+      background: #131824;
+      border: 1.2px solid #334155;
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .rack-led {
+      width: 4.5px;
+      height: 4.5px;
+      border-radius: 50%;
+    }
+
+    /* Manijas de rack laterales centradas verticalmente */
+    .rack-handle {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 9px;
+      height: 96px;
+      border: 1.8px solid #64748B;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .rack-handle.left {
+      left: -9px;
+      border-right: none;
+      border-radius: 5px 0 0 5px;
+    }
+
+    .rack-handle.right {
+      right: -9px;
+      border-left: none;
+      border-radius: 0 5px 5px 0;
+    }
+
+    /* Detalle de color en cada manija */
+    .rack-handle::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2px;
+      height: 20px;
+      border-radius: 99px;
+    }
+
+    .rack-handle.left::after {
+      left: -1.8px;
+      background: #E92637;
+    }
+
+    .rack-handle.right::after {
+      right: -1.8px;
+      background: #0032A0;
+    }
+
+    /* Tornillos de esquina fijos */
+    .rack-screw {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #0B0E17;
+      border: 1px solid #475569;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .rack-screw.tl { top: 10px; left: 10px; }
+    .rack-screw.tr { top: 10px; right: 10px; }
+    .rack-screw.bl { bottom: 10px; left: 10px; }
+    .rack-screw.br { bottom: 10px; right: 10px; }
+
+    /* Patas / apoyos inferiores anclados siempre por fuera del borde inferior */
+    .rack-foot {
+      position: absolute;
+      bottom: -6px;
+      width: 54px;
+      height: 6px;
+      background: #1E293B;
+      border: 1px solid #475569;
+      border-top: none;
+      border-radius: 0 0 3px 3px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .rack-foot.left { left: 84px; }
+    .rack-foot.right { right: 84px; }
+
+    /* Interior blanco limpio */
+    .console-inner-card {
+      position: relative;
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      z-index: 4;
+    }
+
+    /* =========================================================
+       BARRA SUPERIOR Y ENCABEZADO DEL CRITERIO
+       ========================================================= */
+    .top-bar-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .top-meta-left {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--slate-500);
+    }
+
+    .badge-mission-tag {
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: var(--earth-blue-bg);
+      color: var(--nasa-blue);
+      font-weight: 700;
+    }
+
+    .phase-pills-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .phase-pill {
+      cursor: pointer;
+      padding: 4px 11px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--slate-100);
+      color: var(--slate-500);
+      transition: all 0.14s ease;
+    }
+
+    .phase-pill:hover {
+      color: var(--nasa-blue);
+      border-color: rgba(0, 50, 160, 0.25);
+    }
+
+    .phase-pill.active {
+      background: var(--nasa-blue);
+      color: #FFFFFF;
+    }
+
+    .segmented-progress {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .seg-bar {
+      height: 3px;
+      border-radius: 99px;
+      background: var(--slate-200);
+      transition: background-color 0.18s ease;
+    }
+
+    .seg-bar.filled {
+      background: var(--nasa-blue);
+    }
+
+    .criterion-header {
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--slate-100);
+    }
+
+    .criterion-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--slate-950);
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+
+    .criterion-subtitle {
+      margin-top: 4px;
+      font-size: 13.5px;
+      color: var(--slate-500);
+      line-height: 1.5;
+    }
+
+    /* =========================================================
+       CARRUSEL Y TARJETAS DE RANKING (COLORES ORIGINALES DE TOP6)
+       ========================================================= */
+    @keyframes slideFromRight {
+      from { opacity: 0.4; transform: translate3d(24px, 0, 0); }
+      to   { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+
+    @keyframes slideFromLeft {
+      from { opacity: 0.4; transform: translate3d(-24px, 0, 0); }
+      to   { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+
+    .slide-next {
+      animation: slideFromRight 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .slide-prev {
+      animation: slideFromLeft 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .carousel-stage {
+      display: grid;
+      grid-template-columns: 38px 1fr 38px;
+      align-items: stretch;
+      gap: 14px;
+    }
+
+    .carousel-arrow-btn {
+      width: 38px;
+      border-radius: 12px;
+      border: 1px solid var(--slate-200);
+      background: var(--slate-50);
+      color: var(--slate-600);
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.14s ease;
+    }
+
+    .carousel-arrow-btn:hover {
+      background: var(--nasa-blue);
+      border-color: var(--nasa-blue);
+      color: #FFFFFF;
+    }
+
+    .flags-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .site-rank-card {
+      position: relative;
+      background: #FFFFFF;
+      border: 1px solid var(--slate-200);
+      border-radius: 14px;
+      padding: 18px 18px 16px 21px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 16px;
+      overflow: hidden;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    .site-rank-card:hover {
+      transform: translateY(-2px);
+      border-color: #CBD5E1;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    .site-rank-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 14px;
+      bottom: 14px;
+      width: 3.5px;
+      border-radius: 0 4px 4px 0;
+      background: var(--slate-400);
+    }
+
+    .site-rank-card.rank-1 {
+      background: linear-gradient(180deg, #F8FAFF 0%, #FFFFFF 45%);
+      border: 1.5px solid rgba(0, 50, 160, 0.35);
+      box-shadow: 0 6px 18px rgba(0, 50, 160, 0.06);
+    }
+
+    .site-rank-card.rank-1::before {
+      background: var(--nasa-blue);
+    }
+
+    .site-rank-card.rank-2::before {
+      background: #3B82F6;
+    }
+
+    .site-rank-card.rank-3::before {
+      background: var(--slate-400);
+    }
+
+    .card-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .rank-badge {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-radius: 5px;
+    }
+
+    .rank-badge-1 {
+      background: var(--earth-blue-bg);
+      color: var(--nasa-blue);
+    }
+
+    .rank-badge-default {
+      background: var(--slate-100);
+      color: var(--slate-600);
+    }
+
+    .site-code-tag {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--slate-400);
+    }
+
+    .site-title-block {
+      margin-top: 10px;
+    }
+
+    .site-title {
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--slate-950);
+    }
+
+    .site-coords {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      margin-top: 3px;
+      color: var(--slate-500);
+    }
+
+    .telemetry-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--slate-100);
+    }
+
+    .kpi-eyebrow {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--slate-500);
+    }
+
+    .kpi-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .kpi-value {
+      font-family: var(--font-mono);
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .kpi-value small {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--slate-500);
+    }
+
+    .kpi-status-pill {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 5px;
+    }
+
+    .meter-track {
+      width: 100%;
+      height: 5px;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 8px;
+      background: var(--slate-100);
+    }
+
+    .meter-fill {
+      height: 100%;
+      border-radius: 99px;
+    }
+
+    .sec-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--slate-100);
+    }
+
+    .sec-label {
+      display: block;
+      font-size: 10.5px;
+      color: var(--slate-500);
+    }
+
+    .sec-val {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--slate-950);
+      margin-top: 2px;
+    }
+
+    .inspect-btn {
+      width: 100%;
+      margin-top: 4px;
+      border-radius: 9px;
+      padding: 10px 14px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .inspect-btn-primary {
+      background: var(--nasa-blue);
+      color: #FFFFFF;
+      border: 1px solid var(--nasa-blue);
+    }
+
+    .inspect-btn-primary:hover {
+      background: #E92637;
+      border-color: #E92637;
+    }
+
+    .inspect-btn-secondary {
+      background: var(--slate-50);
+      color: var(--nasa-blue);
+      border: 1px solid var(--slate-200);
+    }
+
+    .inspect-btn-secondary:hover {
+      background: var(--earth-blue-bg);
+      border-color: rgba(0, 50, 160, 0.3);
+    }
+
+    /* =========================================================
+       BOTÓN "VER MÁS" Y TABLA COMPLETA
+       ========================================================= */
+    .toggle-table-container {
+      display: flex;
+      justify-content: center;
+      padding-top: 4px;
+    }
+
+    .btn-toggle-table {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--slate-600);
+      background: var(--slate-50);
+      border: 1px solid var(--slate-200);
+      padding: 10px 20px;
+      border-radius: 9px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-toggle-table:hover {
+      color: var(--nasa-blue);
+      border-color: rgba(0, 50, 160, 0.35);
+      background: #FFFFFF;
+    }
+
+    .table-section {
+      display: none;
+      padding-top: 18px;
+      border-top: 1px solid var(--slate-200);
+      animation: fadeInTable 0.22s ease-out forwards;
+    }
+
+    .table-section.open {
+      display: block;
+    }
+
+    @keyframes fadeInTable {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .table-header-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .table-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--nasa-blue);
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--slate-200);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      padding: 11px 14px;
+      background: var(--slate-50);
+      border-bottom: 1px solid var(--slate-200);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--slate-500);
+      white-space: nowrap;
+    }
+
+    th.col-active {
+      background: var(--earth-blue-bg);
+      color: var(--nasa-blue);
+    }
+
+    td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--slate-100);
+      font-size: 12.5px;
+      white-space: nowrap;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background: var(--slate-50);
+    }
+
+    .td-mono {
+      font-family: var(--font-mono);
+      color: var(--slate-600);
+    }
+
+    .td-sorted {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--nasa-blue);
+      background: rgba(219, 234, 254, 0.25);
+    }
+
+    .row-btn {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      color: #FFFFFF;
+      background: var(--nasa-blue);
+      border: 1px solid var(--slate-200);
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .row-btn:hover {
+      background: #E92637;
+      border-color: #E92637;
+      color: #FFFFFF;
+    }
+
+    /* =========================================================
+       MODAL DE DETALLE PUNTUAL
+       ========================================================= */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 7, 14, 0.78);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-shell {
+      width: 100%;
+      max-width: 430px;
+      background: #161A23;
+      border: 1.5px solid #2E3545;
+      padding: 10px;
+      border-radius: 22px;
+      box-shadow: 0 24px 55px rgba(0, 0, 0, 0.75);
+    }
+
+    .modal-card {
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 22px;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--slate-100);
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+    }
+
+    .modal-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .modal-stat-box {
+      border: 1px solid var(--slate-200);
+      background: var(--slate-50);
+      border-radius: 10px;
+      padding: 11px 12px;
+    }
+
+    .modal-stat-box.full {
+      grid-column: 1 / -1;
+      border-color: rgba(0, 50, 160, 0.25);
+      background: #F8FAFF;
+    }
+
+    @media (max-width: 960px) {
+      .console-inner-card {
+        padding: 20px 16px;
+      }
+
+      .carousel-stage {
+        grid-template-columns: 32px 1fr 32px;
+        gap: 10px;
+      }
+
+      .carousel-arrow-btn {
+        width: 32px;
+        font-size: 18px;
+      }
+
+      .flags-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="console-outer-shell">
+    <!-- BORDE DE CONSOLA DE RACK / CONTROL DE MISIÓN (Distinto al mapa y a la sonda) -->
+    <!-- Hardware exterior anclado en px (inmune al cambio de altura al abrir la tabla) -->
+    <div class="rack-top-bridge" aria-hidden="true">
+      <span class="rack-led" style="background: #E92637;"></span>
+      <span class="rack-led" style="background: #3B82F6;"></span>
+      <span class="rack-led" style="background: #475569;"></span>
+    </div>
+
+    <div class="rack-handle left" aria-hidden="true"></div>
+    <div class="rack-handle right" aria-hidden="true"></div>
+
+    <span class="rack-screw tl" aria-hidden="true"></span>
+    <span class="rack-screw tr" aria-hidden="true"></span>
+    <span class="rack-screw bl" aria-hidden="true"></span>
+    <span class="rack-screw br" aria-hidden="true"></span>
+
+    <div class="rack-foot left" aria-hidden="true"></div>
+    <div class="rack-foot right" aria-hidden="true"></div>
+
+    <div class="console-inner-card">
+      <!-- BARRA SUPERIOR -->
+      <div id="top-three-section">
+        <div class="top-bar-row">
+          <div class="top-meta-left">
+            <span class="badge-mission-tag">RANKING POLO SUR</span>
+            <span>VENTANA: 20 NOV – 20 DIC 2026 (30 DÍAS)</span>
+          </div>
+
+          <div class="phase-pills-group" role="tablist" aria-label="Criterios de clasificación">
+            <button type="button" data-goto="0" class="phase-pill active">01</button>
+            <button type="button" data-goto="1" class="phase-pill">02</button>
+            <button type="button" data-goto="2" class="phase-pill">03</button>
+          </div>
+        </div>
+
+        <div class="segmented-progress">
+          <div id="bar-0" class="seg-bar filled"></div>
+          <div id="bar-1" class="seg-bar"></div>
+          <div id="bar-2" class="seg-bar"></div>
+        </div>
+
+        <!-- ENCABEZADO DEL CRITERIO -->
+        <header id="header-animated-box" class="criterion-header" style="margin-top: 16px;">
+          <h1 id="dynamic-title" class="criterion-title">Top 3 — Viabilidad Global (Mixto)</h1>
+          <p id="dynamic-subtitle" class="criterion-subtitle">
+            Ponderación equilibrada entre energía solar acumulada (kWh) y horas de enlace directo con la Tierra.
+          </p>
+        </header>
+
+        <!-- CARRUSEL DE 3 TARJETAS LIMPIAS -->
+        <section class="carousel-stage" aria-label="Carrusel de Top 3 por criterio" style="margin-top: 18px;">
+          <button type="button" id="prev-arrow-btn" class="carousel-arrow-btn" aria-label="Criterio anterior" title="Anterior">‹</button>
+          <div id="flags-cards-container" class="flags-grid"></div>
+          <button type="button" id="next-arrow-btn" class="carousel-arrow-btn" aria-label="Siguiente criterio" title="Siguiente">›</button>
+        </section>
+      </div>
+
+      <!-- BOTÓN "VER MÁS" -->
+      <div class="toggle-table-container">
+        <button type="button" id="toggle-table-btn" class="btn-toggle-table">
+          <span id="toggle-btn-text">VER TABLA DE POSICIONES COMPLETA</span>
+          <span id="toggle-btn-arrow">↓</span>
+        </button>
+      </div>
+
+      <!-- TABLA DE POSICIONES EXPANDIBLE -->
+      <section id="full-table-section" class="table-section" aria-label="Tabla de posiciones completa">
+        <div class="table-header-row">
+          <span id="table-title" class="table-eyebrow">TABLA DE POSICIONES COMPLETA</span>
+          <span style="font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; color: var(--slate-400);">6 SITIOS EVALUADOS EN POLO SUR</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>POS</th>
+                <th>SITIO CANDIDATO</th>
+                <th id="th-mixed" class="col-active">ÍNDICE MIXTO</th>
+                <th id="th-solar">ENERGÍA (kWh)</th>
+                <th id="th-earth">ENLACE TIERRA</th>
+                <th style="text-align: right;">DETALLE</th>
+              </tr>
+            </thead>
+            <tbody id="standings-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- MODAL DE DETALLE PUNTUAL -->
+  <div id="detail-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-shell">
+      <div class="modal-card">
+        <div class="modal-head">
+          <div>
+            <span id="modal-code" style="display: inline-block; background: var(--earth-blue-bg); color: var(--nasa-blue); font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 5px;">
+              SITIO A-04
+            </span>
+            <h2 id="modal-title" style="font-size: 20px; font-weight: 700; color: var(--slate-950); margin-top: 8px;">Borde Cráter Shackleton</h2>
+            <p id="modal-coords" style="font-family: var(--font-mono); font-size: 11px; color: var(--slate-500); margin-top: 2px;">89.54°S 129.78°E // +1,840m</p>
+          </div>
+          <button type="button" id="close-modal-btn" style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--slate-500); background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 6px; padding: 4px 8px; cursor: pointer;">
+            ✕
+          </button>
+        </div>
+
+        <div class="modal-stats-grid">
+          <div class="modal-stat-box full">
+            <span style="display: block; font-size: 11px; font-weight: 500; color: var(--slate-500);">Índice Mixto Global</span>
+            <strong id="modal-mixed" style="display: block; font-family: var(--font-mono); font-size: 20px; color: var(--nasa-blue); margin-top: 3px;">94.2 / 100</strong>
+          </div>
+          <div class="modal-stat-box">
+            <span style="display: block; font-size: 11px; font-weight: 500; color: var(--slate-500);">Energía Solar (30d)</span>
+            <strong id="modal-solar" style="display: block; font-family: var(--font-mono); font-size: 14px; color: var(--solar-amber); margin-top: 3px;">842 kWh</strong>
+          </div>
+          <div class="modal-stat-box">
+            <span style="display: block; font-size: 11px; font-weight: 500; color: var(--slate-500);">Enlace Directo Tierra</span>
+            <strong id="modal-earth" style="display: block; font-family: var(--font-mono); font-size: 14px; color: var(--nasa-blue); margin-top: 3px;">618 h (85.8%)</strong>
+          </div>
+        </div>
+
+        <button type="button" id="open-sextant-btn" class="inspect-btn inspect-btn-primary" style="padding: 12px 16px;">
+          <span>ABRIR EN SEXTANTE POLAR</span>
+          <span>→</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SITES_DATA = [
+      {
+        id: 'shackleton-rim',
+        code: 'A-04',
+        name: 'Borde Cráter Shackleton',
+        coords: '-89.54°, 129.78°E',
+        mixedScore: 94.2,
+        solarKwh: 842,
+        solarPct: 88.5,
+        earthHours: 618,
+        earthPct: 85.8
+      },
+      {
+        id: 'connecting-ridge',
+        code: 'A-01',
+        name: 'Cresta de Conexión',
+        coords: '-89.45°, 222.60°E',
+        mixedScore: 91.8,
+        solarKwh: 876,
+        solarPct: 92.1,
+        earthHours: 584,
+        earthPct: 81.1
+      },
+      {
+        id: 'malapert-peak',
+        code: 'B-11',
+        name: 'Macizo Malapert Norte',
+        coords: '-85.98°, 2.40°E',
+        mixedScore: 86.4,
+        solarKwh: 695,
+        solarPct: 73.0,
+        earthHours: 698,
+        earthPct: 96.9
+      },
+      {
+        id: 'leibnitz-beta',
+        code: 'B-07',
+        name: 'Meseta Leibnitz Beta',
+        coords: '-85.32°, 31.15°E',
+        mixedScore: 84.9,
+        solarKwh: 730,
+        solarPct: 76.7,
+        earthHours: 672,
+        earthPct: 93.3
+      },
+      {
+        id: 'nobile-rim',
+        code: 'C-09',
+        name: 'Borde Occidental Nobile',
+        coords: '-85.20°, 53.40°E',
+        mixedScore: 81.5,
+        solarKwh: 788,
+        solarPct: 82.8,
+        earthHours: 540,
+        earthPct: 75.0
+      },
+      {
+        id: 'de-gerlache-rim',
+        code: 'A-08',
+        name: 'Cresta Sur de Gerlache',
+        coords: '-88.71°, 288.30°E',
+        mixedScore: 79.3,
+        solarKwh: 815,
+        solarPct: 85.6,
+        earthHours: 492,
+        earthPct: 68.3
+      }
+    ];
+
+    const CRITERIA = [
+      {
+        key: 'mixed',
+        mainTitle: 'Top 3 — Viabilidad Global (Mixto)',
+        tableTitle: 'TABLA DE POSICIONES // ORDENADA POR ÍNDICE MIXTO',
+        desc: 'Ponderación equilibrada entre energía solar acumulada (kWh) y horas de enlace directo con la Tierra.',
+        sortFn: (a, b) => b.mixedScore - a.mixedScore,
+        buildTelemetryBlock(site) {
+          return `
+            <div>
+              <span class="kpi-eyebrow">Índice de viabilidad</span>
+              <div class="kpi-row">
+                <span class="kpi-value" style="color: #0032A0;">
+                  ${site.mixedScore.toFixed(1)} <small>pts</small>
+                </span>
+                <span class="kpi-status-pill" style="background: #DBEAFE; color: #0032A0;">
+                  ${site.mixedScore.toFixed(0)}% ÓPTIMO
+                </span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-fill" style="width: ${site.mixedScore}%; background: #0032A0;"></div>
+              </div>
+            </div>
+
+            <div class="sec-grid">
+              <div>
+                <span class="sec-label">Energía solar</span>
+                <span class="sec-val" style="color: #D97706;">${site.solarKwh} kWh</span>
+              </div>
+              <div>
+                <span class="sec-label">Enlace Tierra</span>
+                <span class="sec-val" style="color: #0032A0;">${site.earthPct}% (${site.earthHours}h)</span>
+              </div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'solar',
+        mainTitle: 'Top 3 — Energía Solar Acumulada (kWh)',
+        tableTitle: 'TABLA DE POSICIONES // ORDENADA POR ENERGÍA SOLAR (kWh)',
+        desc: 'Clasificación por energía eléctrica total generada durante la ventana de 30 días.',
+        sortFn: (a, b) => b.solarKwh - a.solarKwh,
+        buildTelemetryBlock(site) {
+          return `
+            <div>
+              <span class="kpi-eyebrow">Energía acumulada</span>
+              <div class="kpi-row">
+                <span class="kpi-value" style="color: #D97706;">
+                  ${site.solarKwh} <small>kWh</small>
+                </span>
+                <span class="kpi-status-pill" style="background: #FEF3C7; color: #B45309;">
+                  ${site.solarPct}% SOL
+                </span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-fill" style="width: ${site.solarPct}%; background: #F59E0B;"></div>
+              </div>
+            </div>
+
+            <div class="sec-grid">
+              <div>
+                <span class="sec-label">Promedio diario</span>
+                <span class="sec-val">${(site.solarKwh / 30).toFixed(1)} kWh/d</span>
+              </div>
+              <div>
+                <span class="sec-label">Enlace Tierra</span>
+                <span class="sec-val" style="color: #0032A0;">${site.earthPct}% (${site.earthHours}h)</span>
+              </div>
+            </div>
+          `;
+        }
+      },
+      {
+        key: 'earth',
+        mainTitle: 'Top 3 — Comunicación Directa con Tierra',
+        tableTitle: 'TABLA DE POSICIONES // ORDENADA POR ENLACE CON TIERRA',
+        desc: 'Clasificación por tiempo total de línea de visión directa (LOS) con estaciones terrestres.',
+        sortFn: (a, b) => b.earthHours - a.earthHours,
+        buildTelemetryBlock(site) {
+          const blindHours = 720 - site.earthHours;
+          return `
+            <div>
+              <span class="kpi-eyebrow">Tiempo a la vista (de 720h)</span>
+              <div class="kpi-row">
+                <span class="kpi-value" style="color: #0032A0;">
+                  ${site.earthPct}% <small>(${site.earthHours}h)</small>
+                </span>
+                <span class="kpi-status-pill" style="background: #DBEAFE; color: #0032A0;">
+                  ENLACE LOS
+                </span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-fill" style="width: ${site.earthPct}%; background: #0032A0;"></div>
+              </div>
+            </div>
+
+            <div class="sec-grid">
+              <div>
+                <span class="sec-label">Corte de enlace</span>
+                <span class="sec-val">${blindHours} h sin LOS</span>
+              </div>
+              <div>
+                <span class="sec-label">Energía solar</span>
+                <span class="sec-val" style="color: #D97706;">${site.solarKwh} kWh</span>
+              </div>
+            </div>
+          `;
+        }
+      }
+    ];
+
+    let activeStep = 0;
+
+    function renderCurrentStep(direction = 'none') {
+      const criterion = CRITERIA[activeStep];
+      const headerBox = document.getElementById('header-animated-box');
+      const cardsContainer = document.getElementById('flags-cards-container');
+
+      document.getElementById('dynamic-title').textContent = criterion.mainTitle;
+      document.getElementById('dynamic-subtitle').textContent = criterion.desc;
+      document.getElementById('table-title').textContent = criterion.tableTitle;
+
+      [0, 1, 2].forEach((n) => {
+        const bar = document.getElementById(`bar-${n}`);
+        if (bar) bar.classList.toggle('filled', n <= activeStep);
+      });
+
+      document.querySelectorAll('.phase-pill').forEach((pill) => {
+        pill.classList.toggle('active', Number(pill.dataset.goto) === activeStep);
+      });
+
+      document.getElementById('th-mixed').classList.toggle('col-active', criterion.key === 'mixed');
+      document.getElementById('th-solar').classList.toggle('col-active', criterion.key === 'solar');
+      document.getElementById('th-earth').classList.toggle('col-active', criterion.key === 'earth');
+
+      const sortedSites = [...SITES_DATA].sort(criterion.sortFn);
+      const top3 = sortedSites.slice(0, 3);
+      const slideClass = direction === 'prev' ? 'slide-prev' : direction === 'next' ? 'slide-next' : '';
+
+      cardsContainer.innerHTML = top3.map((site, idx) => {
+        const rank = idx + 1;
+        const isRank1 = rank === 1;
+        const rankBadge = isRank1 ? '★ PUESTO #01' : `PUESTO #0${rank}`;
+        const badgeClass = isRank1 ? 'rank-badge-1' : 'rank-badge-default';
+        const btnClass = isRank1 ? 'inspect-btn-primary' : 'inspect-btn-secondary';
+
+        return `
+          <article class="site-rank-card rank-${rank} ${slideClass}">
+            <div>
+              <div class="card-top-row">
+                <span class="rank-badge ${badgeClass}">${rankBadge}</span>
+                <span class="site-code-tag">${site.code}</span>
+              </div>
+              <div class="site-title-block">
+                <h2 class="site-title">${site.name}</h2>
+                <p class="site-coords">${site.coords}</p>
+              </div>
+            </div>
+
+            <div class="telemetry-body">
+              ${criterion.buildTelemetryBlock(site)}
+              <button type="button" class="inspect-btn ${btnClass}" data-site-id="${site.id}">
+                <span>Ver detalle</span>
+                <span>→</span>
+              </button>
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      if (slideClass) {
+        headerBox.classList.remove('slide-prev', 'slide-next');
+        void headerBox.offsetWidth;
+        headerBox.classList.add(slideClass);
+      }
+
+      document.getElementById('standings-tbody').innerHTML = sortedSites.map((site, idx) => {
+        const pos = idx + 1;
+        const isTop3 = pos <= 3;
+
+        return `
+          <tr>
+            <td style="font-family: var(--font-mono); font-weight: 700; color: ${isTop3 ? '#0032A0' : '#94A3B8'};">
+              #${String(pos).padStart(2, '0')}
+            </td>
+            <td>
+              <strong style="color: var(--slate-950); font-size: 13px;">${site.name}</strong>
+              <span style="display: block; font-family: var(--font-mono); font-size: 10.5px; color: var(--slate-400); margin-top: 2px;">${site.coords}</span>
+            </td>
+            <td class="${criterion.key === 'mixed' ? 'td-sorted' : 'td-mono'}">${site.mixedScore.toFixed(1)} pts</td>
+            <td class="${criterion.key === 'solar' ? 'td-sorted' : 'td-mono'}">${site.solarKwh} kWh (${site.solarPct}%)</td>
+            <td class="${criterion.key === 'earth' ? 'td-sorted' : 'td-mono'}">${site.earthHours} h (${site.earthPct}%)</td>
+            <td style="text-align: right;">
+              <button type="button" class="row-btn" data-site-id="${site.id}">DETALLE →</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    const toggleTableBtn = document.getElementById('toggle-table-btn');
+    const fullTableSection = document.getElementById('full-table-section');
+    const toggleBtnText = document.getElementById('toggle-btn-text');
+    const toggleBtnArrow = document.getElementById('toggle-btn-arrow');
+
+    toggleTableBtn.addEventListener('click', () => {
+      const isOpen = fullTableSection.classList.toggle('open');
+      if (isOpen) {
+        toggleBtnText.textContent = 'OCULTAR TABLA DE POSICIONES';
+        toggleBtnArrow.textContent = '↑';
+        fullTableSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        toggleBtnText.textContent = 'VER TABLA DE POSICIONES COMPLETA';
+        toggleBtnArrow.textContent = '↓';
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      const detailBtn = e.target.closest('[data-site-id]');
+      if (detailBtn) {
+        openDetailModal(detailBtn.dataset.siteId);
+        return;
+      }
+
+      const gotoBtn = e.target.closest('[data-goto]');
+      if (gotoBtn) {
+        const target = Number(gotoBtn.dataset.goto);
+        if (target !== activeStep) {
+          const dir = target < activeStep ? 'prev' : 'next';
+          activeStep = target;
+          renderCurrentStep(dir);
+        }
+      }
+    });
+
+    const modal = document.getElementById('detail-modal');
+    let selectedSite = null;
+
+    function openDetailModal(siteId) {
+      const site = SITES_DATA.find((s) => s.id === siteId);
+      if (!site) return;
+
+      selectedSite = site;
+      document.getElementById('modal-code').textContent = `SITIO CANDIDATO // ${site.code}`;
+      document.getElementById('modal-title').textContent = site.name;
+      document.getElementById('modal-coords').textContent = site.coords;
+      document.getElementById('modal-mixed').textContent = `${site.mixedScore.toFixed(1)} / 100`;
+      document.getElementById('modal-solar').textContent = `${site.solarKwh} kWh (${site.solarPct}%)`;
+      document.getElementById('modal-earth').textContent = `${site.earthHours} h (${site.earthPct}%)`;
+      modal.classList.add('open');
+    }
+
+    function closeDetailModal() {
+      modal.classList.remove('open');
+    }
+
+    document.getElementById('close-modal-btn').addEventListener('click', closeDetailModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeDetailModal();
+    });
+
+    document.getElementById('open-sextant-btn').addEventListener('click', () => {
+      if (!selectedSite) return;
+      alert(`Abriendo "${selectedSite.name}" (${selectedSite.code}) en el Sextante Polar...`);
+      closeDetailModal();
+    });
+
+    function navigateCarousel(delta) {
+      const direction = delta < 0 ? 'prev' : 'next';
+      activeStep = (activeStep + delta + CRITERIA.length) % CRITERIA.length;
+      renderCurrentStep(direction);
+    }
+
+    document.getElementById('prev-arrow-btn').addEventListener('click', () => navigateCarousel(-1));
+    document.getElementById('next-arrow-btn').addEventListener('click', () => navigateCarousel(1));
+
+    document.addEventListener('keydown', (e) => {
+      if (modal.classList.contains('open')) {
+        if (e.key === 'Escape') closeDetailModal();
+        return;
+      }
+      if (e.key === 'ArrowLeft') navigateCarousel(-1);
+      if (e.key === 'ArrowRight') navigateCarousel(1);
+    });
+
+    window.addEventListener('DOMContentLoaded', () => renderCurrentStep('none'));
+  </script>
+</body>
+</html>
