@@ -77,22 +77,6 @@ def map_(metric: str = Query("illumination")) -> Response:
                     headers={"Cache-Control": "public, max-age=86400"})
 
 
-@app.get("/api/dem-patch")
-def dem_patch(
-    lat: float = Query(...),
-    lon: float = Query(...),
-    radius_km: float = Query(24.0),
-    res: int = Query(256),
-) -> JSONResponse:
-    """Heightfield local (ENU) del sitio para el render 3D de 1ª persona. Cacheado."""
-    from dem_patch import get_dem_patch
-    try:
-        return JSONResponse(get_dem_patch(lat, lon, radius_km, res))
-    except ValueError as e:
-        # Params inválidos o sitio sobre nodata/fuera del DEM → 422 legible (con CORS).
-        raise HTTPException(status_code=422, detail=str(e))
-
-
 @app.get("/api/map/meta")
 def map_meta(metric: str = Query("illumination")) -> JSONResponse:
     """Geo-metadatos del fondo (bounds + proyección) para ubicar marcadores (H3)."""
