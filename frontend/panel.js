@@ -134,6 +134,7 @@ export function instantStamp(site, i) {
 // backend para el panel horizontal (S·max(0,sin e), solo si visible). Devuelve
 // h[i] = energía acumulada hasta el instante i inclusive.
 function energyPrefix(track) {
+  if (!track || track.length < 2) return track ? track.map(() => 0) : [];
   const S = 1361.0;   // W/m² — constants.SOLAR_CONSTANT_W_M2
   const dtH = (new Date(track[1].t) - new Date(track[0].t)) / 3.6e6;
   const h = [];
