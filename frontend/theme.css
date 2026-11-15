@@ -315,15 +315,15 @@ input[type="range"].zoom-range::-moz-range-thumb {
   letter-spacing: -.01em; color: #020617; }
 .detail-head__coords { font-size: .75rem; color: #64748b; margin-top: .125rem; }
 
-/* Toggle píldora con mini-switch: apagado = contorno gris; encendido = cobalto
-   relleno con la perilla a la derecha. Estado = aria-pressed (lo setea el JS). */
+/* Toggle píldora con mini-switch: apagado = contorno gris; encendido = relleno rojo
+   (#e92637) con letra blanca y la perilla a la derecha. Estado = aria-pressed (JS). */
 .toggle-pill {
   display: inline-flex; align-items: center; gap: .45rem; cursor: pointer;
   padding: .3rem .7rem .3rem .4rem; border-radius: var(--r-full);
   border: 1px solid #cbd5e1; background: #fff; color: #334155;
   font: 600 .7rem/1 var(--font); transition: background .15s, border-color .15s, color .15s;
 }
-.toggle-pill:hover { border-color: var(--brand); }
+.toggle-pill:hover { border-color: #e92637; }
 .toggle-pill__switch {
   position: relative; width: 22px; height: 12px; border-radius: var(--r-full);
   background: #cbd5e1; transition: background .15s;
@@ -332,8 +332,7 @@ input[type="range"].zoom-range::-moz-range-thumb {
   content: ""; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px;
   border-radius: 50%; background: #fff; transition: transform .15s;
 }
-.toggle-pill[aria-pressed="true"] { background: var(--brand); border-color: var(--brand);
-  color: #fff; }
+.toggle-pill[aria-pressed="true"] { background: #e92637; border-color: #e92637; color: #fff; }
 .toggle-pill[aria-pressed="true"] .toggle-pill__switch { background: rgba(255, 255, 255, .35); }
 .toggle-pill[aria-pressed="true"] .toggle-pill__switch::after { transform: translateX(10px); }
 
