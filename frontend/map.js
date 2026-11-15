@@ -11,7 +11,9 @@ import { windowDays, startDate, addSitio, setSitioActivo, getState } from "./sta
 
 const $ = (id) => document.getElementById(id);
 const stage = $("map-stage");
-const disk = $("map-disk");
+// Capa interactiva: misma caja que el disco (inset 14%) pero sin recorte. De acá salen
+// los clicks/hover y la lectura de coordenadas (bounding box idéntico al disco).
+const disk = $("map-overlay");
 const layer = $("map-markers");
 let proj = null;
 let pending = null;            // {lat, lon} del último click en zona libre
@@ -67,6 +69,17 @@ function drawStars(go) {
   }
 }
 
+// Cielo de TODA la página (#page-stars, fijo detrás del contenido): mismo campo
+// determinista, sin el salto del disco (acá no hay luna que las tape).
+function drawPageStars() {
+  const sky = $("page-stars");
+  if (!sky) return;
+  for (const st of STARS) {
+    sky.appendChild(svg("circle", { cx: st.x, cy: st.y, r: st.r,
+      fill: "#fff", opacity: st.o }));
+  }
+}
+
 // Orientación. El chrome se reparte en dos capas:
 //  · INTERIOR (#map-chrome, dentro del disco de luna): anillos de latitud + polo.
 //  · EXTERIOR (#map-chrome-outer, sobre el margen claro): globo, escala y flechas.
@@ -77,7 +90,8 @@ function drawChrome() {
   const go = $("map-chrome-outer");        // margen oscuro estrellado del lienzo
   g.innerHTML = "";
   go.innerHTML = "";
-  drawStars(go);                           // estrellas detrás de todo el margen
+  $("map-chrome-fg").innerHTML = "";
+  drawStars(go);                           // estrellas detrás de la luna de fondo
   const C = 500;                           // centro (polo sur) en unidades SVG
   const ring = (lat) => {
     const r = proj.latRingRadius(lat) * 1000;
@@ -106,7 +120,7 @@ function drawChrome() {
 // con el casquete sur coloreado arriba, inclinada hacia el observador. Comunica que el
 // disco grande es la MISMA tapa vista a pico (no todo el hemisferio). Sin 3D real:
 // proyectamos puntos de la esfera a mano. La sincronía hover↔mapa es una fase posterior.
-const GLOBE = { cx: 894, cy: 882, r: 84, tilt: 28, cap: 18 };
+const GLOBE = { cx: 106, cy: 882, r: 84, tilt: 28, cap: 18 };
 
 // Proyección ortográfica de (lat,lon) con el eje polar inclinado para que el polo SUR
 // quede arriba y de cara al observador. Devuelve coords en la unidad-esfera (x der, y
@@ -123,7 +137,7 @@ function globePt(latDeg, lonDeg) {
 }
 
 function drawGlobe() {
-  const g = $("map-chrome-outer"), { cx, cy, r } = GLOBE;
+  const g = $("map-chrome-fg"), { cx, cy, r } = GLOBE;
   const sx = (p) => cx + r * p.x, sy = (p) => cy + r * p.y;
   const poly = (pts) =>
     pts.map((p, i) => `${i ? "L" : "M"}${sx(p).toFixed(1)} ${sy(p).toFixed(1)}`).join("");
@@ -165,12 +179,21 @@ function drawGlobe() {
   };
   lbl("S", cy - r - 9, 0.95);
   lbl("N", cy + r + 22, 0.5);
+  // Ícono de perspectiva (ojo de perfil) sobre la S: dos trazos que se cruzan arriba
+  // (la mira) + base curva. Sin relleno, solo contorno.
+  const yT = cy - r - 60, yB = cy - r - 30, hw = 15, tl = 6;
+  const d =
+    `M${cx - hw} ${yB} L${cx + tl} ${yT}` +                 // abajo-izq → arriba-der
+    `M${cx + hw} ${yB} L${cx - tl} ${yT}` +                 // abajo-der → arriba-izq (cruzan)
+    `M${cx - hw} ${yB} Q${cx} ${yB + 5} ${cx + hw} ${yB}`;  // base curva
+  g.appendChild(svg("path", { d, fill: "none", stroke: "#cbd5e1", "stroke-opacity": 0.95,
+    "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round" }));
 }
 
 // Barra de escala en el margen inferior. 100 km = (100/303.48) del ancho del DISCO,
 // que mide DISK_SPAN unidades de stage. Colores claros: va sobre oscuro.
 function drawScaleBar() {
-  const go = $("map-chrome-outer");
+  const go = $("map-chrome-fg");
   const len = (100000 / 303480) * DISK_SPAN, x0 = 500 - len / 2, y = 960;
   go.appendChild(svg("path", {
     d: `M${x0} ${y}h${len}M${x0} ${y - 7}v14M${x0 + len} ${y - 7}v14`,
@@ -366,11 +389,32 @@ function onFreeClick(e) {
 
 function hidePopup() { $("free-popup").classList.add("hidden"); }
 
+// Luna de fondo (hillshade del DEM): rodea el casquete para leerlo como "tapa de una
+// esfera". Se centra/escala desde los bounds de ambos rasters (mismo polo, misma
+// proyección) para que el terreno del fondo continúe al del casquete. No clickable.
+async function placeMoonBg(capMeta) {
+  const img = $("map-moon-bg");
+  if (!img) return;
+  const hs = await getMapMeta("hillshade");
+  const capHalf = (capMeta.bounds.right - capMeta.bounds.left) / 2;
+  const hsHalf = (hs.bounds.right - hs.bounds.left) / 2;
+  const diskHalfFrac = (1000 - 2 * DISK_MARGIN) / 2000;   // 0.36 del stage (inset 14%)
+  const frac = diskHalfFrac * (hsHalf / capHalf);
+  const off = (0.5 - frac) * 100, size = frac * 2 * 100;
+  img.style.left = `${off}%`; img.style.top = `${off}%`;
+  img.style.width = `${size}%`; img.style.height = `${size}%`;
+  // Cache-buster: /api/map manda Cache-Control de 24 h, y estamos iterando el hillshade.
+  // El backend igual cachea el PNG por métrica, así que esto solo refresca el browser.
+  img.src = `${mapUrl("hillshade")}&_=${Date.now()}`;
+}
+
 async function init() {
+  drawPageStars();                           // cielo de la página, aun sin backend
   try {
     const meta = await getMapMeta("illumination");
     proj = createProjection(meta);
     $("map-bg").src = mapUrl("illumination");
+    placeMoonBg(meta);                       // luna de fondo (hillshade) alineada al casquete
     drawChrome();
     const { sites } = await getSites();
     sites.forEach((s) => addMarker(s.lon, s.lat, s.name, "seed"));

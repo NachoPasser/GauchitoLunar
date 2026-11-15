@@ -15,6 +15,7 @@ from pathlib import Path
 
 import numpy as np
 import rasterio
+from rasterio.enums import Resampling
 from PIL import Image
 
 DATA = Path(__file__).resolve().parent.parent / "data"
@@ -26,15 +27,20 @@ RASTERS = {
     "earth": "AVGVISIB_85S_060M_201608_EARTH.TIF",
     "psr": "LPSR_85S_060M_201608.TIF",
 }
+# El hillshade NO es un raster propio: se deriva del DEM (relieve sombreado). Cubre más
+# latitud (hasta ~80°S) → sirve de "luna de fondo" alrededor del casquete de iluminación.
+DEM_FILE = "LDEM_80S_80MPP_ADJ.TIF"
 _MEM: dict[str, bytes] = {}
 
 
-def _read_decimated(path: Path) -> tuple[np.ndarray, np.ndarray]:
-    """Lee el raster decimado a ~MAX_PX; devuelve (valores float, máscara válida)."""
+def _read_decimated(path: Path, resampling=Resampling.nearest
+                    ) -> tuple[np.ndarray, np.ndarray]:
+    """Lee el raster decimado a ~MAX_PX; devuelve (valores float, máscara válida).
+    `resampling=average` promedia el bloque (suaviza, clave para el hillshade del DEM)."""
     with rasterio.open(path) as ds:
         scale = max(ds.width, ds.height) / MAX_PX
         w, h = int(ds.width / scale), int(ds.height / scale)
-        band = ds.read(1, out_shape=(1, h, w)).astype("float64")
+        band = ds.read(1, out_shape=(1, h, w), resampling=resampling).astype("float64")
         nodata = ds.nodata
     valid = np.isfinite(band)
     if nodata is not None:
@@ -48,6 +54,53 @@ def _grayscale_rgba(band: np.ndarray, valid: np.ndarray) -> Image.Image:
     vmax = vmax if vmax > 0 else 1.0
     gray = np.clip(band / vmax, 0.0, 1.0) * 255.0
     g = gray.astype("uint8")
+    rgba = np.dstack([g, g, g, np.where(valid, 255, 0).astype("uint8")])
+    return Image.fromarray(rgba, mode="RGBA")
+
+
+def _decimated_mpp(path: Path) -> float:
+    """Metros/píxel del raster YA decimado a ~MAX_PX."""
+    with rasterio.open(path) as ds:
+        scale = max(ds.width, ds.height) / MAX_PX
+        return abs(ds.transform.a) * scale
+
+
+def _match_hist(src: np.ndarray, tmpl: np.ndarray) -> np.ndarray:
+    """Mapea `src` para que su distribución iguale la de `tmpl` (512 cuantiles)."""
+    qs = np.linspace(0.0, 1.0, 512)
+    s_q = np.quantile(src, qs)
+    t_q = np.quantile(tmpl, qs)
+    s_q = np.maximum.accumulate(s_q) + np.arange(512) * 1e-9   # estrictamente creciente
+    return np.interp(src, s_q, t_q)
+
+
+def _illum_template() -> np.ndarray:
+    """Distribución de grises [0,1] del casquete AVGVISIB (para igualar el hillshade)."""
+    band, valid = _read_decimated(DATA / RASTERS["illumination"])
+    vmax = np.percentile(band[valid], 99) if valid.any() else 1.0
+    return np.clip(band[valid] / (vmax or 1.0), 0.0, 1.0)
+
+
+def _hillshade_rgba(band: np.ndarray, valid: np.ndarray, mpp: float) -> Image.Image:
+    """Relieve sombreado MULTIDIRECCIONAL (promedio de 16 azimuts) del DEM, con el
+    histograma de grises IGUALADO al del casquete AVGVISIB → mismo tono/contraste
+    (negros profundos + bordes claros). El DEM se lee PROMEDIADO (anti-aliasing) para que
+    la igualación no genere speckle. Inválido = transparente."""
+    fill = float(np.median(band[valid])) if valid.any() else 0.0
+    z = np.where(valid, band, fill)
+    dzdy, dzdx = np.gradient(z, mpp)
+    slope = np.arctan(np.hypot(dzdx, dzdy))
+    aspect = np.arctan2(dzdy, -dzdx)
+    alt = np.radians(18.0)
+    acc = np.zeros_like(z)
+    for k in range(16):
+        az = 2.0 * np.pi * k / 16.0
+        acc += np.clip(np.sin(alt) * np.cos(slope)
+                       + np.cos(alt) * np.sin(slope) * np.cos(az - aspect), 0.0, None)
+    acc /= 16.0
+    matched = _match_hist(acc[valid], _illum_template())
+    g = np.zeros(acc.shape, dtype="uint8")
+    g[valid] = (np.clip(matched, 0.0, 1.0) * 255.0).astype("uint8")
     rgba = np.dstack([g, g, g, np.where(valid, 255, 0).astype("uint8")])
     return Image.fromarray(rgba, mode="RGBA")
 
@@ -68,9 +121,13 @@ def get_map_meta(metric: str = "illumination") -> dict:
     decima pero conserva la extensión: los bounds proyectados valen para ambos.
     `proj` describe la estereográfica polar sur esférica que el front reusa.
     """
-    if metric not in RASTERS:
+    if metric == "hillshade":
+        path = DATA / DEM_FILE
+    elif metric in RASTERS:
+        path = DATA / RASTERS[metric]
+    else:
         raise KeyError(metric)
-    with rasterio.open(DATA / RASTERS[metric]) as ds:
+    with rasterio.open(path) as ds:
         b = ds.bounds
         crs = ds.crs.to_dict()
         scale = max(ds.width, ds.height) / MAX_PX
@@ -91,7 +148,7 @@ def get_map_meta(metric: str = "illumination") -> dict:
 
 def get_map_png(metric: str) -> bytes:
     """PNG (bytes) del raster pedido. Cache en memoria → disco → render."""
-    if metric not in RASTERS:
+    if metric != "hillshade" and metric not in RASTERS:
         raise KeyError(metric)
     if metric in _MEM:
         return _MEM[metric]
@@ -102,8 +159,12 @@ def get_map_png(metric: str) -> bytes:
         _MEM[metric] = data
         return data
 
-    band, valid = _read_decimated(DATA / RASTERS[metric])
-    img = _psr_rgba(band, valid) if metric == "psr" else _grayscale_rgba(band, valid)
+    if metric == "hillshade":
+        band, valid = _read_decimated(DATA / DEM_FILE, Resampling.average)
+        img = _hillshade_rgba(band, valid, _decimated_mpp(DATA / DEM_FILE))
+    else:
+        band, valid = _read_decimated(DATA / RASTERS[metric])
+        img = _psr_rgba(band, valid) if metric == "psr" else _grayscale_rgba(band, valid)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     data = buf.getvalue()
