@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shackleton (borde) // Telemetría de Sitio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f1f5f9;
+      min-height: 100vh;
+    }
+
+    /* Slider personalizado NASA */
+    .nasa-range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 5px;
+      background: #e2e8f0;
+      border-radius: 9999px;
+      outline: none;
+    }
+
+    .nasa-range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #FC3D21;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 0 0 2px #0f172a;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .nasa-range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    .nasa-range-slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #FC3D21;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 0 0 2px #0f172a;
+      cursor: pointer;
+    }
+
+    /* Ondas de radio en la antena parabólica */
+    @keyframes radio-wave-pulse {
+      0%   { opacity: 0.95; transform: scale(0.92); }
+      100% { opacity: 0; transform: scale(1.32); }
+    }
+
+    .lander-radio-wave {
+      transform-box: fill-box;
+      transform-origin: bottom left;
+      animation: radio-wave-pulse 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    }
+    .lander-radio-wave.delay-1 { animation-delay: 0.65s; }
+    .lander-radio-wave.delay-2 { animation-delay: 1.3s; }
+  </style>
+</head>
+<body class="flex items-center justify-center p-4 sm:p-10">
+
+  <!-- =======================================================================
+       MARCO EXTERIOR AZUL NASA #0032A0 CON HARDWARE DEL MÓDULO DE DESCENSO
+       ======================================================================= -->
+  <div id="lander-frame-wrapper" class="relative w-full max-w-2xl my-12 sm:my-14 bg-[#0032A0] p-[14px] sm:p-[18px] rounded-[24px] shadow-[0_22px_50px_rgba(0,50,160,0.22)] overflow-visible">
+    
+    <!-- CAPA SVG EXTERIOR (Panel solar, antena parabólica, toberas RCS y patas) -->
+    <svg
+      id="lander-hardware-svg"
+      class="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-20"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    ></svg>
+
+    <!-- CONTENEDOR INTERIOR BLANCO PURO (#FFFFFF) -->
+    <div class="relative z-10 w-full bg-white rounded-[16px] p-5 sm:p-6 flex flex-col gap-4 overflow-hidden">
+
+      <!-- ===================================================================
+           1. ENCABEZADO DE SITIO
+           =================================================================== -->
+      <header class="flex items-start justify-between gap-3">
+        <div>
+          <h1 class="text-xl sm:text-2xl font-bold text-slate-950 tracking-tight">
+            Shackleton (borde)
+          </h1>
+          <p class="font-['JetBrains_Mono'] text-xs text-slate-500 mt-0.5">
+            -89.90°, 0.00°E
+          </p>
+        </div>
+
+        <button
+          type="button"
+          aria-label="Cerrar detalle del sitio"
+          class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </header>
+
+      <!-- ===================================================================
+           2. VISOR DE PERFIL DEL HORIZONTE (SOL Y TIERRA)
+           =================================================================== -->
+      <div>
+        <div class="mb-2.5 flex items-center justify-between">
+          <button
+            type="button"
+            id="sky-view-toggle"
+            class="px-3 py-1 rounded-full border border-slate-300 bg-white hover:border-[#0032A0] text-xs font-semibold text-slate-800 transition-colors cursor-pointer"
+          >
+            Cielo completo (0–90°)
+          </button>
+
+          <div class="flex items-center gap-3 font-['JetBrains_Mono'] text-[11px] font-semibold">
+            <span class="inline-flex items-center gap-1.5 text-amber-600">
+              <span class="w-3 h-[2px] bg-amber-400 inline-block"></span> Sol
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-[#0032A0]">
+              <span class="w-3 h-[2px] bg-[#3B82F6] inline-block"></span> Tierra
+            </span>
+          </div>
+        </div>
+
+        <!-- Canvas SVG del Horizonte Lunar -->
+        <div class="relative w-full rounded-xl overflow-hidden border border-slate-800 bg-[#0d1021] shadow-inner">
+          <svg id="horizon-sky-svg" viewBox="0 0 640 240" class="w-full h-auto block select-none">
+            <defs>
+              <linearGradient id="sky-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#191636" />
+                <stop offset="65%" stop-color="#12172e" />
+                <stop offset="100%" stop-color="#0b1224" />
+              </linearGradient>
+              <linearGradient id="terrain-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#090c14" />
+                <stop offset="100%" stop-color="#040509" />
+              </linearGradient>
+            </defs>
+
+            <!-- Fondo del cielo polar -->
+            <rect width="640" height="240" fill="url(#sky-grad)" />
+
+            <!-- Franjas laterales de sector norte -->
+            <rect x="0" y="0" width="96" height="240" fill="#a855f7" fill-opacity="0.08" />
+            <line x1="96" y1="0" x2="96" y2="240" stroke="#c084fc" stroke-opacity="0.35" stroke-width="1" />
+            <rect x="520" y="0" width="120" height="240" fill="#a855f7" fill-opacity="0.08" />
+            <line x1="520" y1="0" x2="520" y2="240" stroke="#c084fc" stroke-opacity="0.35" stroke-width="1" />
+
+            <!-- Grilla de elevación (0°, 10°, 20°) -->
+            <g stroke="#ffffff" stroke-opacity="0.08" stroke-width="1">
+              <line x1="0" y1="45" x2="640" y2="45" />
+              <line x1="0" y1="125" x2="640" y2="125" />
+              <line x1="0" y1="205" x2="640" y2="205" />
+              <line x1="160" y1="0" x2="160" y2="240" />
+              <line x1="320" y1="0" x2="320" y2="240" />
+              <line x1="480" y1="0" x2="480" y2="240" />
+            </g>
+
+            <!-- Etiquetas de elevación -->
+            <g fill="#94a3b8" font-family="'JetBrains_Mono', monospace" font-size="9">
+              <text x="8" y="42">20°</text>
+              <text x="8" y="122">10°</text>
+              <text x="8" y="202">0°</text>
+            </g>
+
+            <!-- Estrellas sutiles -->
+            <g fill="#ffffff" fill-opacity="0.45">
+              <circle cx="62" cy="34" r="0.9" /><circle cx="145" cy="22" r="1.1" />
+              <circle cx="210" cy="58" r="0.8" /><circle cx="388" cy="29" r="1" />
+              <circle cx="445" cy="74" r="1.2" /><circle cx="492" cy="40" r="0.8" />
+              <circle cx="575" cy="55" r="1" /><circle cx="605" cy="95" r="0.9" />
+            </g>
+
+            <!-- Trayectoria completa del Sol (línea amarilla punteada + continua sobre horizonte) -->
+            <path id="sun-orbit-path" d="M 0 189 Q 320 192 640 187" fill="none" stroke="#FBBF24" stroke-width="1.6" stroke-dasharray="3 3" stroke-opacity="0.55" />
+            <path d="M 0 189 L 94 189 M 404 190 L 640 187" fill="none" stroke="#FBBF24" stroke-width="2" />
+
+            <!-- Trayectoria de la Tierra (bucle azul en sector norte) -->
+            <path d="M 0 164 Q 14 185 18 232 M 614 232 Q 614 150 622 168 Q 629 186 634 232"
+                  fill="none" stroke="#3B82F6" stroke-width="2" />
+
+            <!-- Relieve topográfico del cráter Shackleton -->
+            <path
+              d="M 0 218 L 28 214 L 58 220 L 82 204 L 118 134 L 154 78 L 194 42 L 234 18 L 274 26 L 314 52 L 352 108 L 388 176 L 412 192 L 436 184 L 468 189 L 502 198 L 538 192 L 574 206 L 610 198 L 640 212 L 640 240 L 0 240 Z"
+              fill="url(#terrain-grad)"
+              stroke="#475569"
+              stroke-width="1.2"
+            />
+
+            <!-- Marcador dinámico del SOL -->
+            <g id="sun-marker" transform="translate(495, 188)">
+              <circle r="9" fill="#FBBF24" fill-opacity="0.25" />
+              <circle r="4.5" fill="#FBBF24" stroke="#FEF3C7" stroke-width="1" />
+            </g>
+
+            <!-- Marcador dinámico de la TIERRA -->
+            <g id="earth-marker" transform="translate(16, 214)">
+              <circle r="8" fill="#3B82F6" fill-opacity="0.25" />
+              <circle r="4.5" fill="#0f172a" stroke="#60A5FA" stroke-width="2" />
+            </g>
+
+            <!-- Cardinales inferiores -->
+            <g fill="#94a3b8" font-family="'JetBrains_Mono', monospace" font-size="9.5" font-weight="600">
+              <text x="10" y="233">N</text>
+              <text x="160" y="233" text-anchor="middle">E</text>
+              <text x="320" y="233" text-anchor="middle">S</text>
+              <text x="480" y="233" text-anchor="middle">O</text>
+              <text x="630" y="233" text-anchor="end">N</text>
+            </g>
+
+            <text id="terrain-occult-label" x="24" y="233" fill="#cbd5e1" font-family="'JetBrains_Mono', monospace" font-size="8.5">
+              tapado por el terreno
+            </text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           3. SLIDER TEMPORAL + BARRA DE TIMESTAMP LIMPIA
+           =================================================================== -->
+      <div class="pt-0.5">
+        <input
+          id="mission-slider"
+          type="range"
+          min="0"
+          max="30"
+          step="0.25"
+          value="12"
+          aria-label="Seleccionar día de la ventana de 30 días"
+          class="nasa-range-slider w-full cursor-pointer"
+        />
+
+        <div class="mt-2 flex items-center justify-between font-['JetBrains_Mono'] text-xs">
+          <span id="timestamp-label" class="font-bold text-slate-900">
+            2026-12-01 19:20 UTC
+          </span>
+          <span id="day-progress-badge" class="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-[11px] font-bold text-[#0032A0]">
+            DÍA 12 / 30
+          </span>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           4. TARJETAS REORGANIZADAS: ENERGÍA SOLAR Y ENLACE TIERRA
+           =================================================================== -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+
+        <!-- TARJETA IZQUIERDA: 01 // ENERGÍA SOLAR -->
+        <section class="rounded-xl border border-slate-200 bg-white p-4 flex flex-col justify-between shadow-2xs relative overflow-hidden">
+          <!-- Filete lateral ámbar -->
+          <div class="absolute left-0 top-3 bottom-3 w-1 rounded-r bg-amber-400"></div>
+
+          <div class="pl-2">
+            <!-- Cabecera del módulo -->
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                01 // ENERGÍA SOLAR
+              </span>
+              <span id="solar-state-badge" class="font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                CON LUZ · +1.5°
+              </span>
+            </div>
+
+            <!-- Dato Héroe: Energía Solar Acumulada (Horizontal vs Seguidor) -->
+            <div class="mt-3">
+              <span class="block text-[11px] font-medium text-slate-500">
+                Energía acumulada (al día <span id="accum-day-num">12</span>)
+              </span>
+              <div class="mt-1 flex items-baseline justify-between gap-2">
+                <div>
+                  <span id="solar-accum-horiz" class="font-['JetBrains_Mono'] text-2xl font-bold text-amber-600">10.3</span>
+                  <span class="font-['JetBrains_Mono'] text-[11px] font-semibold text-slate-500">kWh/m²</span>
+                  <span class="block text-[10px] text-slate-400">panel horizontal</span>
+                </div>
+                <div class="text-right">
+                  <span id="solar-accum-track" class="font-['JetBrains_Mono'] text-xl font-bold text-slate-900">375</span>
+                  <span class="font-['JetBrains_Mono'] text-[11px] font-semibold text-slate-500">kWh/m²</span>
+                  <span class="block text-[10px] text-slate-400">seguidor solar</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fila inferior: Tiempo para ocaso + Tiempo máximo de energía solar -->
+          <dl class="mt-3.5 pt-3 border-t border-slate-100 pl-2 grid grid-cols-2 gap-2">
+            <div>
+              <dt id="solar-next-label" class="font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+                Tiempo para ocaso
+              </dt>
+              <dd id="solar-next-value" class="font-['JetBrains_Mono'] text-sm font-bold text-slate-900 mt-0.5">
+                2.4 d
+              </dd>
+            </div>
+            <div>
+              <dt class="font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+                Máx. luz continua
+              </dt>
+              <dd class="font-['JetBrains_Mono'] text-sm font-bold text-slate-900 mt-0.5">
+                14 d <span class="text-[11px] font-normal text-slate-500">(47%)</span>
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <!-- TARJETA DERECHA: 02 // ENLACE TIERRA -->
+        <section class="rounded-xl border border-slate-200 bg-white p-4 flex flex-col justify-between shadow-2xs relative overflow-hidden">
+          <!-- Filete lateral azul NASA -->
+          <div class="absolute left-0 top-3 bottom-3 w-1 rounded-r bg-[#0032A0]"></div>
+
+          <div class="pl-2">
+            <!-- Cabecera del módulo -->
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                02 // ENLACE TIERRA
+              </span>
+              <span id="earth-state-badge" class="font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                SIN ENLACE
+              </span>
+            </div>
+
+            <!-- Dato Héroe: Ángulo a la Tierra sobre el horizonte -->
+            <div class="mt-3">
+              <span class="block text-[11px] font-medium text-slate-500">
+                Ángulo sobre el horizonte (margen 0°)
+              </span>
+              <div class="mt-1 flex items-baseline justify-between gap-2">
+                <div>
+                  <span id="earth-angle-value" class="font-['JetBrains_Mono'] text-2xl font-bold text-slate-900">-1.2°</span>
+                  <span id="earth-angle-sub" class="block text-[10px] text-slate-400">oculto tras relieve</span>
+                </div>
+                <div class="text-right">
+                  <span class="font-['JetBrains_Mono'] text-lg font-bold text-[#0032A0]">60%</span>
+                  <span class="block text-[10px] text-slate-400">tiempo a la vista</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fila inferior: Tiempo para earthset + Tiempo máximo de visibilidad -->
+          <dl class="mt-3.5 pt-3 border-t border-slate-100 pl-2 grid grid-cols-2 gap-2">
+            <div>
+              <dt id="earth-next-label" class="font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+                Próximo enlace
+              </dt>
+              <dd id="earth-next-value" class="font-['JetBrains_Mono'] text-sm font-bold text-slate-900 mt-0.5">
+                en 11.3 d
+              </dd>
+            </div>
+            <div>
+              <dt class="font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+                Máx. visibilidad
+              </dt>
+              <dd class="font-['JetBrains_Mono'] text-sm font-bold text-slate-900 mt-0.5">
+                ≥11 d <span class="text-[11px] font-normal text-slate-500">(60%)</span>
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+      </div>
+
+      <!-- ===================================================================
+           5. BARRAS DE REFERENCIA DE 30 DÍAS (LUZ SOLAR Y ENLACE TIERRA)
+           =================================================================== -->
+      <section class="pt-1 select-none">
+        <div class="relative py-1">
+          <!-- Aguja vertical punteada sincronizada con el slider -->
+          <div id="bars-cursor-needle" class="absolute top-0 bottom-0 border-l-2 border-dashed border-slate-500 z-10 pointer-events-none transition-all duration-75" style="left: 40%;"></div>
+
+          <!-- Pista 1: Días con / sin luz solar -->
+          <div class="mb-3">
+            <div class="flex items-center justify-between text-xs font-medium text-slate-700 mb-1">
+              <span>Días con / sin luz solar</span>
+              <span class="font-['JetBrains_Mono'] text-[10px] text-slate-400">VENTANA 30 D</span>
+            </div>
+            <div class="w-full h-5 rounded-md bg-slate-100 overflow-hidden flex font-['JetBrains_Mono'] text-[10px] font-bold">
+              <div style="width: 1.5%" class="bg-slate-200"></div>
+              <div style="width: 46.5%" class="bg-amber-400 text-slate-950 flex items-center justify-center">14 d</div>
+              <div style="width: 3.5%" class="bg-slate-200"></div>
+              <div style="width: 0.8%" class="bg-amber-400"></div>
+              <div style="width: 0.6%" class="bg-slate-200"></div>
+              <div style="width: 0.8%" class="bg-amber-400"></div>
+              <div style="width: 46.3%" class="bg-slate-200 text-slate-600 flex items-center justify-center">≥14 d</div>
+            </div>
+          </div>
+
+          <!-- Pista 2: Días con / sin enlace a la Tierra -->
+          <div>
+            <div class="flex items-center justify-between text-xs font-medium text-slate-700 mb-1">
+              <span>Días con / sin enlace a la Tierra</span>
+              <span class="font-['JetBrains_Mono'] text-[10px] text-slate-400">LOS DIRECTO</span>
+            </div>
+            <div class="w-full h-5 rounded-md bg-slate-100 overflow-hidden flex font-['JetBrains_Mono'] text-[10px] font-bold">
+              <div style="width: 37%" class="bg-[#0032A0] text-white flex items-center justify-center">≥11 d</div>
+              <div style="width: 40%" class="bg-slate-200 text-slate-600 flex items-center justify-center">12 d</div>
+              <div style="width: 23%" class="bg-[#0032A0] text-white flex items-center justify-center">≥6.9 d</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. DIBUJO DEL HARDWARE EXTERIOR DEL LANDER (SVG RESPONSIVE)
+    // =========================================================================
+    function renderLanderHardware(hasEarthLink = false, hasSolarLight = true) {
+      const wrapper = document.getElementById('lander-frame-wrapper');
+      const svg = document.getElementById('lander-hardware-svg');
+      if (!wrapper || !svg) return;
+
+      const w = wrapper.offsetWidth;
+      const h = wrapper.offsetHeight;
+
+      const legSpreadOuter = 38;
+      const legSpreadInner = 98;
+      const legHeight = 46;
+      const padY = h + legHeight;
+      const antX = w - 76;
+      const panelX = 52;
+      const midY = Math.round(h * 0.48);
+
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+      svg.innerHTML = `
+        <defs>
+          <pattern id="solar-cells" width="7" height="7" patternUnits="userSpaceOnUse">
+            <path d="M 7 0 L 0 0 0 7" fill="none" stroke="#94A3B8" stroke-width="0.6" stroke-opacity="0.4"/>
+          </pattern>
+        </defs>
+
+        <!-- Remaches blancos y marcas rojas superiores -->
+        <g fill="#FFFFFF" fill-opacity="0.7">
+          <circle cx="10" cy="10" r="1.8" />
+          <circle cx="${w - 10}" cy="10" r="1.8" />
+          <circle cx="10" cy="${h - 10}" r="1.8" />
+          <circle cx="${w - 10}" cy="${h - 10}" r="1.8" />
+        </g>
+        <rect x="22" y="6" width="14" height="3.5" rx="1.5" fill="#FC3D21" />
+        <rect x="${w - 36}" y="6" width="14" height="3.5" rx="1.5" fill="#FC3D21" />
+
+        <!-- PANEL SOLAR (ARRIBA IZQUIERDA) -->
+        <g>
+          <line x1="${panelX + 26}" y1="2" x2="${panelX + 26}" y2="-14" stroke="#1E293B" stroke-width="3.5" />
+          <circle cx="${panelX + 26}" cy="-8" r="2.8" fill="#FC3D21" stroke="#FFFFFF" stroke-width="1" />
+          <rect x="${panelX - 18}" y="-28" width="88" height="15" rx="2.5"
+                fill="${hasSolarLight ? '#1E293B' : '#090D16'}" stroke="#FFFFFF" stroke-width="1.2" />
+          <rect x="${panelX - 18}" y="-28" width="88" height="15" rx="2.5" fill="url(#solar-cells)" />
+          <circle cx="${panelX + 62}" cy="-20.5" r="2.3" fill="${hasSolarLight ? '#FC3D21' : '#64748B'}" />
+        </g>
+
+        <!-- ANTENA PARABÓLICA (ARRIBA DERECHA) -->
+        <g>
+          <rect x="${antX - 7}" y="-5" width="14" height="7" rx="1.5" fill="#1E293B" />
+          <line x1="${antX}" y1="-5" x2="${antX + 5}" y2="-19" stroke="#334155" stroke-width="2.2" stroke-linecap="round" />
+          <path d="M ${antX - 12} -29 Q ${antX + 5} -10 ${antX + 22} -19"
+                fill="none" stroke="#1E293B" stroke-width="2.6" stroke-linecap="round" />
+          <line x1="${antX + 5}" y1="-19" x2="${antX + 12}" y2="-29" stroke="#FC3D21" stroke-width="1.8" />
+          <circle cx="${antX + 13}" cy="-30" r="2.6" fill="#FC3D21" />
+
+          ${hasEarthLink ? `
+            <g transform="translate(${antX + 16}, -33)">
+              <path class="lander-radio-wave" d="M 2 -5 A 7 7 0 0 1 7 2" fill="none" stroke="#FC3D21" stroke-width="1.6" stroke-linecap="round" />
+              <path class="lander-radio-wave delay-1" d="M 4 -10 A 13 13 0 0 1 13 4" fill="none" stroke="#FC3D21" stroke-width="1.3" stroke-linecap="round" />
+              <path class="lander-radio-wave delay-2" d="M 5 -15 A 19 19 0 0 1 19 5" fill="none" stroke="#FC3D21" stroke-width="1" stroke-linecap="round" />
+            </g>
+          ` : ''}
+        </g>
+
+        <!-- TOBERAS LATERALES RCS -->
+        <g transform="translate(0, ${midY})">
+          <rect x="-7" y="-11" width="9" height="22" rx="1.5" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.2" />
+          <polygon points="-4,-11 -8,-19 0,-19" fill="#FC3D21" />
+          <polygon points="-4,11 -8,19 0,19" fill="#FC3D21" />
+          <polygon points="-7,-3.5 -14,-6 -14,6 -7,3.5" fill="#334155" />
+        </g>
+
+        <g transform="translate(${w}, ${midY})">
+          <rect x="-2" y="-11" width="9" height="22" rx="1.5" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.2" />
+          <polygon points="4,-11 8,-19 0,-19" fill="#FC3D21" />
+          <polygon points="4,11 8,19 0,19" fill="#FC3D21" />
+          <polygon points="7,-3.5 14,-6 14,6 7,3.5" fill="#334155" />
+        </g>
+
+        <!-- MOTOR PRINCIPAL DE DESCENSO -->
+        <g transform="translate(${w / 2}, ${h})">
+          <polygon points="-14,0 14,0 21,15 -21,15" fill="#1E293B" stroke="#FFFFFF" stroke-width="1.2" />
+          <line x1="-17" y1="5" x2="17" y2="5" stroke="#FC3D21" stroke-width="1.8" />
+        </g>
+
+        <!-- HORIZONTE LUNAR SUTIL -->
+        <line x1="${-legSpreadOuter - 20}" y1="${padY + 1}" x2="${w + legSpreadOuter + 20}" y2="${padY + 1}"
+              stroke="#94A3B8" stroke-width="1.2" stroke-dasharray="3 4" stroke-opacity="0.6" />
+
+        <!-- PATAS DE ATERRIZAJE -->
+        <g opacity="0.6">
+          <line x1="${legSpreadInner}" y1="${h - 2}" x2="${legSpreadInner - 16}" y2="${padY - 3}" stroke="#475569" stroke-width="3" />
+          <line x1="${legSpreadInner + 18}" y1="${h - 2}" x2="${legSpreadInner - 10}" y2="${padY - 14}" stroke="#94A3B8" stroke-width="1.5" />
+          <ellipse cx="${legSpreadInner - 16}" cy="${padY - 2}" rx="10" ry="2.5" fill="#334155" />
+        </g>
+
+        <g opacity="0.6">
+          <line x1="${w - legSpreadInner}" y1="${h - 2}" x2="${w - legSpreadInner + 16}" y2="${padY - 3}" stroke="#475569" stroke-width="3" />
+          <line x1="${w - legSpreadInner - 18}" y1="${h - 2}" x2="${w - legSpreadInner + 10}" y2="${padY - 14}" stroke="#94A3B8" stroke-width="1.5" />
+          <ellipse cx="${w - legSpreadInner + 16}" cy="${padY - 2}" rx="10" ry="2.5" fill="#334155" />
+        </g>
+
+        <g>
+          <line x1="24" y1="${h - 4}" x2="${-legSpreadOuter}" y2="${padY}" stroke="#475569" stroke-width="3.5" stroke-linecap="round" />
+          <line x1="56" y1="${h - 2}" x2="${-legSpreadOuter * 0.45}" y2="${h + legHeight * 0.55}" stroke="#94A3B8" stroke-width="2" />
+          <circle cx="${-legSpreadOuter * 0.45}" cy="${h + legHeight * 0.55}" r="3" fill="#FC3D21" />
+          <ellipse cx="${-legSpreadOuter}" cy="${padY}" rx="12" ry="3" fill="#334155" />
+        </g>
+
+        <g>
+          <line x1="${w - 24}" y1="${h - 4}" x2="${w + legSpreadOuter}" y2="${padY}" stroke="#475569" stroke-width="3.5" stroke-linecap="round" />
+          <line x1="${w - 56}" y1="${h - 2}" x2="${w + legSpreadOuter * 0.45}" y2="${h + legHeight * 0.55}" stroke="#94A3B8" stroke-width="2" />
+          <circle cx="${w + legSpreadOuter * 0.45}" cy="${h + legHeight * 0.55}" r="3" fill="#FC3D21" />
+          <ellipse cx="${w + legSpreadOuter}" cy="${padY}" rx="12" ry="3" fill="#334155" />
+        </g>
+      `;
+    }
+
+    // =========================================================================
+    // 2. ACTUALIZACIÓN DINÁMICA AL MOVER EL SLIDER DE 30 DÍAS
+    // =========================================================================
+    const slider = document.getElementById('mission-slider');
+
+    function updateTelemetry(dayFloat) {
+      const pct = (dayFloat / 30) * 100;
+      document.getElementById('bars-cursor-needle').style.left = `${pct}%`;
+
+      // Fecha UTC simulada desde 2026-11-19 19:20 UTC
+      const startMs = Date.UTC(2026, 10, 19, 19, 20, 0);
+      const currentDate = new Date(startMs + dayFloat * 24 * 3600 * 1000);
+      const yyyy = currentDate.getUTCFullYear();
+      const mm = String(currentDate.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(currentDate.getUTCDate()).padStart(2, '0');
+      const hh = String(currentDate.getUTCHours()).padStart(2, '0');
+      const min = String(currentDate.getUTCMinutes()).padStart(2, '0');
+
+      const dayInt = Math.max(1, Math.min(30, Math.round(dayFloat) || 1));
+      document.getElementById('timestamp-label').textContent = `${yyyy}-${mm}-${dd} ${hh}:${min} UTC`;
+      document.getElementById('day-progress-badge').textContent = `DÍA ${String(dayInt).padStart(2, '0')} / 30`;
+      document.getElementById('accum-day-num').textContent = dayInt;
+
+      // Energía acumulada proporcional al tiempo iluminado
+      const litDays = Math.min(14.4, dayFloat * 0.86);
+      document.getElementById('solar-accum-horiz').textContent = (litDays * 0.86).toFixed(1);
+      document.getElementById('solar-accum-track').textContent = Math.round(litDays * 31.25);
+
+      // Estado del Sol según la barra (luz entre día 0.45 y 14.4)
+      const hasSolar = (dayFloat >= 0.45 && dayFloat <= 14.4);
+      const solarBadge = document.getElementById('solar-state-badge');
+      const solarNextLabel = document.getElementById('solar-next-label');
+      const solarNextValue = document.getElementById('solar-next-value');
+
+      if (hasSolar) {
+        const sunElev = (1.5 * Math.sin(((dayFloat - 0.45) / 13.95) * Math.PI)).toFixed(1);
+        const toSunset = Math.max(0.1, 14.4 - dayFloat).toFixed(1);
+        solarBadge.textContent = `CON LUZ · +${sunElev}°`;
+        solarBadge.className = "font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800";
+        solarNextLabel.textContent = "Tiempo para ocaso";
+        solarNextValue.textContent = `${toSunset} d`;
+      } else {
+        const toSunrise = dayFloat < 0.45 ? (0.45 - dayFloat).toFixed(1) : (30 - dayFloat + 0.5).toFixed(1);
+        solarBadge.textContent = "EN SOMBRA";
+        solarBadge.className = "font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700";
+        solarNextLabel.textContent = "Próximo amanecer";
+        solarNextValue.textContent = `en ${toSunrise} d`;
+      }
+
+      // Estado de Enlace Tierra (enlace entre día 0..11.1 y 23.3..30)
+      const hasEarth = (dayFloat <= 11.1 || dayFloat >= 23.3);
+      const earthBadge = document.getElementById('earth-state-badge');
+      const earthAngleVal = document.getElementById('earth-angle-value');
+      const earthAngleSub = document.getElementById('earth-angle-sub');
+      const earthNextLabel = document.getElementById('earth-next-label');
+      const earthNextValue = document.getElementById('earth-next-value');
+      const occultLabel = document.getElementById('terrain-occult-label');
+
+      if (hasEarth) {
+        const earthElev = dayFloat <= 11.1
+          ? (4.8 * Math.sin((dayFloat / 11.1) * Math.PI * 0.8 + 0.4)).toFixed(1)
+          : (3.9 * Math.sin(((dayFloat - 23.3) / 6.7) * Math.PI * 0.85)).toFixed(1);
+        const toEarthset = dayFloat <= 11.1
+          ? Math.max(0.1, 11.1 - dayFloat).toFixed(1)
+          : Math.max(0.1, 30 - dayFloat + 4.1).toFixed(1);
+
+        earthBadge.textContent = "ENLACE DIRECTO";
+        earthBadge.className = "font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-[#0032A0]";
+        earthAngleVal.textContent = `+${earthElev}°`;
+        earthAngleVal.className = "font-['JetBrains_Mono'] text-2xl font-bold text-[#0032A0]";
+        earthAngleSub.textContent = "sobre el horizonte";
+        earthNextLabel.textContent = "Tiempo para earthset";
+        earthNextValue.textContent = `${toEarthset} d`;
+        occultLabel.textContent = "línea de vista despejada";
+      } else {
+        const earthElev = (-1.2 - Math.sin(((dayFloat - 11.1) / 12.2) * Math.PI) * 1.4).toFixed(1);
+        const toAos = Math.max(0.1, 23.3 - dayFloat).toFixed(1);
+
+        earthBadge.textContent = "SIN ENLACE";
+        earthBadge.className = "font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700";
+        earthAngleVal.textContent = `${earthElev}°`;
+        earthAngleVal.className = "font-['JetBrains_Mono'] text-2xl font-bold text-slate-900";
+        earthAngleSub.textContent = "oculto tras relieve";
+        earthNextLabel.textContent = "Próximo enlace";
+        earthNextValue.textContent = `en ${toAos} d`;
+        occultLabel.textContent = "tapado por el terreno";
+      }
+
+      // Mover marcadores sobre el cielo
+      const sunX = 120 + (dayFloat / 30) * 440;
+      document.getElementById('sun-marker').setAttribute('transform', `translate(${sunX.toFixed(1)}, 188)`);
+
+      const earthY = hasEarth ? 172 : 214;
+      document.getElementById('earth-marker').setAttribute('transform', `translate(16, ${earthY})`);
+
+      // Actualizar ondas de antena y panel solar del chasis
+      renderLanderHardware(hasEarth, hasSolar);
+    }
+
+    slider.addEventListener('input', (e) => updateTelemetry(parseFloat(e.target.value)));
+    window.addEventListener('resize', () => updateTelemetry(parseFloat(slider.value)));
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateTelemetry(parseFloat(slider.value));
+    });
+  </script>
+</body>
+</html>

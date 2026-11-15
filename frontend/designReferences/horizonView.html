@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sextante Polar // Instrumento de Telemetría Lunar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-void: #050608;
+      --bg-panel: #0A0C10;
+      --hairline: rgba(255, 255, 255, 0.14);
+      --hairline-strong: rgba(255, 255, 255, 0.28);
+      --text-primary: #F3F4F6;
+      --text-muted: #8B949E;
+      --solar-gold: #FFB800;
+      --earth-cyan: #38BDF8;
+      --nasa-red: #FC3D21;
+      --font-sans: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      background-color: var(--bg-void);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background-image: 
+        linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 36px 36px;
+    }
+
+    /* CONTENEDOR PRINCIPAL HUD */
+    .hud-shell {
+      width: 100%;
+      max-width: 1120px;
+      background: var(--bg-panel);
+      border: 1px solid var(--hairline-strong);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* BARRA SUPERIOR */
+    .hud-topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .site-selector-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hud-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .site-tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .site-tab {
+      background: transparent;
+      border: 1px solid var(--hairline);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .site-tab:hover {
+      border-color: rgba(255, 255, 255, 0.5);
+      color: var(--text-primary);
+    }
+
+    .site-tab.active {
+      background: #FFFFFF;
+      color: #050608;
+      border-color: #FFFFFF;
+      font-weight: 700;
+    }
+
+    .hud-meta-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .mono-dim {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-readout {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      border: 1px solid currentColor;
+    }
+
+    .status-optimal {
+      color: #34D399;
+      background: rgba(52, 211, 153, 0.08);
+    }
+
+    .status-partial {
+      color: var(--solar-gold);
+      background: rgba(255, 184, 0, 0.08);
+    }
+
+    .status-critical {
+      color: var(--nasa-red);
+      background: rgba(252, 61, 33, 0.1);
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulseBeat 1.8s infinite ease-in-out;
+    }
+
+    @keyframes pulseBeat {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(1.3); }
+    }
+
+    /* ESCENARIO CENTRAL */
+    .instrument-stage {
+      display: grid;
+      grid-template-columns: 245px 1fr 245px;
+      align-items: stretch;
+      min-height: 490px;
+    }
+
+    .telemetry-wing {
+      padding: 22px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .wing-left {
+      border-right: 1px solid var(--hairline);
+    }
+
+    .wing-right {
+      border-left: 1px solid var(--hairline);
+    }
+
+    .readout-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .accent-bar {
+      width: 10px;
+      height: 2px;
+      display: inline-block;
+    }
+
+    .bar-sun { background: var(--solar-gold); }
+    .bar-earth { background: var(--earth-cyan); }
+    .bar-neutral { background: #FFFFFF; }
+    .bar-alert { background: var(--nasa-red); }
+
+    .readout-primary {
+      margin-bottom: 14px;
+    }
+
+    .state-word {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .state-sun { color: var(--solar-gold); }
+    .state-earth { color: var(--earth-cyan); }
+    .state-off { color: var(--nasa-red); }
+
+    .readout-metrics {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+      padding-bottom: 4px;
+    }
+
+    .metric-row span {
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .metric-row strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .hairline-divider {
+      height: 1px;
+      background: var(--hairline);
+      width: 100%;
+    }
+
+    .diagnostic-copy {
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: #CBD5E1;
+    }
+
+    /* VISOR DEL SEXTANTE POLAR */
+    .sextant-viewport {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: radial-gradient(circle at center, #0F141D 0%, #06080B 75%);
+      overflow: hidden;
+    }
+
+    #sextant-svg {
+      width: 100%;
+      max-width: 470px;
+      height: auto;
+      display: block;
+    }
+
+    .visor-corner {
+      position: absolute;
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.42);
+      pointer-events: none;
+    }
+
+    .corner-tl { top: 12px; left: 14px; }
+    .corner-tr { top: 12px; right: 14px; }
+    .corner-bl { bottom: 12px; left: 14px; }
+    .corner-br { bottom: 12px; right: 14px; }
+
+    #local-horizon-deg {
+      color: #FFFFFF;
+      font-weight: 600;
+    }
+
+    /* CONSOLA INFERIOR DE TIEMPO */
+    .hud-timeline-bar {
+      border-top: 1px solid var(--hairline);
+      padding: 14px 20px 16px;
+      background: #07090C;
+    }
+
+    .timeline-controls-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .time-readout {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+    }
+
+    .time-readout strong {
+      font-size: 13px;
+      color: #FFFFFF;
+      letter-spacing: 0.04em;
+    }
+
+    .day-tag {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--nasa-red);
+      border: 1px solid rgba(252, 61, 33, 0.45);
+      padding: 2px 6px;
+    }
+
+    .step-buttons {
+      display: flex;
+      gap: 6px;
+    }
+
+    .hud-btn {
+      background: transparent;
+      border: 1px solid var(--hairline-strong);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .hud-btn:hover {
+      border-color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .hud-btn-primary {
+      border-color: var(--solar-gold);
+      color: var(--solar-gold);
+    }
+
+    .hud-btn-primary:hover {
+      background: var(--solar-gold);
+      color: #050608;
+    }
+
+    .hud-btn-accent {
+      border-color: var(--nasa-red);
+      color: var(--nasa-red);
+    }
+
+    .hud-btn-accent:hover {
+      background: var(--nasa-red);
+      color: #FFFFFF;
+    }
+
+    .scrubber-wrapper {
+      width: 100%;
+    }
+
+    #time-scrubber {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.22);
+      outline: none;
+      cursor: pointer;
+    }
+
+    #time-scrubber::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 18px;
+      background: var(--nasa-red);
+      border: 1px solid #FFFFFF;
+      cursor: ew-resize;
+    }
+
+    #time-scrubber::-moz-range-thumb {
+      width: 12px;
+      height: 18px;
+      border-radius: 0;
+      background: var(--nasa-red);
+      border: 1px solid #FFFFFF;
+      cursor: ew-resize;
+    }
+
+    .scrubber-ticks {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    @media (max-width: 920px) {
+      .instrument-stage {
+        grid-template-columns: 1fr;
+      }
+
+      .wing-left {
+        border-right: none;
+        border-bottom: 1px solid var(--hairline);
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .wing-right {
+        border-left: none;
+        border-top: 1px solid var(--hairline);
+      }
+
+      .readout-block {
+        flex: 1;
+        min-width: 200px;
+      }
+
+      .hairline-divider {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="hud-shell">
+    
+    <!-- BARRA SUPERIOR: IDENTIFICACIÓN DE PUNTO Y ESTADO CRÍTICO -->
+    <header class="hud-topbar">
+      <div class="site-selector-group">
+        <span class="hud-label">OBJETIVO //</span>
+        <div class="site-tabs" role="tablist" aria-label="Sitios candidatos">
+          <button type="button" class="site-tab active" data-site="shackleton">
+            A-04 SHACKLETON RIM
+          </button>
+          <button type="button" class="site-tab" data-site="malapert">
+            B-11 MALAPERT PEAK
+          </button>
+          <button type="button" class="site-tab" data-site="cabeus">
+            C-02 CABEUS FLOOR
+          </button>
+        </div>
+      </div>
+
+      <div class="hud-meta-right">
+        <span id="hud-coords" class="mono-dim">89.54°S 129.78°E // +1,840m</span>
+        <div id="hud-global-status" class="status-readout status-optimal">
+          <span class="pulse-dot"></span>
+          <span id="hud-status-text">NOMINAL // SOL + ENLACE</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- NÚCLEO CENTRAL: EL SEXTANTE POLAR + LECTURAS FLOTANTES -->
+    <section class="instrument-stage">
+      
+      <!-- COLUMNA IZQUIERDA: TELEMETRÍA SOLAR Y TERRENO -->
+      <aside class="telemetry-wing wing-left">
+        <div class="readout-block">
+          <div class="readout-header">
+            <span class="accent-bar bar-sun"></span>
+            <span class="hud-label">01 // VECTOR SOLAR</span>
+          </div>
+          <div class="readout-primary">
+            <span id="sun-state-label" class="state-word state-sun">ILUMINADO</span>
+          </div>
+          <div class="readout-metrics">
+            <div class="metric-row">
+              <span>ELEVACIÓN REL.</span>
+              <strong id="sun-elev-val">+0.94°</strong>
+            </div>
+            <div class="metric-row">
+              <span>AZIMUT</span>
+              <strong id="sun-az-val">142.0°</strong>
+            </div>
+            <div class="metric-row">
+              <span>IRRADIANCIA</span>
+              <strong id="sun-watts-val">1,190 W/m²</strong>
+            </div>
+            <div class="metric-row">
+              <span>PRÓX. OCASO</span>
+              <strong id="sun-next-val">4d 11h</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="hairline-divider"></div>
+
+        <div class="readout-block">
+          <div class="readout-header">
+            <span class="accent-bar bar-neutral"></span>
+            <span class="hud-label">03 // SUPERFICIE</span>
+          </div>
+          <div class="readout-metrics">
+            <div class="metric-row">
+              <span>PENDIENTE</span>
+              <strong id="terrain-slope-val">6.4°</strong>
+            </div>
+            <div class="metric-row">
+              <span>TEMP. SUELO</span>
+              <strong id="terrain-temp-val">-42 °C</strong>
+            </div>
+            <div class="metric-row">
+              <span>HIELO (PSR)</span>
+              <strong id="terrain-psr-val">380 m</strong>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CENTRO: DIAL ASTRONÓMICO SVG -->
+      <div class="sextant-viewport">
+        <svg id="sextant-svg" viewBox="0 0 600 600" aria-label="Dial astronómico del horizonte lunar">
+          <defs>
+            <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#FFB800" stop-opacity="0.85" />
+              <stop offset="45%" stop-color="#FFB800" stop-opacity="0.22" />
+              <stop offset="100%" stop-color="#FFB800" stop-opacity="0" />
+            </radialGradient>
+
+            <radialGradient id="earthGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.85" />
+              <stop offset="45%" stop-color="#38BDF8" stop-opacity="0.22" />
+              <stop offset="100%" stop-color="#38BDF8" stop-opacity="0" />
+            </radialGradient>
+
+            <clipPath id="dialClip">
+              <circle cx="300" cy="300" r="245" />
+            </clipPath>
+          </defs>
+
+          <g id="reticle-layer"></g>
+
+          <g clip-path="url(#dialClip)">
+            <path id="horizon-terrain-fill" fill="rgba(255, 255, 255, 0.05)" stroke="rgba(255, 255, 255, 0.45)" stroke-width="1.25" />
+            <path id="horizon-terrain-hatch" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="0.75" stroke-dasharray="2 4" />
+          </g>
+
+          <g id="vectors-layer"></g>
+
+          <g id="lander-reticle" transform="translate(300, 300)">
+            <circle r="14" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1" />
+            <line x1="-22" y1="0" x2="-8" y2="0" stroke="rgba(255,255,255,0.5)" stroke-width="1" />
+            <line x1="8" y1="0" x2="22" y2="0" stroke="rgba(255,255,255,0.5)" stroke-width="1" />
+            <line x1="0" y1="-22" x2="0" y2="-8" stroke="rgba(255,255,255,0.5)" stroke-width="1" />
+            <line x1="0" y1="8" x2="0" y2="22" stroke="rgba(255,255,255,0.5)" stroke-width="1" />
+            <circle r="3" fill="#FFFFFF" />
+          </g>
+        </svg>
+
+        <div class="visor-corner corner-tl">PROYECCIÓN CENITAL // 0°–16°</div>
+        <div class="visor-corner corner-tr">NORTE SELENOGRÁFICO ↑</div>
+        <div class="visor-corner corner-bl">RELIEVE HORIZONTE: <span id="local-horizon-deg">+1.2°</span></div>
+        <div class="visor-corner corner-br">MODO: SIMULACIÓN FÍSICA</div>
+      </div>
+
+      <!-- COLUMNA DERECHA: TELEMETRÍA DE ENLACE CON LA TIERRA -->
+      <aside class="telemetry-wing wing-right">
+        <div class="readout-block">
+          <div class="readout-header">
+            <span class="accent-bar bar-earth"></span>
+            <span class="hud-label">02 // ENLACE TIERRA</span>
+          </div>
+          <div class="readout-primary">
+            <span id="earth-state-label" class="state-word state-earth">LÍNEA DIRECTA</span>
+          </div>
+          <div class="readout-metrics">
+            <div class="metric-row">
+              <span>ELEVACIÓN REL.</span>
+              <strong id="earth-elev-val">+4.18°</strong>
+            </div>
+            <div class="metric-row">
+              <span>AZIMUT ANTENA</span>
+              <strong id="earth-az-val">004.2°</strong>
+            </div>
+            <div class="metric-row">
+              <span>SEÑAL / BANDA</span>
+              <strong id="earth-band-val">Ka // -94 dBm</strong>
+            </div>
+            <div class="metric-row">
+              <span>VENTANA ACTIVA</span>
+              <strong id="earth-next-val">8d 04h</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="hairline-divider"></div>
+
+        <div class="readout-block">
+          <div class="readout-header">
+            <span class="accent-bar bar-alert"></span>
+            <span class="hud-label">04 // DIAGNÓSTICO</span>
+          </div>
+          <p id="diagnostic-readout" class="diagnostic-copy">
+            El rayo solar supera la cresta oriental por +0.94°. Visibilidad directa con estaciones terrestres en Banda Ka.
+          </p>
+        </div>
+      </aside>
+
+    </section>
+
+    <!-- CONSOLA INFERIOR: CONTROL DE TIEMPO DE MISIÓN (30 DÍAS) -->
+    <footer class="hud-timeline-bar">
+      <div class="timeline-controls-top">
+        <div class="time-readout">
+          <span class="hud-label">EPOCH UTC //</span>
+          <strong id="epoch-display">25 NOV 2026 — 12:00</strong>
+          <span id="mission-day-badge" class="day-tag">DÍA 06 / 30</span>
+        </div>
+
+        <div class="step-buttons">
+          <button type="button" id="btn-prev-6h" class="hud-btn">-6H</button>
+          <button type="button" id="btn-play-pause" class="hud-btn hud-btn-primary">▶ SIMULAR</button>
+          <button type="button" id="btn-next-6h" class="hud-btn">+6H</button>
+          <button type="button" id="btn-fix-site" class="hud-btn hud-btn-accent">+ FIJAR PUNTO</button>
+        </div>
+      </div>
+
+      <div class="scrubber-wrapper">
+        <input
+          id="time-scrubber"
+          type="range"
+          min="0"
+          max="720"
+          step="2"
+          value="132"
+          aria-label="Línea de tiempo de la misión en horas"
+        />
+        <div class="scrubber-ticks">
+          <span>20 NOV (00d)</span>
+          <span>27 NOV (07d)</span>
+          <span>05 DIC (15d)</span>
+          <span>12 DIC (22d)</span>
+          <span>20 DIC (30d)</span>
+        </div>
+      </div>
+    </footer>
+
+  </main>
+
+  <script>
+    // =========================================================
+    // 1. MODELO FÍSICO Y TOPOGRÁFICO DE LOS 3 SITIOS CANDIDATOS
+    // =========================================================
+    const SITES = {
+      shackleton: {
+        id: 'shackleton',
+        name: 'A-04 SHACKLETON RIM',
+        coords: '89.54°S 129.78°E // +1,840m',
+        slope: '6.4°',
+        psrDist: '380 m',
+        sunBaseElev: 1.15,
+        sunElevAmp: 0.45,
+        earthBaseAz: 4,
+        earthBaseElev: 4.8,
+        horizonProfile(deg) {
+          const rad = (deg * Math.PI) / 180;
+          const ridge = 0.55 + 0.35 * Math.sin(rad * 3 + 0.4);
+          const westPeak = 2.6 * Math.exp(-Math.pow((deg - 272) / 22, 2));
+          const southDip = -0.35 * Math.exp(-Math.pow((deg - 150) / 30, 2));
+          return Math.max(0.1, ridge + westPeak + southDip);
+        }
+      },
+      malapert: {
+        id: 'malapert',
+        name: 'B-11 MALAPERT PEAK',
+        coords: '85.98°S 002.40°E // +4,920m',
+        slope: '11.8°',
+        psrDist: '1,420 m',
+        sunBaseElev: 1.45,
+        sunElevAmp: 1.35,
+        earthBaseAz: 358,
+        earthBaseElev: 6.4,
+        horizonProfile(deg) {
+          const rad = (deg * Math.PI) / 180;
+          const base = 0.8 + 0.4 * Math.cos(rad * 4);
+          const southMassif = 3.8 * Math.exp(-Math.pow((deg - 185) / 36, 2));
+          return Math.max(0.2, base + southMassif);
+        }
+      },
+      cabeus: {
+        id: 'cabeus',
+        name: 'C-02 CABEUS FLOOR',
+        coords: '84.90°S 324.50°E // -2,150m',
+        slope: '4.1°',
+        psrDist: '0 m (DENTRO)',
+        sunBaseElev: 1.2,
+        sunElevAmp: 1.1,
+        earthBaseAz: 6,
+        earthBaseElev: 5.2,
+        horizonProfile(deg) {
+          const rad = (deg * Math.PI) / 180;
+          return 5.4 + 1.5 * Math.sin(rad * 2 + 1.1) + 0.8 * Math.cos(rad * 5);
+        }
+      }
+    };
+
+    // =========================================================
+    // 2. CONSTANTES GEOMÉTRICAS DEL DIAL SVG
+    // =========================================================
+    const CX = 300;
+    const CY = 300;
+    const MAX_RADIUS = 245;
+    const MAX_ELEV_DEG = 16;
+    const MISSION_START_UTC = Date.UTC(2026, 10, 20, 0, 0, 0);
+
+    let activeSiteKey = 'shackleton';
+    let currentHours = 132;
+    let isPlaying = false;
+    let playTimer = null;
+
+    function polarToXY(azimuthDeg, elevationDeg) {
+      const clampedElev = Math.max(-2, Math.min(MAX_ELEV_DEG, elevationDeg));
+      const r = MAX_RADIUS * (1 - clampedElev / MAX_ELEV_DEG);
+      const rad = ((azimuthDeg - 90) * Math.PI) / 180;
+      return {
+        x: CX + r * Math.cos(rad),
+        y: CY + r * Math.sin(rad)
+      };
+    }
+
+    // =========================================================
+    // 3. CONSTRUCCIÓN DE LA RETÍCULA ASTRONÓMICA FIJA
+    // =========================================================
+    function buildReticle() {
+      const layer = document.getElementById('reticle-layer');
+      const ns = 'http://www.w3.org/2000/svg';
+      layer.innerHTML = '';
+
+      const rings = [
+        { deg: 0, stroke: 'rgba(255,255,255,0.45)', width: 1.4, dash: '' },
+        { deg: 4, stroke: 'rgba(255,255,255,0.12)', width: 1, dash: '3 4' },
+        { deg: 8, stroke: 'rgba(255,255,255,0.12)', width: 1, dash: '3 4' },
+        { deg: 12, stroke: 'rgba(255,255,255,0.10)', width: 1, dash: '2 5' }
+      ];
+
+      rings.forEach((ring) => {
+        const r = MAX_RADIUS * (1 - ring.deg / MAX_ELEV_DEG);
+        const circle = document.createElementNS(ns, 'circle');
+        circle.setAttribute('cx', CX);
+        circle.setAttribute('cy', CY);
+        circle.setAttribute('r', r.toFixed(1));
+        circle.setAttribute('fill', 'none');
+        circle.setAttribute('stroke', ring.stroke);
+        circle.setAttribute('stroke-width', ring.width);
+        if (ring.dash) circle.setAttribute('stroke-dasharray', ring.dash);
+        layer.appendChild(circle);
+
+        if (ring.deg > 0) {
+          const label = document.createElementNS(ns, 'text');
+          label.setAttribute('x', CX + 6);
+          label.setAttribute('y', (CY - r + 11).toFixed(1));
+          label.setAttribute('fill', 'rgba(255,255,255,0.32)');
+          label.setAttribute('font-family', 'JetBrains Mono, monospace');
+          label.setAttribute('font-size', '9');
+          label.textContent = `+${ring.deg}°`;
+          layer.appendChild(label);
+        }
+      });
+
+      const cardinals = { 0: 'N', 90: 'E', 180: 'S', 270: 'O' };
+
+      for (let deg = 0; deg < 360; deg += 15) {
+        const isCardinal = deg % 90 === 0;
+        const isMajor = deg % 45 === 0;
+        const innerR = isCardinal ? MAX_RADIUS - 12 : isMajor ? MAX_RADIUS - 8 : MAX_RADIUS - 4;
+        const outerR = MAX_RADIUS;
+
+        const rad = ((deg - 90) * Math.PI) / 180;
+        const x1 = CX + innerR * Math.cos(rad);
+        const y1 = CY + innerR * Math.sin(rad);
+        const x2 = CX + outerR * Math.cos(rad);
+        const y2 = CY + outerR * Math.sin(rad);
+
+        const tick = document.createElementNS(ns, 'line');
+        tick.setAttribute('x1', x1.toFixed(1));
+        tick.setAttribute('y1', y1.toFixed(1));
+        tick.setAttribute('x2', x2.toFixed(1));
+        tick.setAttribute('y2', y2.toFixed(1));
+        tick.setAttribute('stroke', isCardinal ? '#FFFFFF' : 'rgba(255,255,255,0.3)');
+        tick.setAttribute('stroke-width', isCardinal ? '1.5' : '1');
+        layer.appendChild(tick);
+
+        if (isMajor) {
+          const textR = MAX_RADIUS + 18;
+          const tx = CX + textR * Math.cos(rad);
+          const ty = CY + textR * Math.sin(rad) + 3.5;
+
+          const txt = document.createElementNS(ns, 'text');
+          txt.setAttribute('x', tx.toFixed(1));
+          txt.setAttribute('y', ty.toFixed(1));
+          txt.setAttribute('text-anchor', 'middle');
+          txt.setAttribute('font-family', 'JetBrains Mono, monospace');
+          txt.setAttribute('font-size', isCardinal ? '12' : '9.5');
+          txt.setAttribute('font-weight', isCardinal ? '700' : '400');
+          txt.setAttribute('fill', isCardinal ? '#FFFFFF' : 'rgba(255,255,255,0.45)');
+          txt.textContent = cardinals[deg] || `${String(deg).padStart(3, '0')}°`;
+          layer.appendChild(txt);
+        }
+      }
+    }
+
+    // =========================================================
+    // 4. DIBUJO DEL RELIEVE TOPOGRÁFICO DEL HORIZONTE
+    // =========================================================
+    function renderHorizonTerrain(site) {
+      const fillPath = document.getElementById('horizon-terrain-fill');
+      const hatchPath = document.getElementById('horizon-terrain-hatch');
+
+      const outerArc = `M ${CX} ${CY - MAX_RADIUS} A ${MAX_RADIUS} ${MAX_RADIUS} 0 1 1 ${CX - 0.01} ${CY - MAX_RADIUS} Z `;
+      const mountainPoints = [];
+
+      for (let deg = 0; deg <= 360; deg += 2) {
+        const elev = site.horizonProfile(deg % 360);
+        const pt = polarToXY(deg, elev);
+        mountainPoints.push(`${deg === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`);
+      }
+
+      const mountainClosed = mountainPoints.join(' ') + ' Z';
+      fillPath.setAttribute('d', outerArc + mountainClosed);
+      fillPath.setAttribute('fill-rule', 'evenodd');
+      hatchPath.setAttribute('d', mountainPoints.join(' '));
+    }
+
+    // =========================================================
+    // 5. CÁLCULO DE POSICIÓN SOLAR / TIERRA Y RENDER EN VIVO
+    // =========================================================
+    function getAstronomicalState(site, hourOffset) {
+      const sunAz = (115 + (hourOffset / 708.72) * 360) % 360;
+      const sunAbsElev = site.sunBaseElev + site.sunElevAmp * Math.sin((hourOffset / 708.72) * Math.PI * 2);
+      const mountainAtSun = site.horizonProfile(sunAz);
+      const sunRelElev = sunAbsElev - mountainAtSun;
+      const isSunVisible = sunRelElev > 0;
+
+      const libPhase = (hourOffset / 655.2) * Math.PI * 2;
+      const earthAz = (site.earthBaseAz + 6.8 * Math.sin(libPhase) + 360) % 360;
+      const earthAbsElev = site.earthBaseElev + 3.4 * Math.cos(libPhase * 0.92);
+      const mountainAtEarth = site.horizonProfile(earthAz);
+      const earthRelElev = earthAbsElev - mountainAtEarth;
+      const isEarthVisible = earthRelElev > 0;
+
+      return {
+        sunAz,
+        sunAbsElev,
+        sunRelElev,
+        mountainAtSun,
+        isSunVisible,
+        earthAz,
+        earthAbsElev,
+        earthRelElev,
+        mountainAtEarth,
+        isEarthVisible
+      };
+    }
+
+    function findNextTransitionHours(site, startHour, type) {
+      const initial = getAstronomicalState(site, startHour);
+      const targetFlag = type === 'sun' ? initial.isSunVisible : initial.isEarthVisible;
+
+      for (let h = 1; h <= 720; h++) {
+        const checkHour = startHour + h;
+        if (checkHour > 720) return '> Fin ventana';
+        const st = getAstronomicalState(site, checkHour);
+        const flag = type === 'sun' ? st.isSunVisible : st.isEarthVisible;
+        if (flag !== targetFlag) {
+          const d = Math.floor(h / 24);
+          const remH = h % 24;
+          return `${d}d ${remH}h`;
+        }
+      }
+      return 'Continuo (30d)';
+    }
+
+    function updateInstrument() {
+      const site = SITES[activeSiteKey];
+      const state = getAstronomicalState(site, currentHours);
+      const ns = 'http://www.w3.org/2000/svg';
+      const vectorsLayer = document.getElementById('vectors-layer');
+      vectorsLayer.innerHTML = '';
+
+      const sunPt = polarToXY(state.sunAz, state.sunAbsElev);
+      const earthPt = polarToXY(state.earthAz, state.earthAbsElev);
+
+      // Rayo Solar
+      const sunEdgePt = polarToXY(state.sunAz, -0.5);
+      const sunLine = document.createElementNS(ns, 'line');
+      sunLine.setAttribute('x1', sunEdgePt.x.toFixed(1));
+      sunLine.setAttribute('y1', sunEdgePt.y.toFixed(1));
+      sunLine.setAttribute('x2', state.isSunVisible ? CX : sunPt.x.toFixed(1));
+      sunLine.setAttribute('y2', state.isSunVisible ? CY : sunPt.y.toFixed(1));
+      sunLine.setAttribute('stroke', state.isSunVisible ? '#FFB800' : 'rgba(255, 184, 0, 0.28)');
+      sunLine.setAttribute('stroke-width', state.isSunVisible ? '1.6' : '1');
+      if (!state.isSunVisible) sunLine.setAttribute('stroke-dasharray', '3 3');
+      vectorsLayer.appendChild(sunLine);
+
+      if (state.isSunVisible) {
+        const glow = document.createElementNS(ns, 'circle');
+        glow.setAttribute('cx', sunPt.x.toFixed(1));
+        glow.setAttribute('cy', sunPt.y.toFixed(1));
+        glow.setAttribute('r', '22');
+        glow.setAttribute('fill', 'url(#sunGlow)');
+        vectorsLayer.appendChild(glow);
+      }
+
+      const sunDisc = document.createElementNS(ns, 'circle');
+      sunDisc.setAttribute('cx', sunPt.x.toFixed(1));
+      sunDisc.setAttribute('cy', sunPt.y.toFixed(1));
+      sunDisc.setAttribute('r', '5.5');
+      sunDisc.setAttribute('fill', state.isSunVisible ? '#FFB800' : '#0A0C10');
+      sunDisc.setAttribute('stroke', '#FFB800');
+      sunDisc.setAttribute('stroke-width', '1.8');
+      vectorsLayer.appendChild(sunDisc);
+
+      const sunTag = document.createElementNS(ns, 'text');
+      sunTag.setAttribute('x', (sunPt.x + 10).toFixed(1));
+      sunTag.setAttribute('y', (sunPt.y + 3).toFixed(1));
+      sunTag.setAttribute('font-family', 'JetBrains Mono, monospace');
+      sunTag.setAttribute('font-size', '9.5');
+      sunTag.setAttribute('font-weight', '700');
+      sunTag.setAttribute('fill', '#FFB800');
+      sunTag.textContent = `SOL ${state.sunRelElev >= 0 ? '+' : ''}${state.sunRelElev.toFixed(1)}°`;
+      vectorsLayer.appendChild(sunTag);
+
+      // Enlace Tierra
+      const earthLine = document.createElementNS(ns, 'line');
+      earthLine.setAttribute('x1', earthPt.x.toFixed(1));
+      earthLine.setAttribute('y1', earthPt.y.toFixed(1));
+      earthLine.setAttribute('x2', CX);
+      earthLine.setAttribute('y2', CY);
+      earthLine.setAttribute('stroke', state.isEarthVisible ? '#38BDF8' : 'rgba(252, 61, 33, 0.35)');
+      earthLine.setAttribute('stroke-width', state.isEarthVisible ? '1.4' : '1');
+      earthLine.setAttribute('stroke-dasharray', state.isEarthVisible ? '6 3' : '2 4');
+      vectorsLayer.appendChild(earthLine);
+
+      if (state.isEarthVisible) {
+        const eGlow = document.createElementNS(ns, 'circle');
+        eGlow.setAttribute('cx', earthPt.x.toFixed(1));
+        eGlow.setAttribute('cy', earthPt.y.toFixed(1));
+        eGlow.setAttribute('r', '20');
+        eGlow.setAttribute('fill', 'url(#earthGlow)');
+        vectorsLayer.appendChild(eGlow);
+      }
+
+      const earthDisc = document.createElementNS(ns, 'circle');
+      earthDisc.setAttribute('cx', earthPt.x.toFixed(1));
+      earthDisc.setAttribute('cy', earthPt.y.toFixed(1));
+      earthDisc.setAttribute('r', '5');
+      earthDisc.setAttribute('fill', state.isEarthVisible ? '#38BDF8' : '#0A0C10');
+      earthDisc.setAttribute('stroke', state.isEarthVisible ? '#38BDF8' : '#FC3D21');
+      earthDisc.setAttribute('stroke-width', '1.8');
+      vectorsLayer.appendChild(earthDisc);
+
+      const earthTag = document.createElementNS(ns, 'text');
+      earthTag.setAttribute('x', (earthPt.x + 10).toFixed(1));
+      earthTag.setAttribute('y', (earthPt.y - 6).toFixed(1));
+      earthTag.setAttribute('font-family', 'JetBrains Mono, monospace');
+      earthTag.setAttribute('font-size', '9.5');
+      earthTag.setAttribute('font-weight', '700');
+      earthTag.setAttribute('fill', state.isEarthVisible ? '#38BDF8' : '#FC3D21');
+      earthTag.textContent = `TIERRA ${state.earthRelElev >= 0 ? '+' : ''}${state.earthRelElev.toFixed(1)}°`;
+      vectorsLayer.appendChild(earthTag);
+
+      // Textos laterales y barra superior
+      document.getElementById('hud-coords').textContent = site.coords;
+      document.getElementById('local-horizon-deg').textContent = `+${state.mountainAtSun.toFixed(1)}° (AZ SOL)`;
+
+      const currentDate = new Date(MISSION_START_UTC + currentHours * 3600 * 1000);
+      const dateFormatted = currentDate.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'UTC'
+      }).toUpperCase();
+      const hourFormatted = String(currentDate.getUTCHours()).padStart(2, '0') + ':00';
+      document.getElementById('epoch-display').textContent = `${dateFormatted} — ${hourFormatted}`;
+
+      const missionDay = Math.min(30, Math.floor(currentHours / 24) + 1);
+      document.getElementById('mission-day-badge').textContent = `DÍA ${String(missionDay).padStart(2, '0')} / 30`;
+
+      const sunStateEl = document.getElementById('sun-state-label');
+      if (state.isSunVisible) {
+        const watts = Math.round(1150 + Math.min(200, state.sunRelElev * 85));
+        sunStateEl.textContent = 'ILUMINADO';
+        sunStateEl.className = 'state-word state-sun';
+        document.getElementById('sun-watts-val').textContent = `${watts.toLocaleString('es-AR')} W/m²`;
+        document.getElementById('terrain-temp-val').textContent = '-42 °C';
+      } else {
+        sunStateEl.textContent = 'EN SOMBRA';
+        sunStateEl.className = 'state-word state-off';
+        document.getElementById('sun-watts-val').textContent = '0 W/m²';
+        document.getElementById('terrain-temp-val').textContent = '-214 °C';
+      }
+
+      document.getElementById('sun-elev-val').textContent = `${state.sunRelElev >= 0 ? '+' : ''}${state.sunRelElev.toFixed(2)}°`;
+      document.getElementById('sun-az-val').textContent = `${state.sunAz.toFixed(1).padStart(5, '0')}°`;
+      document.getElementById('sun-next-val').textContent = findNextTransitionHours(site, currentHours, 'sun');
+
+      const earthStateEl = document.getElementById('earth-state-label');
+      if (state.isEarthVisible) {
+        earthStateEl.textContent = 'LÍNEA DIRECTA';
+        earthStateEl.className = 'state-word state-earth';
+        document.getElementById('earth-band-val').textContent = 'Ka // -94 dBm';
+      } else {
+        earthStateEl.textContent = 'OCULTO';
+        earthStateEl.className = 'state-word state-off';
+        document.getElementById('earth-band-val').textContent = 'SIN ENLACE';
+      }
+
+      document.getElementById('earth-elev-val').textContent = `${state.earthRelElev >= 0 ? '+' : ''}${state.earthRelElev.toFixed(2)}°`;
+      document.getElementById('earth-az-val').textContent = `${state.earthAz.toFixed(1).padStart(5, '0')}°`;
+      document.getElementById('earth-next-val').textContent = findNextTransitionHours(site, currentHours, 'earth');
+
+      document.getElementById('terrain-slope-val').textContent = site.slope;
+      document.getElementById('terrain-psr-val').textContent = site.psrDist;
+
+      const statusBox = document.getElementById('hud-global-status');
+      const statusText = document.getElementById('hud-status-text');
+      const diagText = document.getElementById('diagnostic-readout');
+
+      if (state.isSunVisible && state.isEarthVisible) {
+        statusBox.className = 'status-readout status-optimal';
+        statusText.textContent = 'NOMINAL // SOL + ENLACE';
+        diagText.textContent = `Condiciones óptimas. El Sol supera la cresta local por +${state.sunRelElev.toFixed(1)}° y existe línea de visión despejada con la Tierra (+${state.earthRelElev.toFixed(1)}°).`;
+      } else if (state.isSunVisible && !state.isEarthVisible) {
+        statusBox.className = 'status-readout status-partial';
+        statusText.textContent = 'PARCIAL // SIN ENLACE';
+        diagText.textContent = `Generación solar activa (+${state.sunRelElev.toFixed(1)}°), pero el relieve bloquea la señal con la Tierra. Requiere satélite relé orbital.`;
+      } else if (!state.isSunVisible && state.isEarthVisible) {
+        statusBox.className = 'status-readout status-partial';
+        statusText.textContent = 'PARCIAL // OPERACIÓN BATERÍA';
+        diagText.textContent = `Eclipse topográfico: el relieve bloquea el Sol (${state.sunRelElev.toFixed(1)}°). Comunicación directa con la Tierra operativa.`;
+      } else {
+        statusBox.className = 'status-readout status-critical';
+        statusText.textContent = 'CRÍTICO // SOMBRA Y CORTE';
+        diagText.textContent = `Sin luz solar directa ni visibilidad con la Tierra en este instante. Temperatura criogénica (-214 °C); operación estrictamente limitada a baterías/RTG.`;
+      }
+    }
+
+    // =========================================================
+    // 6. EVENTOS DE CONTROL DE SITIO Y TIEMPO
+    // =========================================================
+    const scrubber = document.getElementById('time-scrubber');
+    const playBtn = document.getElementById('btn-play-pause');
+
+    document.querySelectorAll('.site-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        activeSiteKey = tab.dataset.site;
+        document.querySelectorAll('.site-tab').forEach((t) => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        renderHorizonTerrain(SITES[activeSiteKey]);
+        updateInstrument();
+      });
+    });
+
+    scrubber.addEventListener('input', (e) => {
+      currentHours = Number(e.target.value);
+      updateInstrument();
+    });
+
+    document.getElementById('btn-prev-6h').addEventListener('click', () => {
+      currentHours = Math.max(0, currentHours - 6);
+      scrubber.value = currentHours;
+      updateInstrument();
+    });
+
+    document.getElementById('btn-next-6h').addEventListener('click', () => {
+      currentHours = Math.min(720, currentHours + 6);
+      scrubber.value = currentHours;
+      updateInstrument();
+    });
+
+    playBtn.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      if (isPlaying) {
+        playBtn.textContent = '❚❚ PAUSAR';
+        playTimer = setInterval(() => {
+          currentHours = currentHours >= 720 ? 0 : currentHours + 2;
+          scrubber.value = currentHours;
+          updateInstrument();
+        }, 60);
+      } else {
+        playBtn.textContent = '▶ SIMULAR';
+        clearInterval(playTimer);
+      }
+    });
+
+    document.getElementById('btn-fix-site').addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      btn.textContent = '✓ PUNTO FIJADO';
+      setTimeout(() => {
+        btn.textContent = '+ FIJAR PUNTO';
+      }, 1600);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        currentHours = Math.max(0, currentHours - 6);
+        scrubber.value = currentHours;
+        updateInstrument();
+      } else if (e.key === 'ArrowRight') {
+        currentHours = Math.min(720, currentHours + 6);
+        scrubber.value = currentHours;
+        updateInstrument();
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      buildReticle();
+      renderHorizonTerrain(SITES[activeSiteKey]);
+      updateInstrument();
+    });
+  </script>
+</body>
+</html>

@@ -17,7 +17,7 @@
   /* marca y semánticos */
   --brand: #0032a0;
   --brand-600: #002a86;
-  --accent-red: #fc3d21;
+  --accent-red: #E03C31;
   --sun: #f59e0b;
   --sun-soft: #fff6e8;
   --earth: #0032a0;
@@ -102,8 +102,42 @@ select.field {
   background-repeat: no-repeat; background-position: right .6rem center;
 }
 
-/* Rango / slider */
-input[type="range"].field-range { accent-color: var(--brand); width: 100%; padding: 0; border: 0; background: transparent; }
+/* Rango / slider personalizado estilo Artemis (z11.html) */
+input[type="range"].field-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  outline: none;
+  border: 0;
+  padding: 0;
+}
+input[type="range"].field-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #E03C31;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px #0F172A;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+input[type="range"].field-range::-webkit-slider-thumb:hover {
+  transform: scale(1.18);
+}
+input[type="range"].field-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #E03C31;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px #0F172A;
+  cursor: pointer;
+}
 
 /* Métrica: etiqueta / valor / sub */
 .metric__label { font-size: .72rem; color: var(--ink-3); letter-spacing: .01em; }
@@ -158,6 +192,7 @@ input[type="range"].field-range { accent-color: var(--brand); width: 100%; paddi
 .seg__btn:hover { color: var(--ink); }
 .seg__btn.is-active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
 
+/* Disco de luna sobre el cielo estrellado: aro tenue + halo azulado (tipo earthshine) */
 /* Disco de luna sobre el cielo estrellado: aro tenue + halo azulado (tipo earthshine).
    --disk-fade = dónde ARRANCA el difuminado del borde (% del radio): más bajo = pluma
    más ancha. Knob único: webkit y estándar comparten la variable (en Chrome son alias;
@@ -182,18 +217,177 @@ input[type="range"].field-range { accent-color: var(--brand); width: 100%; paddi
    colapsa el ancho a 0. Estado abierto = clase .is-open. El inner tiene ancho fijo
    para que el contenido no se deforme mientras anima el ancho de la columna. */
 .detail-col {
-  flex: 0 1 0%; min-width: 0; margin-left: 0; opacity: 0; overflow: hidden;
-  transition: flex-grow .32s cubic-bezier(.4, 0, .2, 1),
+  flex: 0 0 auto; width: 0; margin-left: 0; opacity: 0; overflow: hidden;
+  transition: width .32s cubic-bezier(.4, 0, .2, 1),
     margin-left .32s cubic-bezier(.4, 0, .2, 1), opacity .22s ease;
 }
-/* Abierto: crece hacia la derecha del mapa, pero con tope (skyline grande sin pasarse). */
-.detail-col.is-open { flex-grow: 1; max-width: 840px; margin-left: 1rem; opacity: 1; }
+.detail-col.is-open { width: min(74vmin, 680px); margin-left: 1.5rem; opacity: 1; overflow: visible; }
+/* Sin scroll interno: la tarjeta crece con su contenido y scrollea la PÁGINA.
+   margin-bottom deja lugar a las patas y al motor del lander, que asoman por debajo. */
 .detail-col__inner {
-  width: 100%; position: sticky; top: 1rem;
-  max-height: calc(100vh - 2rem); display: flex; flex-direction: column;
+  width: min(74vmin, 680px); display: flex; flex-direction: column; margin-bottom: 3.5rem;
 }
-.detail-col__inner .panel__head { flex: 0 0 auto; }
-.detail-col__inner .panel__body { flex: 1 1 auto; overflow-y: auto; }
+.detail-panel__card { display: flex; flex-direction: column; }
+/* Interior blanco limpio dentro del marco azul (z14): sin borde carbón ni sombra. */
+.detail-panel__card { border: 0; border-radius: 14px; box-shadow: none; }
+
+/* Cabecera compacta del detalle (z14): nombre + coords | controles, sin divisor. */
+.detail-head { align-items: flex-start; border-bottom: 0; padding-bottom: .25rem; }
+.detail-head + .panel__body { padding-top: .6rem; }
+.detail-head__title { font-size: 1.125rem; font-weight: 700; line-height: 1.25;
+  letter-spacing: -.01em; color: #020617; }
+.detail-head__coords { font-size: .75rem; color: #64748b; margin-top: .125rem; }
+
+/* Toggle píldora con mini-switch: apagado = contorno gris; encendido = cobalto
+   relleno con la perilla a la derecha. Estado = aria-pressed (lo setea el JS). */
+.toggle-pill {
+  display: inline-flex; align-items: center; gap: .45rem; cursor: pointer;
+  padding: .3rem .7rem .3rem .4rem; border-radius: var(--r-full);
+  border: 1px solid #cbd5e1; background: #fff; color: #334155;
+  font: 600 .7rem/1 var(--font); transition: background .15s, border-color .15s, color .15s;
+}
+.toggle-pill:hover { border-color: var(--brand); }
+.toggle-pill__switch {
+  position: relative; width: 22px; height: 12px; border-radius: var(--r-full);
+  background: #cbd5e1; transition: background .15s;
+}
+.toggle-pill__switch::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px;
+  border-radius: 50%; background: #fff; transition: transform .15s;
+}
+.toggle-pill[aria-pressed="true"] { background: var(--brand); border-color: var(--brand);
+  color: #fff; }
+.toggle-pill[aria-pressed="true"] .toggle-pill__switch { background: rgba(255, 255, 255, .35); }
+.toggle-pill[aria-pressed="true"] .toggle-pill__switch::after { transform: translateX(10px); }
+
+/* Fila bajo el slider (z14): fecha UTC a la izquierda, día de la ventana a la derecha. */
+.time-row { margin-top: .4rem; display: flex; align-items: center;
+  justify-content: space-between; gap: .5rem; font-size: .69rem; font-weight: 700; }
+.time-row__stamp { color: #0f172a; }
+.time-row__day { color: var(--brand); white-space: nowrap; }
+
+/* Tarjetas Sol / Tierra del detalle (z14). 2 columnas; 1 si el panel es angosto. */
+.tele-grid { display: grid; gap: .625rem;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.tele-card { position: relative; overflow: hidden; display: flex; flex-direction: column;
+  gap: .5rem; padding: .75rem .75rem .75rem 1.25rem; border-radius: var(--r-md);
+  border: 1px solid #e2e8f0; background: rgba(248, 250, 252, .75); }
+.tele-card::before { content: ""; position: absolute; left: 0; top: .625rem; bottom: .625rem;
+  width: 4px; border-radius: 0 4px 4px 0; }
+.tele-card--sun::before { background: #fbbf24; }
+.tele-card--earth::before { background: var(--brand); }
+.tele-card__head { display: flex; align-items: center; justify-content: space-between;
+  gap: .25rem; }
+.tele-card__title { font: 700 .625rem/1 var(--mono); text-transform: uppercase;
+  letter-spacing: .08em; color: #64748b; }
+.tele-card__label { display: block; font-size: .625rem; font-weight: 500; color: #64748b; }
+.tele-card__value { display: block; font: 700 1.125rem/1.25 var(--mono); color: #0f172a; }
+.tele-card__value small { font-size: .625rem; font-weight: 600; color: #64748b; }
+.tele-card--sun .tele-card__value { color: #d97706; }
+.tele-card--earth .tele-card__value.is-on { color: var(--brand); }
+.tele-card__foot { display: flex; align-items: baseline; justify-content: space-between;
+  gap: .25rem; padding-top: .375rem; border-top: 1px solid rgba(226, 232, 240, .8); }
+.tele-card__pct { font: 700 1.125rem / 1.25 var(--mono); color: #0f172a; }
+.tele-card--earth .tele-card__pct { color: var(--brand); }
+/* Tooltips (tooltip.js): globo oscuro flotante; .has-tip = elemento con ayuda. */
+.tip { position: fixed; z-index: 100; max-width: 260px; padding: .5rem .65rem;
+  border-radius: var(--r-sm); background: #0f172a; color: #f1f5f9;
+  font: 500 .72rem/1.4 var(--font); box-shadow: var(--shadow-md); pointer-events: none; }
+.tip[hidden] { display: none; }
+.has-tip { cursor: help; outline: none; }
+.has-tip:focus-visible { box-shadow: 0 0 0 2px rgba(0, 50, 160, .35); border-radius: 4px; }
+.cartucho__title .has-tip { border-bottom: 1px dotted #cbd5e1; }
+
+/* Píldora de estado: apagada = gris; encendida = ámbar (Sol) / cobalto (Tierra). */
+.tele-pill { font: 700 .6rem/1 var(--mono); text-transform: uppercase; white-space: nowrap;
+  padding: .2rem .4rem; border-radius: 4px; background: #e2e8f0; color: #334155; }
+.tele-card--sun .tele-pill.is-on { background: #fef3c7; color: #92400e; }
+.tele-card--earth .tele-pill.is-on { background: #dbeafe; color: var(--brand); }
+
+/* Fila de próximos eventos con ícono. Caja neutra = se viene algo malo (ocaso /
+   corte); de color (.is-good) = se viene algo bueno (amanecer / enlace). */
+.tele-events { display: grid; grid-template-columns: 1fr 1fr; gap: .625rem; padding: 0 .25rem; }
+.tele-event { display: flex; align-items: center; gap: .625rem; min-width: 0; }
+.tele-event__icon { width: 2rem; height: 2rem; flex: 0 0 auto; display: grid;
+  place-items: center; border-radius: var(--r-sm); border: 1px solid #e2e8f0;
+  background: #f1f5f9; color: #475569; }
+.tele-event__icon > svg { width: 1rem; height: 1rem; }
+.tele-event--sun .tele-event__icon.is-good { background: #fffbeb; border-color: #fde68a;
+  color: #d97706; }
+.tele-event--earth .tele-event__icon.is-good { background: #eff6ff; border-color: #bfdbfe;
+  color: var(--brand); }
+.tele-event__value { display: block; font-size: .875rem; font-weight: 700; line-height: 1.25;
+  color: #0f172a; }
+
+/* Cartuchos (z14): tiras finas de 16 px. Inset lateral = radio del thumb del slider
+   (16 px / 2), así el tiempo de la barra queda alineado al centro del thumb. */
+.cartuchos { border-top: 1px solid #f1f5f9; padding: .25rem 8px .5rem; user-select: none; }
+.cartuchos__track { position: relative; display: flex; flex-direction: column; gap: .5rem; }
+.cartucho__title { font-size: .75rem; font-weight: 500; color: #475569; margin-bottom: .2rem; }
+.cartucho__bar { display: flex; height: 1.375rem; border-radius: 5px; overflow: hidden;
+  background: #f1f5f9; font-size: .68rem; font-weight: 700; }
+.cartucho__seg { display: flex; align-items: center; justify-content: center;
+  overflow: hidden; white-space: nowrap; }
+.cartucho__needle { position: absolute; top: .25rem; bottom: 0; width: 0;
+  border-left: 2px dashed #64748b; transform: translateX(-1px); pointer-events: none;
+  z-index: 1; will-change: left; }
+
+/* El estado ("Cargando…") no ocupa lugar cuando está vacío. */
+#status:empty { display: none; }
+
+/* Botón de ícono (cerrar) */
+.icon-btn {
+  width: 1.75rem; height: 1.75rem; display: grid; place-items: center; cursor: pointer;
+  border: 0; border-radius: var(--r-sm); background: transparent; color: #94a3b8;
+  transition: background .15s, color .15s;
+}
+.icon-btn:hover { background: #f1f5f9; color: #1e293b; }
+.icon-btn > svg { width: 1rem; height: 1rem; }
+
+/* Chasis exterior Artemis (z11.html) */
+.artemis-chassis {
+  background: var(--brand, #0032a0);
+  box-shadow: 0 16px 40px rgba(0, 50, 160, 0.28), 0 0 0 1px rgba(15, 23, 42, 0.15);
+}
+
+/* Animación de ondas de radio en la antena parabólica */
+@keyframes radio-wave-pulse {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.32);
+  }
+}
+
+.lander-radio-wave {
+  transform-box: fill-box;
+  transform-origin: bottom left;
+  animation: radio-wave-pulse 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.lander-radio-wave.delay-1 {
+  animation-delay: 0.65s;
+}
+
+.lander-radio-wave.delay-2 {
+  animation-delay: 1.3s;
+}
+
+/* Amortiguación sutil al cambiar de sitio de aterrizaje */
+@keyframes lander-touchdown {
+  0%   { transform: translateY(0px); }
+  35%  { transform: translateY(6px); }
+  70%  { transform: translateY(-2px); }
+  100% { transform: translateY(0px); }
+}
+
+.lander-touchdown-anim {
+  animation: lander-touchdown 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @media (prefers-reduced-motion: reduce) { .detail-col { transition: none; } }
 
 /* Loader del detalle: esqueleto shimmer + barra que avanza por los pasos del cálculo

@@ -4,7 +4,8 @@
 
 import { getMask, getSite } from "./api.js";
 import { createSkyline } from "./skyline.js";
-import { renderMetrics, renderCartuchos, instantLine } from "./panel.js";
+import { renderMetrics, renderCartuchos, instantStamp } from "./panel.js";
+import { renderLanderFrame } from "./landerFrame.js";
 
 export function createDetailModal({ windowDays = 30, date = null,
                                     onAzimuthWindow = null, onInstant = null } = {}) {
@@ -19,6 +20,15 @@ export function createDetailModal({ windowDays = 30, date = null,
     if (!s) return;
     s.textContent = msg;
     s.className = `text-xs ${isError ? "text-red-500" : "text-slate-400"}`;
+  }
+
+  // Marco del lander según la visibilidad en el instante i (default: slider actual).
+  // Sin datos aún → todo "encendido". renderLanderFrame memoiza: llamarlo de más es
+  // barato.
+  function updateFrame(i = Number($("time-slider")?.value) || 0) {
+    const hasSolar = Boolean(data?.sun_track?.[i]?.visible ?? true);
+    const hasEarth = Boolean(data?.earth_track?.[i]?.visible ?? true);
+    renderLanderFrame(hasEarth, hasSolar);
   }
 
   // Loader minimalista del detalle: esqueleto del layout + barra que avanza por los
@@ -68,7 +78,10 @@ export function createDetailModal({ windowDays = 30, date = null,
     sky.setCursor(i);
     sky.draw();
     if (updateMetrics) updateMetrics(i);
-    $("time-label").innerHTML = instantLine(data, i);
+    const { stamp, day } = instantStamp(data, i);
+    $("time-label").textContent = stamp;
+    const dayBadge = $("day-badge");
+    if (dayBadge) dayBadge.textContent = day;
     if (onInstant) {
       const s = data.sun_track[i], e = data.earth_track[i];
       onInstant(s.az, e.az, s.t.slice(0, 16).replace("T", " "));
@@ -78,6 +91,7 @@ export function createDetailModal({ windowDays = 30, date = null,
       const max = Number($("time-slider").max) || 1;
       needle.style.left = `${(i / max) * 100}%`;
     }
+    updateFrame(i);
   }
 
   async function showSite(lat, lon, name) {
@@ -86,6 +100,12 @@ export function createDetailModal({ windowDays = 30, date = null,
     $("site-name").textContent = name || "Sitio nuevo";
     $("site-coords").textContent = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
     setStatus("");
+    const panel = $("detail-panel");
+    if (panel) {
+      panel.classList.remove("lander-touchdown-anim");
+      void panel.offsetWidth;
+      panel.classList.add("lander-touchdown-anim");
+    }
     showLoading();
     try {
       const [mask, site] = await Promise.all([
@@ -114,7 +134,12 @@ export function createDetailModal({ windowDays = 30, date = null,
 
   const overlay = () => $("detail-overlay");
   function close() { overlay().classList.remove("is-open"); }
-  function openEmpty() { overlay().classList.add("is-open"); }
+  function openEmpty() {
+    overlay().classList.add("is-open");
+    // Un frame después el panel ya tiene layout; cambios de tamaño posteriores
+    // (animación de apertura, contenido que carga) los toma el ResizeObserver.
+    requestAnimationFrame(() => updateFrame());
+  }
 
   // Botón 🗑: visible solo si el sitio es borrable (chincheta propia). onclick se
   // reemplaza en cada apertura (no acumula listeners).
@@ -134,11 +159,17 @@ export function createDetailModal({ windowDays = 30, date = null,
     fullSky = !fullSky;
     sky.setFullSky(fullSky);
     sky.draw();
-    $("fullsky-btn").classList.toggle("bg-slate-100", fullSky);
+    $("fullsky-btn").setAttribute("aria-pressed", String(fullSky));
   });
   $("time-slider").addEventListener("input", (e) => {
     updateCursor(Number(e.target.value));
   });
+
+  // Redibujar el marco si el panel cambia de tamaño (solo con el modal abierto).
+  const refit = () => { if (overlay().classList.contains("is-open")) updateFrame(); };
+  const panel = $("detail-panel");
+  if (panel && window.ResizeObserver) new ResizeObserver(refit).observe(panel);
+  else window.addEventListener("resize", refit);
 
   return {
     open(lat, lon, name, opts = {}) {
