@@ -163,13 +163,19 @@ estado. ✅ Verificado headless: rango sembrado → flechas Sol/Tierra y modal u
 **Objetivo:** comparación rápida entre sitios. Cierra el MVP.
 **Depende de:** H1 (métricas por sitio), H3/H4 (sitios en el estado).
 
-- [ ] Modal con **carrusel de 3 pasos**: (1) comms, (2) energía, (3) mixto.
-- [ ] Por paso: 3 tarjetas top + tabla de ranking de **todos** los sitios seleccionados.
-- [ ] Criterio **mixto**: normalizar cada métrica 0–1 sobre los sitios, combinar (default 50/50,
-      slider opcional). **Mostrar el peso usado** (honestidad).
-- [ ] Botón "ver detalle" en cada tarjeta y fila → abre el skyline de H2.
+- [x] Modal con **carrusel de 3 pasos**: (1) comms, (2) energía, (3) mixto.
+- [x] Por paso: 3 tarjetas top + tabla de ranking de **todos** los sitios seleccionados.
+- [x] Criterio **mixto**: normalizar cada métrica 0–1 sobre los sitios, combinar (default 50/50).
+      **Mostrar el peso usado** (honestidad). *Slider de peso opcional: pendiente (`rank.js` ya
+      acepta `wComms`; la UI lo fija en 50/50).*
+- [x] Botón "ver detalle" en cada tarjeta y fila → abre el skyline de H2.
 
-**DoD:** se puede rankear por los 3 criterios y saltar al detalle de cualquier sitio. **== MVP listo.**
+**DoD:** se puede rankear por los 3 criterios y saltar al detalle de cualquier sitio. **== MVP listo.** ✅
+
+> H5 en `frontend/`: `rank.js` (ranking puro por criterio comms/energía/mixto, normalización
+> min–max + desempate por menor corte continuo, con test `tests/rank.test.mjs`) + `top3.js`
+> (capa de datos de semillas ⭐ + chinchetas 📍 + modal con carrusel, podio de 3 y tabla de
+> todos), abierto desde el botón 🏆 del mapa. Cableado en `map.js` (`createTop3` + `onDetail`).
 
 ---
 
@@ -177,7 +183,11 @@ estado. ✅ Verificado headless: rango sembrado → flechas Sol/Tierra y modal u
 
 **Depende de:** MVP. Priorizar en este orden, cada uno independiente:
 
-- [ ] Cono/sincronización por azimut mapa↔skyline (§2.3).
+- [x] Cono/sincronización por azimut mapa↔skyline (§2.3). Ventana de azimut (fucsia, 120°)
+      arrastrable en el skyline con agarradera de ojo + flechitas; el mapa dibuja una cuña tipo
+      linterna (degradé radial) en el sitio activo, con marco local Norte/Este derivado de la
+      proyección. **Además** las flechas Sol/Tierra del mapa se sincronizan con el slider y salen
+      del sitio activo (antes: sitio de referencia, un instante, desde el polo).
 - [ ] Monte Carlo de dispersión del aterrizaje (probabilidad sobre la elipse de error).
 - [ ] Eclipses de Sol por la Tierra vistos desde la Luna.
 - [ ] Disco solar finito / penumbra en la energía.
