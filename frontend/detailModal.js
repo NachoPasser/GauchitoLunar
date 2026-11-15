@@ -21,6 +21,48 @@ export function createDetailModal({ windowDays = 30, date = null,
     s.className = `text-xs ${isError ? "text-red-500" : "text-slate-400"}`;
   }
 
+  // Loader minimalista del detalle: esqueleto del layout + barra que avanza por los
+  // PASOS reales del cálculo (honesto y pedagógico). Oculta el contenido real (no salta).
+  const LOAD_STEPS = [
+    "Trazando el horizonte desde el DEM",
+    "Bajando efemérides del Sol y la Tierra (JPL Horizons)",
+    "Integrando energía y visibilidad",
+  ];
+  let loadingEl = null, stepTimer = null;
+  const contentEls = () => [$("skyline").parentElement, $("metrics"), $("cartuchos")];
+
+  function showLoading() {
+    if (!loadingEl) {
+      const wrap = $("skyline").parentElement;
+      loadingEl = document.createElement("div");
+      loadingEl.className = "detail-loading";
+      loadingEl.innerHTML =
+        '<div class="sk sk--sky"></div>' +
+        '<div class="load-bar"><span></span></div>' +
+        '<p class="load-step mono"></p>' +
+        '<div class="sk-metrics"><div class="sk sk--card"></div>' +
+        '<div class="sk sk--card"></div><div class="sk sk--card"></div></div>';
+      wrap.parentElement.insertBefore(loadingEl, wrap);
+    }
+    loadingEl.style.display = "";
+    for (const el of contentEls()) el.style.display = "none";
+    const stepEl = loadingEl.querySelector(".load-step");
+    const bar = loadingEl.querySelector(".load-bar > span");
+    let i = 0;
+    const tick = () => {
+      stepEl.textContent = LOAD_STEPS[i];
+      bar.style.width = `${Math.round(((i + 1) / LOAD_STEPS.length) * 100)}%`;
+      if (i < LOAD_STEPS.length - 1) i++;
+    };
+    tick();
+    stepTimer = setInterval(tick, 1100);
+  }
+  function hideLoading() {
+    if (stepTimer) { clearInterval(stepTimer); stepTimer = null; }
+    if (loadingEl) loadingEl.style.display = "none";
+    for (const el of contentEls()) el.style.display = "";
+  }
+
   function updateCursor(i) {
     if (!data) return;
     sky.setCursor(i);
@@ -39,16 +81,18 @@ export function createDetailModal({ windowDays = 30, date = null,
   }
 
   async function showSite(lat, lon, name) {
-    // Un sitio nuevo (libre) baja efemérides de Horizons en vivo la 1ª vez (~unos
-    // segundos); luego queda cacheado. Avisamos para que la espera no confunda.
-    setStatus("Cargando… (un sitio nuevo puede tardar unos segundos la 1ª vez)");
+    // El nombre/coords del sitio se muestran YA (pedagógico), y el loader corre mientras
+    // un sitio nuevo baja efemérides de Horizons en vivo (~unos segundos la 1ª vez).
+    $("site-name").textContent = name || "Sitio nuevo";
+    $("site-coords").textContent = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
+    setStatus("");
+    showLoading();
     try {
       const [mask, site] = await Promise.all([
         getMask(lat, lon),
         getSite(lat, lon, { windowDays, date }),
       ]);
       $("site-name").textContent = name || site.site.name;
-      $("site-coords").textContent = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
       data = site;
       sky.setMask(mask.horizon_mask);
       sky.setTracks(site.sun_track, site.earth_track);
@@ -60,9 +104,10 @@ export function createDetailModal({ windowDays = 30, date = null,
       slider.value = 0;
       updateMetrics = renderMetrics($("metrics"), site, mask.horizon_mask);
       renderCartuchos($("cartuchos"), site);   // crea #cartucho-needle antes del cursor
+      hideLoading();                           // revelar antes del cursor (necesita layout)
       updateCursor(0);
-      setStatus("");
     } catch (e) {
+      hideLoading();
       setStatus(`No se pudo cargar (¿backend activo?): ${e.message}`, true);
     }
   }

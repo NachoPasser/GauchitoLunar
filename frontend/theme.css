@@ -195,3 +195,26 @@ input[type="range"].field-range { accent-color: var(--brand); width: 100%; paddi
 .detail-col__inner .panel__head { flex: 0 0 auto; }
 .detail-col__inner .panel__body { flex: 1 1 auto; overflow-y: auto; }
 @media (prefers-reduced-motion: reduce) { .detail-col { transition: none; } }
+
+/* Loader del detalle: esqueleto shimmer + barra que avanza por los pasos del cálculo
+   (carga de efemérides). Minimalista; estética light con acento cobalto de marca. */
+.detail-loading { display: flex; flex-direction: column; gap: .8rem; }
+.sk { border-radius: var(--r-sm);
+  background: linear-gradient(90deg, #e9edf3 25%, #f6f8fb 37%, #e9edf3 63%);
+  background-size: 400% 100%; animation: sk-shimmer 1.4s ease infinite; }
+.sk--sky { width: 100%; aspect-ratio: 760 / 340; }
+.sk-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+.sk--card { height: 58px; }
+.load-bar { height: 4px; border-radius: var(--r-full); background: var(--border);
+  overflow: hidden; }
+.load-bar > span { display: block; height: 100%; width: 0; border-radius: var(--r-full);
+  background: var(--brand); transition: width .5s ease; }
+.load-step { font-size: .78rem; color: var(--ink-2); display: flex; align-items: center;
+  gap: .45rem; }
+.load-step::before { content: ""; width: 7px; height: 7px; border-radius: var(--r-full);
+  background: var(--brand); animation: sk-pulse 1s ease-in-out infinite; }
+@keyframes sk-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+@keyframes sk-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .sk, .load-step::before { animation: none; }
+}
