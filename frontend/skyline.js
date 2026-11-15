@@ -103,26 +103,9 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     draw();
     if (onWindowChange) onWindowChange(st.azWindow);
   }
-  let dragging = false, panStartX = 0, panStartC = 0;
-  svg.addEventListener("pointerdown", (e) => {
-    if (!st.firstPerson) return;
-    dragging = true;
-    svg.setPointerCapture(e.pointerId);
-    panStartX = e.clientX; panStartC = viewCenter();
-  });
   svg.addEventListener("pointermove", (e) => {
-    if (st.firstPerson) {
-      if (!dragging) return;
-      const r = svg.getBoundingClientRect();
-      const dAz = ((e.clientX - panStartX) / r.width) * AZ_WIN_WIDTH;
-      centerWindow(normAz(panStartC - dAz));     // arrastrar a la derecha → girar a la izq.
-    } else {
-      centerWindow(azAtClientX(e.clientX));      // panorámica: ventana sigue el cursor
-    }
+    centerWindow(azAtClientX(e.clientX));      // hover → ventana sigue el cursor (ambos modos)
   });
-  const endDrag = () => { dragging = false; };
-  svg.addEventListener("pointerup", endDrag);
-  svg.addEventListener("pointercancel", endDrag);
 
   // Rango vertical dinámico (piso ~5°) o cielo completo (0–90°).
   function range() {

@@ -294,8 +294,8 @@ input[type="range"].zoom-range::-moz-range-thumb {
    colapsa el ancho a 0. Estado abierto = clase .is-open. El inner tiene ancho fijo
    para que el contenido no se deforme mientras anima el ancho de la columna. */
 .detail-col {
-  flex: 0 1 0%; min-width: 0; margin-left: 0; opacity: 0; overflow: hidden;
-  transition: flex-grow .32s cubic-bezier(.4, 0, .2, 1),
+  flex: 0 0 auto; width: 0; margin-left: 0; opacity: 0; overflow: hidden;
+  transition: width .32s cubic-bezier(.4, 0, .2, 1),
     margin-left .32s cubic-bezier(.4, 0, .2, 1), opacity .22s ease;
 }
 .detail-col.is-open { width: min(74vmin, 680px); margin-left: 1.5rem; opacity: 1; overflow: visible; }
