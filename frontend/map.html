@@ -214,6 +214,10 @@
             <div class="flex items-center gap-1.5 shrink-0">
               <button id="delete-btn" type="button" class="btn btn--ghost btn--sm hidden" aria-label="Eliminar sitio"
                       style="color:var(--accent-red);font-size:0.8rem;padding:0.25rem 0.5rem">🗑 Eliminar</button>
+              <button id="fpv-btn" type="button" class="toggle-pill" aria-pressed="false"
+                      title="Vista de primera persona: mirás el cielo desde el sitio.">
+                <span class="toggle-pill__switch" aria-hidden="true"></span>Primera persona
+              </button>
               <button id="fullsky-btn" type="button" class="toggle-pill" aria-pressed="false"
                       title="Normalmente agrandamos las montañas para que se vean bien. Activalo para verlas en su tamaño real, con el cielo completo.">
                 <span class="toggle-pill__switch" aria-hidden="true"></span>Escala real
@@ -231,8 +235,16 @@
               <svg id="skyline" class="w-full" role="img"
                    aria-label="Skyline: elevación del Sol y la Tierra sobre el horizonte"></svg>
               <div class="mt-2">
-                <input id="time-slider" type="range" min="0" max="0" value="0"
-                       class="field-range" aria-label="Instante dentro de la ventana" />
+                <div class="flex items-center gap-2">
+                  <button id="play-btn" type="button" class="icon-btn shrink-0"
+                          aria-pressed="false" aria-label="Reproducir la animación del tiempo">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </button>
+                  <input id="time-slider" type="range" min="0" max="0" value="0"
+                         class="field-range flex-1" aria-label="Instante dentro de la ventana" />
+                </div>
                 <div class="time-row mono">
                   <span id="time-label" class="time-row__stamp"></span>
                   <span id="day-badge" class="time-row__day"></span>

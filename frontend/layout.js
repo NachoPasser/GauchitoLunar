@@ -5,7 +5,9 @@
 // hasta MIN_SCALE; por debajo la página scrollea (no se apunta a celulares).
 // Publica --map-h y --det-w en <html> y aplica transform: scale al <main>.
 
-export const MAP_H = 778, DET_W = 680;          // tamaño de referencia (px)
+// MAP_H = alto natural del detalle a DET_W (780 px medidos con el play/pause y "Primera
+// persona" de main) + 4 px de aire; si el detalle crece, subirlo: si no, aparece scroll interno.
+export const MAP_H = 784, DET_W = 680;          // tamaño de referencia (px)
 const GAP = 24;                                  // separación mapa ↔ detalle (1.5rem)
 const REF_W = MAP_H + GAP + DET_W;               // ancho de la fila con el detalle abierto
 const SIDE_PAD = 32;                             // aire lateral mínimo
