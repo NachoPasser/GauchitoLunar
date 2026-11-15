@@ -22,9 +22,9 @@ CACHE_DIR = DATA / "map_png"
 MAX_PX = 1536                       # tamaño máx. para web (raster original 5058²)
 
 RASTERS = {
-    "illumination": "AVGVISIB_85S_060M_201608.TIF",
-    "earth": "AVGVISIB_85S_060M_201608_EARTH.TIF",
-    "psr": "LPSR_85S_060M_201608.TIF",
+    "illumination": "AVGVISIB_85S_060M_201608.tiff",
+    "earth": "AVGVISIB_85S_060M_201608_EARTH.tiff",
+    "psr": "LPSR_85S_060M_201608.tiff",
 }
 _MEM: dict[str, bytes] = {}
 

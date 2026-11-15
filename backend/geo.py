@@ -16,9 +16,9 @@ from pathlib import Path
 
 import numpy as np
 import rasterio
-from pyproj import Transformer
+from pyproj import CRS, Transformer
 
-DEM_PATH = Path(__file__).resolve().parent.parent / "data" / "LDEM_80S_80MPP_ADJ.TIF"
+DEM_PATH = Path(__file__).resolve().parent.parent / "data" / "LDEM_80S_80MPP_ADJ.tiff"
 
 
 @lru_cache(maxsize=1)
@@ -28,7 +28,8 @@ def _dem():
     z = ds.read(1).astype("float64")        # metros; nodata = NaN
     transform = ds.transform
     mpp = float(abs(transform.a))           # metros por píxel (80)
-    tf = Transformer.from_crs(ds.crs.geodetic_crs, ds.crs, always_xy=True)
+    crs = CRS.from_user_input(ds.crs)
+    tf = Transformer.from_crs(crs.geodetic_crs, crs, always_xy=True)
     ds.close()
     return z, transform, mpp, tf
 
