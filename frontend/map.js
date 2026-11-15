@@ -333,6 +333,13 @@ function addMarker(lon, lat, name, kind) {
   m.title = `${name} · ${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
   m.addEventListener("click", (e) => {
     e.stopPropagation();
+    // Toggle: click en el sitio ya seleccionado (con el detalle abierto) lo cierra.
+    const open = $("detail-overlay").classList.contains("is-open");
+    if (activeEl === m && open) {
+      modal.close();
+      setActive(null);
+      return;
+    }
     setActive(m);
     activeSite = { lat, lon };
     setSitioActivo({ lat, lon, name });
