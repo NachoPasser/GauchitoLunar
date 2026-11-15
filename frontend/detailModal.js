@@ -133,7 +133,10 @@ export function createDetailModal({ windowDays = 30, date = null,
       updateCursor(0);
     } catch (e) {
       hideLoading();
-      setStatus(`No se pudo cargar (¿backend activo?): ${e.message}`, true);
+      const msg = e.status === 503
+        ? "Sin efemérides para este sitio. Probá uno predefinido o conectate a internet."
+        : `No se pudo cargar (¿backend activo?): ${e.message}`;
+      setStatus(msg, true);
     } finally {
       loading = false;
     }
