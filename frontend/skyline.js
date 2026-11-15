@@ -113,7 +113,7 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     const hs = st.mask.map((m) => m.h_deg);
     const els = [...st.sun, ...st.earth].map((p) => p.el);
     const hi = Math.max(5, Math.ceil(Math.max(0, ...hs, ...els) + 1));
-    const lo = Math.min(-2, Math.floor(Math.min(0, ...hs)));
+    const lo = Math.min(-2, Math.floor(Math.min(0, ...hs, ...els)));
     return [lo, hi];
   }
 

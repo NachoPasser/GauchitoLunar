@@ -34,12 +34,30 @@ def has_cache(lat: float, lon: float, target: str = "sun") -> bool:
     return _cache_path(lat, lon, target).exists()
 
 
+def _cache_covers(lat: float, lon: float, target: str,
+                  start: datetime, days: int) -> bool:
+    """True si el cache existente cubre el intervalo [start, start+days]."""
+    path = _cache_path(lat, lon, target)
+    if not path.exists():
+        return False
+    from datetime import timedelta
+    raw = json.loads(path.read_text())
+    points = raw.get("points", [])
+    if len(points) < 2:
+        return False
+    t_first = datetime.fromisoformat(points[0]["t"])
+    t_last = datetime.fromisoformat(points[-1]["t"])
+    need_end = start + timedelta(days=days)
+    return t_first <= start and t_last >= need_end
+
+
 def ensure_cache(lat: float, lon: float, start: datetime, days: int = 35,
                  step: str = "20m") -> None:
     """Garantiza cache de sun+earth para el sitio. Si falta (sitio libre), baja de
     Horizons EN VIVO (fetch on-miss, SPEC §4.3) y lo guarda. Lanza EphemerisError si
     no hay red / Horizons no responde, para que la API devuelva un error legible."""
-    if has_cache(lat, lon, "sun") and has_cache(lat, lon, "earth"):
+    if (_cache_covers(lat, lon, "sun", start, days)
+            and _cache_covers(lat, lon, "earth", start, days)):
         return
     from datetime import timedelta
     stop = (start + timedelta(days=days)).strftime("%Y-%m-%d")
