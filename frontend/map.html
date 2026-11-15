@@ -14,17 +14,23 @@
 
 
   <!-- Top-bar -->
-  <header class="max-w-[1600px] mx-auto px-5 pt-6 pb-3 flex items-center gap-4">
-    <h1 class="text-xl font-bold" style="color:#e8eefc">Lunar Landing Site Navigator</h1>
-  </header>
-
   <main class="max-w-[1600px] mx-auto px-5 pb-10 flex justify-center items-start">
-    <div class="panel shrink-0">
+    <!-- Columna del mapa: logo + marco. El logo vive acá (no en una cabecera aparte) para
+         quedar siempre alineado al borde izquierdo del mapa, esté el detalle abierto o no. -->
+    <div class="flex flex-col shrink-0">
+    <div class="brand">
+      <h1 class="m-0">
+        <img src="assets/logo.png" alt="Selene Horizon — Solar &amp; Earth Lunar Ephemeris Navigation Engine"
+             class="block h-14 w-auto select-none" draggable="false" />
+      </h1>
+    </div>
+    <div id="moon-frame" class="moon-frame">
+    <div class="panel">
       <!-- Lienzo del mapa: stage cuadrado (cielo estrellado) + disco circular de luna.
            La textura vive en el disco; las estrellas y las flechas Sol/Tierra, en el margen. -->
       <div class="panel__body" style="padding:0;background:#0a0f22">
         <div id="map-stage" class="relative aspect-square mx-auto overflow-hidden select-none"
-             style="width:min(74vmin,680px);background:radial-gradient(circle at 50% 44%,#16203f 0%,#0b1124 62%,#070a16 100%)">
+             style="width:calc(var(--map-h, min(74vmin,680px)) - 29px);background:radial-gradient(circle at 50% 44%,#16203f 0%,#0b1124 62%,#070a16 100%)">
           <!-- Isla izquierda: sliders de lat/lon -->
           <div id="coords-island" class="absolute top-3 left-3 z-30 rounded-xl px-3 py-2.5"
                style="background:rgba(11,17,36,.88);border:1px solid rgba(255,255,255,.18);
@@ -169,6 +175,8 @@
           </div>
         </div>
       </div>
+    </div>
+    </div>
     </div>
 
     <!-- COLUMNA DE DETALLE: entra como card a la derecha y empuja el mapa a la

@@ -10,6 +10,8 @@ import { createTop3 } from "./top3.js";
 import { siteIcon } from "./icons.js";
 import { drawGlobe as drawGlobeInto, GLOBE_DARK } from "./globe.js";
 import { showWelcome } from "./welcome.js";
+import { mountMoonFrame } from "./moonFrame.js";
+import { initLayout, getScale } from "./layout.js";
 import { windowDays, startDate, addSitio, removeSitio, setSitioActivo, getState,
   renameSitio } from "./state.js";
 
@@ -405,6 +407,8 @@ async function placeMoonBg(capMeta) {
 async function init() {
   // Bienvenida frente a la luna: el mapa carga detrás y, al fijar las fechas, se quita.
   const welcome = showWelcome();
+  initLayout();                               // alto común mapa/detalle (antes del marco)
+  mountMoonFrame($("moon-frame"));            // hardware del borde (no depende del backend)
   try {
     const meta = await getMapMeta("illumination");
     proj = createProjection(meta);
@@ -434,11 +438,12 @@ disk.addEventListener("click", onFreeClick);
 // zoom y pan. `stage` no está transformado, `#map-world` sí → usamos la rect del stage.
 function screenToNorm(clientX, clientY) {
   const sr = stage.getBoundingClientRect();
+  const k = getScale();                      // la UI está escalada: pantalla → px locales
   const inset = DISK_MARGIN / 1000;          // 0.14
-  const relX = (clientX - sr.left - panX) / zoom;
-  const relY = (clientY - sr.top - panY) / zoom;
-  const u = (relX / sr.width - inset) / (1 - 2 * inset);
-  const v = (relY / sr.height - inset) / (1 - 2 * inset);
+  const relX = ((clientX - sr.left) / k - panX) / zoom;
+  const relY = ((clientY - sr.top) / k - panY) / zoom;
+  const u = (relX / (sr.width / k) - inset) / (1 - 2 * inset);
+  const v = (relY / (sr.height / k) - inset) / (1 - 2 * inset);
   return [u, v];
 }
 
@@ -527,8 +532,8 @@ function setZoom(targetZoomVal, focalX, focalY, smooth = true) {
   const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetZoomVal));
   if (focalX === undefined || focalY === undefined) {
     const rect = stage.getBoundingClientRect();
-    focalX = rect.width / 2;
-    focalY = rect.height / 2;
+    focalX = rect.width / getScale() / 2;
+    focalY = rect.height / getScale() / 2;
   }
   if (nextZoom === MIN_ZOOM) {
     panX = 0;
@@ -560,8 +565,8 @@ function onPointerDown(e) {
 
 function onPointerMove(e) {
   if (!isPointerDown) return;
-  const dx = e.clientX - startX;
-  const dy = e.clientY - startY;
+  const dx = (e.clientX - startX) / getScale();   // px locales (la UI está escalada)
+  const dy = (e.clientY - startY) / getScale();
   if (!isDragging) {
     if (Math.hypot(dx, dy) > 4 && zoom > 1.0) {
       isDragging = true;
@@ -634,8 +639,8 @@ function onWheel(e) {
     wTargetPanY = panY;
   }
   const rect = stage.getBoundingClientRect();
-  wFocalX = e.clientX - rect.left;
-  wFocalY = e.clientY - rect.top;
+  wFocalX = (e.clientX - rect.left) / getScale();
+  wFocalY = (e.clientY - rect.top) / getScale();
   // Acumula el factor sobre el TARGET (no sobre zoom actual) para que scrolls
   // seguidos no "reseteen" la velocidad a cero.
   const factor = Math.exp(-e.deltaY * 0.0022);

@@ -297,16 +297,28 @@ input[type="range"].zoom-range::-moz-range-thumb {
    colapsa el ancho a 0. Estado abierto = clase .is-open. El inner tiene ancho fijo
    para que el contenido no se deforme mientras anima el ancho de la columna. */
 .detail-col {
-  flex: 0 0 auto; width: 0; margin-left: 0; opacity: 0; overflow: hidden;
+  flex: 0 0 auto; width: 0; margin-left: 0; margin-top: var(--brand-h, 108px); opacity: 0; overflow: hidden;
   transition: width .32s cubic-bezier(.4, 0, .2, 1),
     margin-left .32s cubic-bezier(.4, 0, .2, 1), opacity .22s ease;
 }
-.detail-col.is-open { width: min(74vmin, 680px); margin-left: 1.5rem; opacity: 1; overflow: visible; }
+.detail-col.is-open { width: var(--det-w, min(74vmin, 680px)); margin-left: 1.5rem; opacity: 1; overflow: visible; }
+/* Mientras el ancho anima (0 → --det-w) la columna sigue recortando: con overflow visible
+   la tarjeta, que ya mide su ancho completo, sobresale de la ventana y por un instante
+   aparece una barra de scroll horizontal. Al terminar vuelve a visible (patas y antena). */
+@keyframes detail-col-open { from, to { overflow: hidden; } }
+.detail-col.is-open { animation: detail-col-open .32s linear; }
 /* Sin scroll interno: la tarjeta crece con su contenido y scrollea la PÁGINA.
    margin-bottom deja lugar a las patas y al motor del lander, que asoman por debajo. */
 .detail-col__inner {
-  width: min(74vmin, 680px); display: flex; flex-direction: column; margin-bottom: 3.5rem;
+  width: var(--det-w, min(74vmin, 680px)); display: flex; flex-direction: column;
+  margin-bottom: 3.5rem;
+  height: var(--map-h, auto);   /* alto fijo = alto del marco del mapa (layout.js) */
 }
+/* La tarjeta ocupa el alto del chasis; el cuerpo absorbe el resto (sin saltos al cargar). */
+.detail-col__inner > .detail-panel__card { flex: 1 1 auto; min-height: 0; }
+.detail-panel__card > .panel__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+/* El skyline reserva su alto desde el inicio (viewBox 760×340), esté o no dibujado. */
+#skyline { aspect-ratio: 760 / 340; }
 .detail-panel__card { display: flex; flex-direction: column; }
 /* Interior blanco limpio dentro del marco azul (z14): sin borde carbón ni sombra. */
 .detail-panel__card { border: 0; border-radius: 14px; box-shadow: none; }
@@ -491,3 +503,27 @@ input[type="range"].zoom-range::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   .sk, .load-step::before { animation: none; }
 }
+
+/* Marco del mapa (ref. designReferences/lunaMap.html): chasis fino en grafito espacial. El
+   hardware exterior (solapa, lente, dial, clips) lo dibuja moonFrame.js en .moon-frame__hw,
+   detrás de la tarjeta del mapa (z-index menor): nada tapa el mapa. */
+.moon-frame {
+  position: relative; flex-shrink: 0; padding: 13px; box-sizing: border-box;
+  width: var(--map-h, min(74vmin, 680px)); height: var(--map-h, min(74vmin, 680px));
+  background: #161a23; border: 1.5px solid #2e3545; border-radius: 26px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .85);
+}
+.moon-frame__hw {
+  position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
+  pointer-events: none; z-index: 3;
+}
+.moon-frame > .panel {
+  position: relative; z-index: 5; border: 0; border-radius: 16px; box-shadow: none;
+}
+
+/* Bloque del logo sobre el marco del mapa. Su alto (--brand-h) se compensa con el margen
+   superior de la columna de detalle, para que mapa y detalle sigan alineados arriba. */
+/* 108 = 1rem arriba + logo 56px + 2.25rem abajo (aire entre el logo y el marco). */
+:root { --brand-h: 108px; }
+.brand { height: var(--brand-h); padding: 1rem 0 2.25rem; box-sizing: border-box;
+  align-self: flex-start; }
