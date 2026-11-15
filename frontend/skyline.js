@@ -3,6 +3,7 @@
 // al backend. Módulo reusable: H3 lo monta como modal sobre el mapa.
 
 const SVGNS = "http://www.w3.org/2000/svg";
+const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
 const PAD = { t: 14, r: 14, b: 26, l: 34 };
 const W = 760, H = 340;
 const AZ_WIN_WIDTH = 90;   // FOV / ancho fijo de la ventana de azimut (§2.3), en grados
@@ -123,8 +124,9 @@ export function createSkyline(svg, { onWindowChange } = {}) {
   }
   // Diferencia angular con signo en [-180,180] (0 = al frente).
   const angDiff = (a, c) => ((a - c + 540) % 360) - 180;
-  const COMPASS = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
-  const compass = (az) => COMPASS[Math.round(normAz(az) / 45) % 8];
+  // Lee la rosa de los vientos en cada llamada → refleja el idioma activo al redibujar.
+  const compassList = () => T("sky.compass").split(",");
+  const compass = (az) => compassList()[Math.round(normAz(az) / 45) % 8];
 
   // x(az): panorámica mapea 0–360° a todo el ancho; primera persona hace zoom al FOV
   // (= la ventana), con el centro de mira al medio. Todo el dibujo pasa por acá, así
@@ -186,7 +188,9 @@ export function createSkyline(svg, { onWindowChange } = {}) {
   }
   function drawAzGrid() {
     if (!st.firstPerson) {
-      for (const [az, lbl] of [[0, "N"], [90, "E"], [180, "S"], [270, "O"], [360, "N"]]) {
+      const C = compassList();
+      const AX = [[0, C[0]], [90, C[2]], [180, C[4]], [270, C[6]], [360, C[0]]];
+      for (const [az, lbl] of AX) {
         zoomRoot.appendChild(el("line", { x1: x(az), y1: PAD.t, x2: x(az), y2: H - PAD.b,
           stroke: GRID, "stroke-width": 1 }));
         azLabel(x(az), lbl, true);
@@ -207,7 +211,7 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     const t = el("text", { x: cx, y: PAD.t + 12, "text-anchor": "middle", "font-size": 11,
       fill: AZWIN_EDGE, "font-family": "JetBrains Mono, monospace",
       stroke: SKY_TOP, "stroke-width": 3, "paint-order": "stroke" });
-    t.textContent = `mirando ${Math.round(c)}° · ${compass(c)}`;
+    t.textContent = T("sky.looking", { deg: Math.round(c), dir: compass(c) });
     svg.appendChild(t);
   }
 

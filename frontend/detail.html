@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Detalle de sitio · Skyline</title>
+  <title data-i18n="detail.title">Detalle de sitio · Skyline</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="theme.css" />
@@ -16,7 +16,7 @@
 </head>
 <body class="app-bg min-h-screen flex items-center justify-center p-6">
 
-  <button id="open-btn" class="btn btn--primary">Ver detalle del sitio</button>
+  <button id="open-btn" class="btn btn--primary" data-i18n="detail.openBtn">Ver detalle del sitio</button>
 
   <!-- COLUMNA DE DETALLE (reusable por el mapa, mismos ids) -->
   <div id="detail-overlay" class="detail-col">
@@ -36,12 +36,15 @@
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
             <button id="delete-btn" type="button" class="btn btn--ghost btn--sm hidden" aria-label="Eliminar sitio"
+                    data-i18n-attr="aria-label:detail.deleteAria" data-i18n="detail.delete"
                     style="color:var(--accent-red);font-size:0.8rem;padding:0.25rem 0.5rem">🗑 Eliminar</button>
             <button id="fullsky-btn" type="button" class="toggle-pill" aria-pressed="false"
+                    data-i18n-attr="title:detail.fullskyTip"
                     title="Normalmente agrandamos las montañas para que se vean bien. Activalo para verlas en su tamaño real, con el cielo completo.">
-              <span class="toggle-pill__switch" aria-hidden="true"></span>Escala real
+              <span class="toggle-pill__switch" aria-hidden="true"></span><span data-i18n="detail.fullsky">Escala real</span>
             </button>
-            <button id="close-btn" type="button" class="icon-btn" aria-label="Cerrar">
+            <button id="close-btn" type="button" class="icon-btn" aria-label="Cerrar"
+                    data-i18n-attr="aria-label:common.close">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M6 18L18 6M6 6l12 12" />
@@ -53,12 +56,13 @@
         <div class="panel__body space-y-4">
           <!-- Controles del harness -->
           <div class="flex flex-wrap items-center gap-3">
-            <label class="text-xs flex items-center gap-2" style="color:var(--ink-2)">Sitio
+            <label class="text-xs flex items-center gap-2" style="color:var(--ink-2)"><span data-i18n="detail.siteLabel">Sitio</span>
               <select id="site-select" class="field"></select>
             </label>
             <button id="fpv-btn" type="button" class="toggle-pill" aria-pressed="false"
+                    data-i18n-attr="title:detail.fpvTip"
                     title="Vista de primera persona: mirás el cielo desde el sitio.">
-              <span class="toggle-pill__switch" aria-hidden="true"></span>Primera persona
+              <span class="toggle-pill__switch" aria-hidden="true"></span><span data-i18n="detail.fpv">Primera persona</span>
             </button>
             <span id="status" class="text-xs" style="color:var(--ink-3)"></span>
           </div>
@@ -66,17 +70,20 @@
           <!-- Skyline -->
           <div>
             <svg id="skyline" class="w-full" role="img"
+                 data-i18n-attr="aria-label:detail.skylineAria"
                  aria-label="Skyline: elevación del Sol y la Tierra sobre el horizonte"></svg>
             <div class="mt-2">
               <div class="flex items-center gap-2">
                 <button id="play-btn" type="button" class="icon-btn shrink-0"
-                        aria-pressed="false" aria-label="Reproducir la animación del tiempo">
+                        aria-pressed="false" aria-label="Reproducir la animación del tiempo"
+                        data-i18n-attr="aria-label:detail.playAria">
                   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M8 5v14l11-7z" />
                   </svg>
                 </button>
                 <input id="time-slider" type="range" min="0" max="0" value="0"
-                       class="field-range flex-1" aria-label="Instante dentro de la ventana" />
+                       class="field-range flex-1" aria-label="Instante dentro de la ventana"
+                       data-i18n-attr="aria-label:detail.sliderAria" />
               </div>
               <div class="time-row mono">
                 <span id="time-label" class="time-row__stamp"></span>
@@ -94,6 +101,7 @@
   </div>
 
   <script src="apibase.js"></script>
+  <script src="i18n.js"></script>
   <script type="module" src="detail.js"></script>
 </body>
 </html>

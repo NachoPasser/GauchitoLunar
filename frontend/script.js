@@ -75,10 +75,13 @@ function addDaysISO(isoStr, days) {
   return toISODate(date);
 }
 
-// Formatea fecha legible en español (ej: "20 nov 2026")
+// Acceso corto al motor i18n (window.i18n lo define i18n.js, cargado antes).
+const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
+
+// Formatea fecha legible según el idioma activo (ej: "20 nov 2026" / "Nov 20, 2026")
 function formatReadableDate(isoStr) {
   const date = parseISODate(isoStr);
-  return date.toLocaleDateString('es-AR', {
+  return date.toLocaleDateString(T('locale.date'), {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -109,7 +112,7 @@ function syncDateConstraints(autoAdjustEnd = false) {
   if (!startVal) {
     endDateInput.disabled = true;
     endDateInput.value = '';
-    durationBadge.textContent = `DURACIÓN: — / ${MAX_MISSION_DAYS} DÍAS`;
+    durationBadge.textContent = T('w.duration.empty', { max: MAX_MISSION_DAYS });
     return;
   }
 
@@ -125,8 +128,8 @@ function syncDateConstraints(autoAdjustEnd = false) {
     } else if (endDateInput.value > maxAllowedEnd) {
       endDateInput.value = maxAllowedEnd;
       showFeedback(
-        'LÍMITE DE 30 DÍAS APLICADO',
-        `La fecha de fin se ajustó automáticamente al máximo permitido de <strong>${MAX_MISSION_DAYS} días</strong> desde el inicio.`,
+        T('w.fb.limitApplied.title'),
+        T('w.fb.limitApplied.body', { max: MAX_MISSION_DAYS }),
         true
       );
     }
@@ -140,7 +143,7 @@ function updateDurationDisplay() {
   const end = parseISODate(endDateInput.value);
 
   if (!start || !end) {
-    durationBadge.textContent = `DURACIÓN: — / ${MAX_MISSION_DAYS} DÍAS`;
+    durationBadge.textContent = T('w.duration.empty', { max: MAX_MISSION_DAYS });
     durationBadge.className = 'font-["JetBrains_Mono"] text-[10px] font-bold uppercase tracking-wider text-[#0032A0] bg-[#0032A0]/10 px-2 py-0.5 rounded';
     return null;
   }
@@ -148,10 +151,10 @@ function updateDurationDisplay() {
   const diffDays = Math.round((end - start) / MS_PER_DAY);
 
   if (diffDays < 0 || diffDays > MAX_MISSION_DAYS) {
-    durationBadge.textContent = `EXCEDE LÍMITE (${diffDays} DÍAS)`;
+    durationBadge.textContent = T('w.duration.exceed', { n: diffDays });
     durationBadge.className = 'font-["JetBrains_Mono"] text-[10px] font-bold uppercase tracking-wider text-[#E03C31] bg-[#E03C31]/10 px-2 py-0.5 rounded';
   } else {
-    durationBadge.textContent = `DURACIÓN: ${diffDays} / ${MAX_MISSION_DAYS} DÍAS`;
+    durationBadge.textContent = T('w.duration.value', { n: diffDays, max: MAX_MISSION_DAYS });
     durationBadge.className = 'font-["JetBrains_Mono"] text-[10px] font-bold uppercase tracking-wider text-[#0032A0] bg-[#0032A0]/10 px-2 py-0.5 rounded';
   }
 
@@ -163,6 +166,10 @@ startDateInput.value = '2026-11-20';
 syncDateConstraints(false);
 endDateInput.value = addDaysISO('2026-11-20', 14);
 updateDurationDisplay();
+
+// El badge de duración se setea por JS; al cambiar de idioma hay que regenerarlo
+// (el texto estático lo re-aplica i18n.apply automáticamente).
+document.addEventListener('i18n:change', () => updateDurationDisplay());
 
 startDateInput.addEventListener('change', () => {
   feedbackBox.classList.add('hidden');
@@ -176,14 +183,15 @@ endDateInput.addEventListener('change', () => {
   // Respaldo por si el usuario tipea manualmente una fecha mayor a 30 días
   if (diffDays !== null && diffDays > MAX_MISSION_DAYS) {
     showFeedback(
-      'DURACIÓN EXCEDIDA',
-      `La misión no puede durar más de <strong>${MAX_MISSION_DAYS} días</strong> (un ciclo lunar completo). Seleccioná una fecha de fin igual o anterior al <strong>${formatReadableDate(endDateInput.max)}</strong>.`,
+      T('w.fb.durationExceeded.title'),
+      T('w.fb.durationExceeded.body',
+        { max: MAX_MISSION_DAYS, date: formatReadableDate(endDateInput.max) }),
       true
     );
   } else if (diffDays !== null && diffDays < 0) {
     showFeedback(
-      'RANGO INVÁLIDO',
-      'La fecha de fin no puede ser anterior a la fecha de inicio de la misión.',
+      T('w.fb.invalidRange.title'),
+      T('w.fb.invalidRange.bodyBefore'),
       true
     );
   }
@@ -211,8 +219,8 @@ dateForm.addEventListener('submit', (e) => {
 
   if (!startVal || !endVal) {
     showFeedback(
-      'FECHAS INCOMPLETAS',
-      'Seleccioná tanto la fecha de inicio como la fecha de fin para iniciar la simulación.',
+      T('w.fb.incomplete.title'),
+      T('w.fb.incomplete.body'),
       true
     );
     return;
@@ -222,8 +230,8 @@ dateForm.addEventListener('submit', (e) => {
 
   if (diffDays < 0) {
     showFeedback(
-      'RANGO INVÁLIDO',
-      'La fecha de fin debe ser posterior o igual a la fecha de inicio.',
+      T('w.fb.invalidRange.title'),
+      T('w.fb.invalidRange.bodyAfter'),
       true
     );
     return;
@@ -231,16 +239,20 @@ dateForm.addEventListener('submit', (e) => {
 
   if (diffDays > MAX_MISSION_DAYS) {
     showFeedback(
-      'LÍMITE DE MISIÓN EXCEDIDO',
-      `La misión no puede durar más de <strong>${MAX_MISSION_DAYS} días</strong> (seleccionaste ${diffDays} días). Reducí el período para continuar.`,
+      T('w.fb.missionExceeded.title'),
+      T('w.fb.missionExceeded.body', { max: MAX_MISSION_DAYS, n: diffDays }),
       true
     );
     return;
   }
 
   showFeedback(
-    'VENTANA CARGADA EN MATRIZ',
-    `Analizando sitios en el Polo Sur del <strong class="font-['JetBrains_Mono'] text-[#0032A0]">${formatReadableDate(startVal)}</strong> al <strong class="font-['JetBrains_Mono'] text-[#0032A0]">${formatReadableDate(endVal)}</strong> (${diffDays} días)...`,
+    T('w.fb.loaded.title'),
+    T('w.fb.loaded.body', {
+      from: formatReadableDate(startVal),
+      to: formatReadableDate(endVal),
+      n: diffDays,
+    }),
     false
   );
 

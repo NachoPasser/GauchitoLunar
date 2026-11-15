@@ -5,41 +5,22 @@
 import { fmtEnergy, fmtPct, fmtHours, fmtDays, fmtDeg } from "./format.js";
 import { initTooltips } from "./tooltip.js";
 
+// Acceso al motor i18n (window.i18n lo define i18n.js, cargado antes del módulo).
+const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
+
 // Atributos de tooltip (tooltip.js): texto + enfocable para teclado/tap.
 const tip = (text) => `data-tip="${text}" tabindex="0"`;
 
-// Textos de ayuda en lenguaje llano, uno por métrica.
-const TIPS = {
-  sunPill: "Si ahora le da el Sol a este punto. Los grados indican cuánto pasa el Sol" +
-    " por encima de las montañas; si son negativos, está escondido detrás.",
-  energy: "Energía que juntó hasta este momento un panel solar de 1 m² apoyado en el" +
-    " piso. Solo crece mientras le da el Sol.",
-  litPct: "Porcentaje del tiempo elegido donde llega el Sol a este punto.",
-  earthClear: "Cuánto asoma la Tierra por encima de las montañas. Si el número es" +
-    " negativo, el relieve la tapa y no hay señal.",
-  earthPct: "Porcentaje del tiempo elegido donde se puede hablar directo con la Tierra, sin" +
-    " satélites de relevo.",
-  sunEvent: "Cuánto falta para que el Sol se esconda tras las montañas, o para que" +
-    " vuelva a salir.",
-  earthEvent: "Cuánto falta para perder la señal con la Tierra, o para recuperarla.",
-  sunStrip: "Cada bloque es una racha seguida de luz (ámbar) o de oscuridad (gris), y su" +
-    " ancho muestra cuánto dura. Las noches largas son las difíciles: hay que" +
-    " aguantarlas con baterías. El signo ≥ marca rachas que siguen más allá de las" +
-    " fechas elegidas.",
-  earthStrip: "Cada bloque es una racha seguida con señal (azul) o sin señal (gris), y su" +
-    " ancho muestra cuánto dura. Un bloque gris largo significa días sin hablar con la" +
-    " Tierra. El signo ≥ marca rachas que siguen más allá de las fechas elegidas.",
-};
-const earthPillTip = (margin) => "Si desde acá se ve la Tierra. Cuando se ve, se puede" +
-  " hablar con ella directo." +
-  (margin > 0 ? ` Pedimos que asome al menos ${margin}° sobre las montañas.` : "");
+const earthPillTip = (margin) => T("panel.tip.earthPillBase") +
+  (margin > 0 ? T("panel.tip.earthPillMargin", { margin }) : "");
 
 // Estilo por estado de los cartuchos (SPEC §3.1), alineado a los tokens de marca.
+// `name` es la clave i18n del estado (se traduce al renderizar el tooltip).
 const STATE = {
-  lit: { bg: "#f59e0b", tx: "#3a2500", name: "con luz" },
-  dark: { bg: "#dfe3ea", tx: "#5b6575", name: "sin luz" },
-  visible: { bg: "#0032a0", tx: "#ffffff", name: "con señal" },
-  hidden: { bg: "#dfe3ea", tx: "#5b6575", name: "sin señal" },
+  lit: { bg: "#f59e0b", tx: "#3a2500", name: "panel.state.lit" },
+  dark: { bg: "#dfe3ea", tx: "#5b6575", name: "panel.state.dark" },
+  visible: { bg: "#0032a0", tx: "#ffffff", name: "panel.state.visible" },
+  hidden: { bg: "#dfe3ea", tx: "#5b6575", name: "panel.state.hidden" },
 };
 
 // Una tira de cartuchos (z14): cada tramo con ancho ∝ duración; "≥" = recortado.
@@ -51,8 +32,10 @@ function strip(title, intervals, help) {
     const clipped = iv.clipped_start || iv.clipped_end;
     const wide = iv.duration_h / total > 0.08;        // ~espacio para el texto
     const label = wide ? `${clipped ? "≥" : ""}${fmtDays(iv.duration_days)} d` : "";
-    const tipText = `${fmtDays(iv.duration_days)} días seguidos ${s.name}` +
-      `${clipped ? ", o más (sigue fuera de tus fechas)" : ""}`;
+    const tipText = T("panel.strip.segTip", {
+      n: fmtDays(iv.duration_days), state: T(s.name),
+      more: clipped ? T("panel.strip.more") : "",
+    });
     return `<div class="cartucho__seg" data-tip="${tipText}"
       style="flex:${iv.duration_h} 0 0;background:${s.bg};color:${s.tx}">${label}</div>`;
   }).join("");
@@ -70,8 +53,8 @@ export function renderCartuchos(root, site) {
   root.innerHTML = `
     <section class="cartuchos">
       <div class="cartuchos__track">
-        ${strip("Días con / sin luz solar", site.sun_intervals, TIPS.sunStrip)}
-        ${strip("Días con / sin enlace a la Tierra", site.earth_intervals, TIPS.earthStrip)}
+        ${strip(T("panel.strip.sunTitle"), site.sun_intervals, T("panel.tip.sunStrip"))}
+        ${strip(T("panel.strip.earthTitle"), site.earth_intervals, T("panel.tip.earthStrip"))}
         <div id="cartucho-needle" class="cartucho__needle" style="left:0"></div>
       </div>
     </section>`;
@@ -111,7 +94,8 @@ function nextEvent(track, i, v) {
   const h = hoursToChange(track, i);
   const what = visible ? v.set : v.rise;
   return {
-    label: h == null ? `Sin ${what.toLowerCase()} en la ventana` : `${what} en`,
+    label: h == null ? T("panel.ev.noEvent", { what: what.toLowerCase() })
+      : T("panel.ev.inPrefix", { what }),
     value: h == null ? "—" : fmtHours(h),
     icon: visible ? v.iconSet : v.iconRise,
     good: !visible,
@@ -127,7 +111,7 @@ export function instantStamp(site, i) {
   const elapsed = (new Date(track[i].t) - new Date(track[0].t)) / 8.64e7;
   const day = Math.min(total, Math.floor(elapsed) + 1);
   const pad = (n) => String(n).padStart(2, "0");
-  return { stamp, day: `DÍA ${pad(day)} / ${pad(total)}` };
+  return { stamp, day: T("panel.dayBadge", { day: pad(day), total: pad(total) }) };
 }
 
 // Integral de energía acumulada (kWh/m²) muestra a muestra: mismo modelo que el
@@ -201,16 +185,17 @@ export function renderMetrics(root, site, mask) {
   root.innerHTML = `
     <div class="space-y-3 pb-1">
       <div class="tele-grid">
-        ${teleCard("sun", "Sol", "Energía acumulada", "Tiempo con luz total",
+        ${teleCard("sun", T("panel.sun.title"), T("panel.sun.value"), T("panel.sun.foot"),
           fmtPct(m.lit_fraction),
-          { pill: TIPS.sunPill, value: TIPS.energy, foot: TIPS.litPct })}
-        ${teleCard("earth", "Tierra", "Sobre el horizonte", "Tiempo a la vista total",
-          fmtPct(m.earth_vis_fraction),
-          { pill: earthPillTip(p.comms_margin_deg), value: TIPS.earthClear,
-            foot: TIPS.earthPct })}
+          { pill: T("panel.tip.sunPill"), value: T("panel.tip.energy"),
+            foot: T("panel.tip.litPct") })}
+        ${teleCard("earth", T("panel.earth.title"), T("panel.earth.value"),
+          T("panel.earth.foot"), fmtPct(m.earth_vis_fraction),
+          { pill: earthPillTip(p.comms_margin_deg), value: T("panel.tip.earthClear"),
+            foot: T("panel.tip.earthPct") })}
       </div>
       <div class="tele-events">
-        ${eventSlot("sun", TIPS.sunEvent)}${eventSlot("earth", TIPS.earthEvent)}
+        ${eventSlot("sun", T("panel.tip.sunEvent"))}${eventSlot("earth", T("panel.tip.earthEvent"))}
       </div>
     </div>`;
 
@@ -232,19 +217,19 @@ export function renderMetrics(root, site, mask) {
     // Positivo = cuánto falta para que lo tape el relieve; negativo = cuánto para salir.
     const sc = s.el - horizonAt(mask, s.az);
     const scTxt = `${sc >= 0 ? "+" : ""}${fmtDeg(sc, 1)}`;
-    sunPill.textContent = `${s.visible ? "Con luz" : "En sombra"} · ${scTxt}`;
+    sunPill.textContent = `${s.visible ? T("panel.sun.on") : T("panel.sun.off")} · ${scTxt}`;
     sunPill.classList.toggle("is-on", s.visible);
     sunVal.innerHTML = `${fmtEnergy(energy[i])} <small>kWh/m²</small>`;
 
     const cl = e.el - horizonAt(mask, e.az);
-    earPill.textContent = e.visible ? "Enlace" : "Sin enlace";
+    earPill.textContent = e.visible ? T("panel.earth.on") : T("panel.earth.off");
     earPill.classList.toggle("is-on", e.visible);
     earVal.textContent = `${cl >= 0 ? "+" : ""}${cl.toFixed(1)}°`;
     earVal.classList.toggle("is-on", cl >= 0);
 
-    setEvent("sun", nextEvent(site.sun_track, i, { set: "Ocaso", rise: "Amanecer",
-      iconSet: ICON.sunset, iconRise: ICON.sunrise }));
-    setEvent("earth", nextEvent(site.earth_track, i, { set: "Corte de enlace",
-      rise: "Enlace", iconSet: ICON.linkOff, iconRise: ICON.linkOn }));
+    setEvent("sun", nextEvent(site.sun_track, i, { set: T("panel.ev.sunset"),
+      rise: T("panel.ev.sunrise"), iconSet: ICON.sunset, iconRise: ICON.sunrise }));
+    setEvent("earth", nextEvent(site.earth_track, i, { set: T("panel.ev.linkOff"),
+      rise: T("panel.ev.linkOn"), iconSet: ICON.linkOff, iconRise: ICON.linkOn }));
   };
 }

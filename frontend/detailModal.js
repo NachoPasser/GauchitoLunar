@@ -7,6 +7,8 @@ import { createSkyline } from "./skyline.js";
 import { renderMetrics, renderCartuchos, instantStamp } from "./panel.js";
 import { renderLanderFrame } from "./landerFrame.js";
 
+const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
+
 export function createDetailModal({ windowDays = 30, date = null,
                                     onAzimuthWindow = null, onInstant = null } = {}) {
   // windowDays / date pueden ser valores fijos o funciones () → valor.
@@ -19,6 +21,7 @@ export function createDetailModal({ windowDays = 30, date = null,
   let playTimer = null;     // interval de reproducción automática del slider (play/pause)
   let loading = false;       // true mientras showSite espera la respuesta del backend
   let data = null;          // respuesta /api/site del sitio activo (para el slider)
+  let horizonMask = null;   // máscara h(az) del sitio activo (para re-render i18n)
   let updateMetrics = null; // updater(i) de las métricas por instante (ver panel.js)
 
   function setStatus(msg, isError = false) {
@@ -39,10 +42,10 @@ export function createDetailModal({ windowDays = 30, date = null,
 
   // Loader minimalista del detalle: esqueleto del layout + barra que avanza por los
   // PASOS reales del cálculo (honesto y pedagógico). Oculta el contenido real (no salta).
-  const LOAD_STEPS = [
-    "Trazando el horizonte desde el DEM",
-    "Bajando efemérides del Sol y la Tierra (JPL Horizons)",
-    "Integrando energía y visibilidad",
+  const loadSteps = () => [
+    T("detail.load.horizon"),
+    T("detail.load.ephem"),
+    T("detail.load.integrate"),
   ];
   let loadingEl = null, stepTimer = null;
   const contentEls = () => [$("skyline").parentElement, $("metrics"), $("cartuchos")];
@@ -65,10 +68,11 @@ export function createDetailModal({ windowDays = 30, date = null,
     const stepEl = loadingEl.querySelector(".load-step");
     const bar = loadingEl.querySelector(".load-bar > span");
     let i = 0;
+    const steps = loadSteps();
     const tick = () => {
-      stepEl.textContent = LOAD_STEPS[i];
-      bar.style.width = `${Math.round(((i + 1) / LOAD_STEPS.length) * 100)}%`;
-      if (i < LOAD_STEPS.length - 1) i++;
+      stepEl.textContent = steps[i];
+      bar.style.width = `${Math.round(((i + 1) / steps.length) * 100)}%`;
+      if (i < steps.length - 1) i++;
     };
     tick();
     stepTimer = setInterval(tick, 1100);
@@ -104,7 +108,7 @@ export function createDetailModal({ windowDays = 30, date = null,
     // El nombre/coords del sitio se muestran YA (pedagógico), y el loader corre mientras
     // un sitio nuevo baja efemérides de Horizons en vivo (~unos segundos la 1ª vez).
     stopPlay();                   // cada sitio nuevo arranca pausado
-    $("site-name").textContent = name || "Sitio nuevo";
+    $("site-name").textContent = name || T("detail.newSite");
     $("site-coords").textContent = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
     setStatus("");
     const panel = $("detail-panel");
@@ -122,6 +126,7 @@ export function createDetailModal({ windowDays = 30, date = null,
       ]);
       $("site-name").textContent = name || site.site.name;
       data = site;
+      horizonMask = mask.horizon_mask;
       sky.setMask(mask.horizon_mask);
       sky.setTracks(site.sun_track, site.earth_track);
       sky.setParams({ commsMargin: site.params.comms_margin_deg });
@@ -137,8 +142,8 @@ export function createDetailModal({ windowDays = 30, date = null,
     } catch (e) {
       hideLoading();
       const msg = e.status === 503
-        ? "Sin efemérides para este sitio. Probá uno predefinido o conectate a internet."
-        : `No se pudo cargar (¿backend activo?): ${e.message}`;
+        ? T("detail.noEphem")
+        : T("detail.loadError", { msg: e.message });
       setStatus(msg, true);
     } finally {
       loading = false;
@@ -197,7 +202,7 @@ export function createDetailModal({ windowDays = 30, date = null,
               nameEl.textContent = v;
             } else {
               nameEl.textContent = original;
-              setStatus("Ya existe un sitio con ese nombre", true);
+              setStatus(T("detail.renameDup"), true);
               setTimeout(() => setStatus(""), 2500);
             }
           }
@@ -238,7 +243,7 @@ export function createDetailModal({ windowDays = 30, date = null,
     const p = btn.querySelector("path");
     if (p) p.setAttribute("d", playing ? "M6 5h4v14H6zM14 5h4v14h-4z" : "M8 5v14l11-7z");
     btn.setAttribute("aria-pressed", String(playing));
-    btn.setAttribute("aria-label", playing ? "Pausar" : "Reproducir la animación del tiempo");
+    btn.setAttribute("aria-label", playing ? T("detail.pauseAria") : T("detail.playAria"));
   }
   function stopPlay() {
     if (playTimer) { clearInterval(playTimer); playTimer = null; }
@@ -261,6 +266,16 @@ export function createDetailModal({ windowDays = 30, date = null,
   $("time-slider").addEventListener("input", (e) => {
     stopPlay();                    // arrastrar manualmente pausa la reproducción
     updateCursor(Number(e.target.value));
+  });
+
+  // Cambio de idioma: re-renderiza métricas/cartuchos/skyline del sitio cargado
+  // (su texto se genera por JS, no lo alcanza i18n.apply).
+  document.addEventListener("i18n:change", () => {
+    if (!data || loading || !horizonMask) return;
+    const i = Number($("time-slider")?.value) || 0;
+    updateMetrics = renderMetrics($("metrics"), data, horizonMask);
+    renderCartuchos($("cartuchos"), data);
+    updateCursor(i);
   });
 
   // Redibujar el marco si el panel cambia de tamaño (solo con el modal abierto).

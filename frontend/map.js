@@ -11,6 +11,7 @@ import { windowDays, startDate, addSitio, removeSitio, setSitioActivo, getState,
   renameSitio } from "./state.js";
 
 const $ = (id) => document.getElementById(id);
+const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
 const stage = $("map-stage");
 const world = $("map-world");
 const zoomSlider = $("zoom-slider");
@@ -133,7 +134,7 @@ function drawChrome() {
     "vector-effect": "non-scaling-stroke" }));
   const pt = svg("text", { x: C + 12, y: C + 6, fill: "white", "fill-opacity": 0.75,
     "font-size": 18, "font-family": "JetBrains Mono", "data-base-size": 18 });
-  pt.textContent = "polo S";
+  pt.textContent = T("map.poleS");
   g.appendChild(pt);
   updateChromeTextSizes();
   // Chrome del margen (sobre el lienzo claro): globo + barra de escala.
@@ -312,8 +313,8 @@ function drawDirArrows(sunAz, earthAz, tLabel, frame) {
     lbl.textContent = label;
     grp.appendChild(lbl);
   };
-  arrow(sunAz, "#f59e0b", "Sol");
-  arrow(earthAz, "#60a5fa", "Tierra");
+  arrow(sunAz, "#f59e0b", T("common.sun"));
+  arrow(earthAz, "#60a5fa", T("common.earth"));
   g.appendChild(grp);
 }
 
@@ -519,7 +520,7 @@ async function init() {
     drawDirArrows(s0.az, e0.az, s0.t.slice(0, 16).replace("T", " "),
       localFrame(ref.lat, ref.lon));
   } catch (e) {
-    setStatus(`No se pudo cargar el mapa (¿backend activo?): ${e.message}`);
+    setStatus(T("map.loadError", { msg: e.message }));
   }
 }
 
@@ -878,5 +879,16 @@ if (coordsAdd) coordsAdd.addEventListener("click", (e) => { e.stopPropagation();
   inp.addEventListener("input", (e) => { e.stopPropagation(); updateCoordsDisplay(); });
 });
 updateCoordsDisplay();   // muestra los valores iniciales
+
+// Al cambiar de idioma: el texto estático lo re-aplica i18n.apply; acá regeneramos
+// lo que dibuja el SVG por JS (etiqueta "polo S", flechas Sol/Tierra).
+document.addEventListener("i18n:change", () => {
+  if (!proj) return;
+  drawChrome();
+  if (lastArrowParams) {
+    drawDirArrows(lastArrowParams.sunAz, lastArrowParams.earthAz,
+      lastArrowParams.tLabel, lastArrowParams.frame);
+  }
+});
 
 init();
