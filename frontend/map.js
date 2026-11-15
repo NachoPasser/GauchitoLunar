@@ -149,11 +149,11 @@ function updateChromeTextSizes() {
 }
 
 // Globo-localizador (abajo-izquierda): el dibujo vive en globe.js (compartido con la
-// bienvenida); acá solo su posición/tamaño y la paleta para fondo oscuro, con el ojo.
+// bienvenida); acá solo su posición/tamaño y la paleta para fondo oscuro, con la flecha.
 const GLOBE = { cx: 106, cy: 882, r: 84, tilt: 28, cap: 18 };
 
 function drawGlobe() {
-  drawGlobeInto($("map-chrome-fg"), GLOBE, GLOBE_DARK, { eye: true });
+  drawGlobeInto($("map-chrome-fg"), GLOBE, GLOBE_DARK, { arrow: true });
 }
 
 // Barra de escala en el margen inferior. 100 km = (100/303.48) del ancho del DISCO,

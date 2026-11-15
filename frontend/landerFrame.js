@@ -49,7 +49,7 @@ function solarArray(px, lit) {
 // Ondas de radio animadas (solo con enlace a la Tierra).
 function radioWaves(x) {
   const wave = (d, cls, sw) =>
-    `<path class="lander-radio-wave${cls}" d="${d}" fill="none" stroke="${ACCENT}"
+    `<path class="lander-radio-wave${cls}" d="${d}" fill="none" stroke="#FF5A64"
            stroke-width="${sw}" stroke-linecap="round" />`;
   return `
     <g transform="translate(${x}, -31)">
@@ -59,18 +59,22 @@ function radioWaves(x) {
     </g>`;
 }
 
-// Antena parabólica (arriba derecha).
+// Antena parabólica (arriba derecha). Asoma sobre el cielo OSCURO de la página y el marco
+// azul, así que va en tonos CLAROS (el casco oscuro se perdía): plato casi blanco, mástil
+// gris claro, base clara con contorno azul marino, y el alimentador rojo más vivo.
+const DISH_BOWL = "#F8FAFC", DISH_MAST = "#CBD5E1", DISH_EDGE = "#0B1124", DISH_RED = "#FF5A64";
 function dish(ax, link) {
   return `
     <g id="lander-dish">
-      <rect x="${ax - 7}" y="-5" width="14" height="7" rx="1.5" fill="${HULL}" />
-      <line x1="${ax}" y1="-5" x2="${ax + 5}" y2="-18" stroke="${STEEL}"
-            stroke-width="2.2" stroke-linecap="round" />
+      <rect x="${ax - 7}" y="-5" width="14" height="7" rx="1.5" fill="${DISH_MAST}"
+            stroke="${DISH_EDGE}" stroke-width="1" />
+      <line x1="${ax}" y1="-5" x2="${ax + 5}" y2="-18" stroke="${DISH_MAST}"
+            stroke-width="2.4" stroke-linecap="round" />
       <path d="M ${ax - 12} -27 Q ${ax + 5} -9 ${ax + 22} -18" fill="none"
-            stroke="${HULL}" stroke-width="2.5" stroke-linecap="round" />
-      <line x1="${ax + 5}" y1="-18" x2="${ax + 12}" y2="-27" stroke="${ACCENT}"
-            stroke-width="1.8" />
-      <circle cx="${ax + 13}" cy="-28" r="2.5" fill="${ACCENT}" />
+            stroke="${DISH_BOWL}" stroke-width="2.8" stroke-linecap="round" />
+      <line x1="${ax + 5}" y1="-18" x2="${ax + 12}" y2="-27" stroke="${DISH_RED}"
+            stroke-width="1.9" />
+      <circle cx="${ax + 13}" cy="-28" r="2.7" fill="${DISH_RED}" />
       ${link ? radioWaves(ax + 16) : ""}
     </g>`;
 }

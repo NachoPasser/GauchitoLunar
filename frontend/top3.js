@@ -36,14 +36,21 @@ async function fetchEntry(site, kind, win, date) {
 
 // Carga en paralelo las métricas de semilla + chinchetas con la ventana/fecha global.
 // Tolera fallos por sitio (ok:false). Devuelve el array `entries` para rank.js.
-export async function loadEntries({ win = windowDays(), date = startDate() } = {}) {
+export async function loadEntries(
+  { win = windowDays(), date = startDate(), onProgress } = {},
+) {
   const { sites } = await getSites();
   const pins = getState().sitios || [];
   const all = [
     ...sites.map((s) => [s, "seed"]),
     ...pins.map((s) => [s, "pin"]),
   ];
-  return Promise.all(all.map(([s, kind]) => fetchEntry(s, kind, win, date)));
+  let done = 0;
+  onProgress?.(0, all.length);
+  return Promise.all(all.map(([s, kind]) => fetchEntry(s, kind, win, date).then((r) => {
+    onProgress?.(++done, all.length);       // cada sitio calculado hace avanzar la barra
+    return r;
+  })));
 }
 
 
@@ -119,6 +126,32 @@ function telemetry(step, e, win) {
     sec("Energía solar", energy, "t3-sun", "Tierra a la vista", comms, "t3-earth");
 }
 
+// Carga: 3 tarjetas "esqueleto" con la forma real del podio + una barra de progreso que
+// avanza con cada sitio calculado (efemérides de Sol y Tierra + horizonte, por sitio).
+const skCard = (i) => `<article class="t3-rank t3-sk-card" style="--d:${i * 0.18}s"
+    aria-hidden="true">
+  <div>
+    <div class="t3-sk t3-sk--badge"></div>
+    <div class="t3-sk t3-sk--title"></div>
+    <div class="t3-sk t3-sk--sub"></div>
+  </div>
+  <div class="t3-tele">
+    <div class="t3-sk t3-sk--label"></div>
+    <div class="t3-sk t3-sk--kpi"></div>
+    <div class="t3-sk t3-sk--meter"></div>
+    <div class="t3-sec">
+      <div class="t3-sk t3-sk--sec"></div><div class="t3-sk t3-sk--sec"></div>
+    </div>
+    <div class="t3-sk t3-sk--btn"></div>
+  </div>
+</article>`;
+
+const loadingHTML = () => `<div class="t3-load" role="status" aria-live="polite">
+  <div class="t3-load__row"><span class="t3-load__dot" aria-hidden="true"></span>
+    <span class="t3-load__txt"></span><span class="t3-load__n"></span></div>
+  <div class="t3-load__bar"><span></span></div>
+</div>${[0, 1, 2].map(skCard).join("")}`;
+
 const detailAttrs = (e) =>
   `data-lat="${e.lat}" data-lon="${e.lon}" data-name="${enc(e.name)}"`;
 
@@ -166,6 +199,7 @@ export function createTop3({ onDetail } = {}) {
   const cards = $("top3-content");
   const table = $("top3-table");
   let step = STEPS[0], entries = null, loading = false, error = null, win = windowDays();
+  let prog = { done: 0, total: 0 };
 
   const msg = (text, isErr = false) =>
     `<p class="t3-msg ${isErr ? "t3-msg--err" : ""}">${text}</p>`;
@@ -199,7 +233,7 @@ export function createTop3({ onDetail } = {}) {
       cards.innerHTML = html; tbody.innerHTML = ""; $("top3-count").textContent = "";
       showToggle(false); setTable(false);
     };
-    if (loading) return empty(msg("Cargando métricas de los sitios…"));
+    if (loading) { empty(loadingHTML()); return setProgress(prog.done, prog.total); }
     if (error) return empty(msg(`No se pudo cargar: ${enc(error)}`, true));
     if (!entries) return empty("");
     const { ranked, noData } = rankBy(entries, step, { wComms: W_COMMS });
@@ -211,10 +245,23 @@ export function createTop3({ onDetail } = {}) {
     showToggle(true);
   }
 
+  // Actualiza solo la barra y el texto (sin rehacer los esqueletos: el shimmer no se corta).
+  function setProgress(done, total) {
+    prog = { done, total };
+    const box = cards.querySelector(".t3-load");
+    if (!loading || !box) return;
+    box.querySelector(".t3-load__txt").textContent = total
+      ? "Calculando energía y visibilidad de la Tierra" : "Preparando el cálculo";
+    box.querySelector(".t3-load__n").textContent = total ? `${done} / ${total} sitios` : "";
+    box.querySelector(".t3-load__bar > span").style.width =
+      `${total ? Math.max(6, Math.round((done / total) * 100)) : 6}%`;
+  }
+
   async function load() {
     win = windowDays();
+    prog = { done: 0, total: 0 };
     loading = true; error = null; render();
-    try { entries = await loadEntries({ win }); }
+    try { entries = await loadEntries({ win, onProgress: setProgress }); }
     catch (e) { error = e.message; }
     finally { loading = false; render(); }
   }

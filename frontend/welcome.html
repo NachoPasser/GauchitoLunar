@@ -1,5 +1,13 @@
 <!-- welcome.html — fragmento de la bienvenida (sin <html>/<body>). Lo inserta welcome.js
      frente a la luna en map.html (ya no hay index.html: el mapa es la entrada). -->
+  <!-- Columna de la bienvenida: logo (igual que sobre el mapa, alineado a la izquierda del
+       bloque) + bloque. El logo usa .brand de theme.css, el mismo del mapa. -->
+  <div class="w-full max-w-2xl flex flex-col">
+    <div class="brand">
+      <img src="assets/logo.png" alt="Selene Horizon" class="block h-14 w-auto select-none"
+           draggable="false" />
+    </div>
+
   <!-- BLOQUE PRINCIPAL CON BORDE NASA #0032A0 -->
   <div id="nasa-framed-block" class="relative w-full max-w-2xl bg-[#0032A0] p-[18px] sm:p-[24px] rounded-2xl shadow-[0_18px_45px_rgba(0,50,160,0.28)] overflow-visible">
     
@@ -258,4 +266,5 @@
       </section>
 
     </div>
+  </div>
   </div>

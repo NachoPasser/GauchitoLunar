@@ -14,7 +14,7 @@ function svg(tag, attrs) {
 // Paletas: limb/capa/grilla/polo/rótulos. `front`/`back` = opacidad de la grilla.
 export const GLOBE_DARK = { limbFill: "rgba(255,255,255,.05)", limbStroke: "rgba(255,255,255,.5)",
   grid: "#cfe0ff", front: 0.38, back: 0.12, capFill: "rgba(96,165,250,.4)", capStroke: "#60a5fa",
-  pole: "#fff", label: "#cbd5e1" };
+  pole: "#fff", label: "#cbd5e1", arrow: "#ff5a64" };
 export const GLOBE_LIGHT = { limbFill: "rgba(0,50,160,.04)", limbStroke: "rgba(0,50,160,.55)",
   grid: "#0032A0", front: 0.32, back: 0.1, capFill: "rgba(0,50,160,.16)", capStroke: "#0032A0",
   pole: "#E03C31", label: "#0032A0" };
@@ -34,8 +34,8 @@ function globePt(latDeg, lonDeg, tilt) {
 }
 
 // Dibuja el globo dentro del <g>/<svg> `g`. geo = { cx, cy, r, tilt, cap }.
-// opts.eye: ícono de perspectiva (ojo de perfil) sobre la S (solo en el mapa).
-export function drawGlobe(g, { cx, cy, r, tilt = 28, cap = 18 }, pal, { eye = false } = {}) {
+// opts.arrow: flecha trazo-marcador (sharpie), apenas curva, que apunta a la S (solo mapa).
+export function drawGlobe(g, { cx, cy, r, tilt = 28, cap = 18 }, pal, { arrow = false } = {}) {
   const P = (la, lo) => globePt(la, lo, tilt);
   const sx = (p) => cx + r * p.x, sy = (p) => cy + r * p.y;
   const poly = (pts) =>
@@ -78,27 +78,21 @@ export function drawGlobe(g, { cx, cy, r, tilt = 28, cap = 18 }, pal, { eye = fa
   };
   lbl("S", cy - r - 9, 0.95);
   lbl("N", cy + r + 22, 0.5);
-  if (!eye) return;
-  // Ícono de perspectiva (ojo): vértice único arriba, dos líneas que abren hacia abajo
-  // (3× más grande, más estrecho), pestañas cortas hacia abajo. Sin cruce.
-  const EYE_HW = 22, EXT_Y = 8, EXT_X = 5, CURVE = 9;
-  const yV = cy - r - 80;     // vértice (punto único, punta del ojo)
-  const yBe = cy - r - 30;    // base (parte ancha, con pestañas)
-  const de =
-    `M${cx} ${yV} L${cx - EYE_HW} ${yBe}` +
-    `M${cx} ${yV} L${cx + EYE_HW} ${yBe}` +
-    `M${cx - EYE_HW} ${yBe} l${-EXT_X} ${EXT_Y}` +
-    `M${cx + EYE_HW} ${yBe} l${EXT_X} ${EXT_Y}` +
-    `M${cx - EYE_HW} ${yBe} Q${cx} ${yBe + CURVE} ${cx + EYE_HW} ${yBe}`;
-  g.appendChild(svg("path", { d: de, fill: "none", stroke: pal.label, "stroke-opacity": 0.95,
-    "stroke-width": 2.2, "stroke-linecap": "round", "stroke-linejoin": "round" }));
-  // Iris de perfil: almendra horizontal (el ojo visto de costado) + pupila.
-  const irisY = yBe - 3, iW = 6, iH = 3.5;
-  const dIris = `M${cx - iW} ${irisY}` +
-    `Q${cx} ${irisY - iH} ${cx + iW} ${irisY}` +
-    `Q${cx} ${irisY + iH} ${cx - iW} ${irisY} Z`;
-  g.appendChild(svg("path", { d: dIris, fill: "none", stroke: pal.label,
-    "stroke-opacity": 0.88, "stroke-width": 1.5 }));
-  g.appendChild(svg("circle", { cx, cy: irisY, r: 2.2,
-    fill: pal.label, "fill-opacity": 0.65 }));
+  if (!arrow) return;
+  // Flecha a mano alzada: un trazo grueso y redondeado, con una curva suave, que baja hacia
+  // la S. La curva llega VERTICAL (el punto de control está justo arriba de la punta), así la
+  // cabeza apunta de frente a la S; sus dos trazos tienen leve asimetría (no se ve perfecta).
+  const x0 = cx - 25, y0 = cy - r - 72;           // inicio (arriba, a la izquierda)
+  const x1 = cx, y1 = cy - r - 28;                // punta, centrada sobre la S
+  const qx = cx + 1, qy = cy - r - 58;            // control: tangente final vertical
+  const dir = Math.atan2(y1 - qy, x1 - qx);       // = hacia abajo
+  const wing = (ang, len) => `M${x1} ${y1} L${(x1 - len * Math.cos(dir + ang)).toFixed(1)} ` +
+    `${(y1 - len * Math.sin(dir + ang)).toFixed(1)}`;
+  const d = `M${x0} ${y0} Q${qx} ${qy} ${x1} ${y1}` + wing(0.58, 13) + wing(-0.5, 12);
+  const ink = pal.arrow || pal.label;
+  // Halo oscuro debajo (separa la flecha de la textura de la luna) y el trazo encima.
+  g.appendChild(svg("path", { d, fill: "none", stroke: "#0b1124", "stroke-opacity": 0.65,
+    "stroke-width": 6.4, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+  g.appendChild(svg("path", { d, fill: "none", stroke: ink, "stroke-width": 3.6,
+    "stroke-linecap": "round", "stroke-linejoin": "round" }));
 }
