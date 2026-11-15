@@ -15,6 +15,7 @@ export function createDetailModal({ windowDays = 30, date = null,
   const $ = (id) => document.getElementById(id);
   const sky = createSkyline($("skyline"), { onWindowChange: onAzimuthWindow });
   let fullSky = false;
+  let playTimer = null;     // interval de reproducción automática del slider (play/pause)
   let loading = false;       // true mientras showSite espera la respuesta del backend
   let data = null;          // respuesta /api/site del sitio activo (para el slider)
   let updateMetrics = null; // updater(i) de las métricas por instante (ver panel.js)
@@ -101,6 +102,7 @@ export function createDetailModal({ windowDays = 30, date = null,
   async function showSite(lat, lon, name) {
     // El nombre/coords del sitio se muestran YA (pedagógico), y el loader corre mientras
     // un sitio nuevo baja efemérides de Horizons en vivo (~unos segundos la 1ª vez).
+    stopPlay();                   // cada sitio nuevo arranca pausado
     $("site-name").textContent = name || "Sitio nuevo";
     $("site-coords").textContent = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
     setStatus("");
@@ -143,7 +145,7 @@ export function createDetailModal({ windowDays = 30, date = null,
   }
 
   const overlay = () => $("detail-overlay");
-  function close() { overlay().classList.remove("is-open"); }
+  function close() { stopPlay(); overlay().classList.remove("is-open"); }
   function openEmpty() {
     overlay().classList.add("is-open");
     // Un frame después el panel ya tiene layout; cambios de tamaño posteriores
@@ -219,7 +221,37 @@ export function createDetailModal({ windowDays = 30, date = null,
     sky.draw();
     $("fullsky-btn").setAttribute("aria-pressed", String(fullSky));
   });
+
+  // Play/pause: reproduce la ventana de tiempo avanzando el slider solo y loopeando.
+  const PLAY_MS = 60;             // ms por paso de la animación
+  function setPlayIcon(playing) {
+    const btn = $("play-btn");
+    if (!btn) return;
+    const p = btn.querySelector("path");
+    if (p) p.setAttribute("d", playing ? "M6 5h4v14H6zM14 5h4v14h-4z" : "M8 5v14l11-7z");
+    btn.setAttribute("aria-pressed", String(playing));
+    btn.setAttribute("aria-label", playing ? "Pausar" : "Reproducir la animación del tiempo");
+  }
+  function stopPlay() {
+    if (playTimer) { clearInterval(playTimer); playTimer = null; }
+    setPlayIcon(false);
+  }
+  function startPlay() {
+    if (playTimer || !data) return;
+    const slider = $("time-slider");
+    setPlayIcon(true);
+    playTimer = setInterval(() => {
+      let i = Number(slider.value) + 1;
+      if (i > (Number(slider.max) || 0)) i = 0;   // loopea al llegar al final
+      slider.value = i;
+      updateCursor(i);
+    }, PLAY_MS);
+  }
+  const playBtn = $("play-btn");
+  if (playBtn) playBtn.addEventListener("click", () => (playTimer ? stopPlay() : startPlay()));
+
   $("time-slider").addEventListener("input", (e) => {
+    stopPlay();                    // arrastrar manualmente pausa la reproducción
     updateCursor(Number(e.target.value));
   });
 
