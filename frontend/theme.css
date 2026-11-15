@@ -35,11 +35,14 @@
 
 .app-bg { background: var(--bg); color: var(--ink); font-family: var(--font); }
 
-/* Página "espacio": cielo nocturno a pantalla completa (mapa). Las estrellas las dibuja
-   map.js en #page-stars (SVG fijo, z-index -1: sobre este fondo, bajo el contenido). */
+/* Página "espacio": cielo nocturno a pantalla completa. Imagen de estrellas (assets/
+   space.jpg, 2560×1440) en vez de dibujar cientos de círculos SVG; un brillo azul muy
+   tenue arriba mantiene el tono navy del mapa. */
 .page-space {
-  background: radial-gradient(120% 90% at 50% 28%, #16203f 0%, #0b1124 55%, #070a16 100%)
-    fixed, #070a16;
+  background:
+    radial-gradient(120% 90% at 50% 28%, rgba(22, 32, 63, .55) 0%, rgba(11, 17, 36, 0) 70%),
+    url("assets/space.jpg") center / cover no-repeat fixed,
+    #070a16;
 }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 

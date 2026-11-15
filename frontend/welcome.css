@@ -1,14 +1,5 @@
-* {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  min-height: 100vh;
-  font-family: 'Inter', sans-serif;
-}
+/* welcome.css — estilos del componente de bienvenida (welcome.html). Sin reglas globales
+   (html/body/*): así se puede cargar también en map.html sin pisar el tema del mapa. */
 
 /* Estilo limpio para los íconos nativos de calendario */
 .nasa-date-input::-webkit-calendar-picker-indicator {

@@ -56,7 +56,7 @@ class DevHandler(SimpleHTTPRequestHandler):
             return self._sse()
         path = self.path.split("?")[0]
         if path in ("/", ""):
-            path = "/index.html"
+            path = "/map.html"
         if path.endswith(".html"):
             return self._html(path)
         return super().do_GET()

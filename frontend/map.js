@@ -8,6 +8,8 @@ import { createProjection } from "./proj.js";
 import { createDetailModal } from "./detailModal.js";
 import { createTop3 } from "./top3.js";
 import { siteIcon } from "./icons.js";
+import { drawGlobe as drawGlobeInto, GLOBE_DARK } from "./globe.js";
+import { showWelcome } from "./welcome.js";
 import { windowDays, startDate, addSitio, removeSitio, setSitioActivo, getState }
   from "./state.js";
 
@@ -94,17 +96,6 @@ function drawStars(go) {
   }
 }
 
-// Cielo de TODA la página (#page-stars, fijo detrás del contenido): mismo campo
-// determinista, sin el salto del disco (acá no hay luna que las tape).
-function drawPageStars() {
-  const sky = $("page-stars");
-  if (!sky) return;
-  for (const st of STARS) {
-    sky.appendChild(svg("circle", { cx: st.x, cy: st.y, r: st.r,
-      fill: "#fff", opacity: st.o }));
-  }
-}
-
 // Orientación. El chrome se reparte en dos capas:
 //  · INTERIOR (#map-chrome, dentro del disco de luna): anillos de latitud + polo.
 //  · EXTERIOR (#map-chrome-outer, sobre el margen claro): globo, escala y flechas.
@@ -155,78 +146,12 @@ function updateChromeTextSizes() {
   }
 }
 
-// Globo-localizador (abajo-derecha): esfera ortográfica SVG "esqueleto/transparente"
-// con el casquete sur coloreado arriba, inclinada hacia el observador. Comunica que el
-// disco grande es la MISMA tapa vista a pico (no todo el hemisferio). Sin 3D real:
-// proyectamos puntos de la esfera a mano. La sincronía hover↔mapa es una fase posterior.
+// Globo-localizador (abajo-izquierda): el dibujo vive en globe.js (compartido con la
+// bienvenida); acá solo su posición/tamaño y la paleta para fondo oscuro, con el ojo.
 const GLOBE = { cx: 106, cy: 882, r: 84, tilt: 28, cap: 18 };
 
-// Proyección ortográfica de (lat,lon) con el eje polar inclinado para que el polo SUR
-// quede arriba y de cara al observador. Devuelve coords en la unidad-esfera (x der, y
-// abajo como SVG) y profundidad (depth>0 = cara frontal).
-function globePt(latDeg, lonDeg) {
-  const la = (latDeg * Math.PI) / 180, lo = (lonDeg * Math.PI) / 180;
-  const t = ((90 + GLOBE.tilt) * Math.PI) / 180;    // >90° ⇒ polo sur arriba y frontal
-  const x = Math.cos(la) * Math.sin(lo);
-  const y = Math.cos(la) * Math.cos(lo);
-  const z = Math.sin(la);
-  const y2 = y * Math.cos(t) - z * Math.sin(t);
-  const z2 = y * Math.sin(t) + z * Math.cos(t);
-  return { x, y: -y2, depth: z2 };
-}
-
 function drawGlobe() {
-  const g = $("map-chrome-fg"), { cx, cy, r } = GLOBE;
-  const sx = (p) => cx + r * p.x, sy = (p) => cy + r * p.y;
-  const poly = (pts) =>
-    pts.map((p, i) => `${i ? "L" : "M"}${sx(p).toFixed(1)} ${sy(p).toFixed(1)}`).join("");
-  // Limbo de la esfera (vidrio): relleno casi nulo + borde tenue ⇒ look esquelético.
-  g.appendChild(svg("circle", { cx, cy, r, fill: "rgba(255,255,255,.05)",
-    stroke: "rgba(255,255,255,.5)", "stroke-width": 1.5 }));
-  // Una curva se parte en tramos frontales (nítidos) y traseros (tenues): transparencia.
-  const curve = (pts) => {
-    let run = [], front = pts[0].depth > 0;
-    const flush = () => { if (run.length > 1) g.appendChild(svg("path", { d: poly(run),
-      fill: "none", stroke: "#cfe0ff", "stroke-width": 1,
-      "stroke-opacity": front ? 0.38 : 0.12 })); };
-    for (const p of pts) {
-      const f = p.depth > 0;
-      if (f !== front) { flush(); run = run.length ? [run[run.length - 1]] : []; front = f; }
-      run.push(p);
-    }
-    flush();
-  };
-  const sample = (fn) => { const a = []; for (let k = 0; k <= 36; k++) a.push(fn(k)); return a; };
-  for (let lon = 0; lon < 360; lon += 45)                       // meridianos
-    curve(sample((k) => globePt(-90 + (k * 180) / 36, lon)));
-  for (let lat = -60; lat <= 60; lat += 30)                     // paralelos
-    curve(sample((k) => globePt(lat, (k * 360) / 36)));
-  // Casquete sur: borde del paralelo a `cap`° del polo, cerrado y relleno (la tapa).
-  const capPts = sample((k) => globePt(-(90 - GLOBE.cap), (k * 360) / 36));
-  g.appendChild(svg("path", { d: `${poly(capPts)}Z`, fill: "rgba(96,165,250,.4)",
-    stroke: "#60a5fa", "stroke-opacity": 0.95, "stroke-width": 1.5 }));
-  const pole = globePt(-90, 0);
-  g.appendChild(svg("circle", { cx: sx(pole), cy: sy(pole), r: 2.5, fill: "#fff" }));
-  // Polos rotulados: S arriba (de cara, casquete) y N abajo (oculto, tenue). Deja claro
-  // que la vista está "dada vuelta" respecto de la convención humana (N arriba).
-  const lbl = (txt, y, op) => {
-    const e = svg("text", { x: cx, y, fill: "#cbd5e1", "fill-opacity": op,
-      "font-size": 18, "font-weight": 700, "text-anchor": "middle",
-      "font-family": "JetBrains Mono" });
-    e.textContent = txt;
-    g.appendChild(e);
-  };
-  lbl("S", cy - r - 9, 0.95);
-  lbl("N", cy + r + 22, 0.5);
-  // Ícono de perspectiva (ojo de perfil) sobre la S: dos trazos que se cruzan arriba
-  // (la mira) + base curva. Sin relleno, solo contorno.
-  const yT = cy - r - 60, yB = cy - r - 30, hw = 15, tl = 6;
-  const d =
-    `M${cx - hw} ${yB} L${cx + tl} ${yT}` +                 // abajo-izq → arriba-der
-    `M${cx + hw} ${yB} L${cx - tl} ${yT}` +                 // abajo-der → arriba-izq (cruzan)
-    `M${cx - hw} ${yB} Q${cx} ${yB + 5} ${cx + hw} ${yB}`;  // base curva
-  g.appendChild(svg("path", { d, fill: "none", stroke: "#cbd5e1", "stroke-opacity": 0.95,
-    "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+  drawGlobeInto($("map-chrome-fg"), GLOBE, GLOBE_DARK, { eye: true });
 }
 
 // Barra de escala en el margen inferior. 100 km = (100/303.48) del ancho del DISCO,
@@ -471,7 +396,8 @@ async function placeMoonBg(capMeta) {
 }
 
 async function init() {
-  drawPageStars();                           // cielo de la página, aun sin backend
+  // Bienvenida frente a la luna: el mapa carga detrás y, al fijar las fechas, se quita.
+  const welcome = showWelcome();
   try {
     const meta = await getMapMeta("illumination");
     proj = createProjection(meta);
@@ -484,6 +410,7 @@ async function init() {
     const pins = getState().sitios;
     pins.forEach((s) => addMarker(s.lon, s.lat, s.name, "pin"));
     // Flechas de dirección: sitio de referencia cerca del polo, al inicio del rango.
+    await welcome;                           // necesita el rango elegido en la bienvenida
     const ref = sites[0] || { lat: -89.9, lon: 0 };
     const rs = await getSite(ref.lat, ref.lon, { windowDays: 1, date: startDate() });
     const s0 = rs.sun_track[0], e0 = rs.earth_track[0];

@@ -63,8 +63,3 @@ export function removeSitio(lat, lon) {
 export function setSitioActivo(s) {
   commit({ ...state, sitioActivo: s });
 }
-
-// Puente para el cascarón clásico (index.html/script.js no es módulo ES).
-if (typeof window !== "undefined") {
-  window.LLNState = { setRango, windowDays, startDate, getState };
-}

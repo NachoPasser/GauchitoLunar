@@ -119,9 +119,9 @@ Regla: primero que el **skyline se entienda solo**; no agregar features si la ba
   `data/` (DEM + rasters PGDA + cache de Horizons), fuera del repo. **Sitios libres** (no semilla):
   `ephem.ensure_cache` hace **fetch en vivo on-miss** a Horizons y cachea; si no hay red lanza
   `EphemerisError` → `/api/site` responde **503 con CORS** (legible), nunca un 500 crudo.
-- **Frontend (`frontend/`): H2–H5 cerrados.** Vanilla. `index.html`/`script.js` son la
-  **bienvenida** real (tutorial de 3 pasos + date-range con límite 30 d): el submit fija el rango y
-  navega al mapa. El detalle puntual (skyline + slider + métricas + cartuchos) vive en
+- **Frontend (`frontend/`): H2–H5 cerrados.** Vanilla. La **bienvenida** (tutorial de 3 pasos + date-range con límite 30 d) es `welcome.html` +
+  `script.js` + `welcome.js` + `welcome.css`: aparece frente a la luna al cargar `map.html` (la
+  página de entrada; ya no hay `index.html`) y se quita al fijar el rango. El detalle puntual (skyline + slider + métricas + cartuchos) vive en
   `detailModal.js` (lógica compartida) + `skyline.js` + `panel.js` + `api.js`, con
   `detail.html`/`detail.js` como harness. El **mapa hub** (H3) es `map.html` + `map.js`: fondo =
   raster de luz, ⭐ sitios + 📍 chinchetas ubicados por `proj.js` (estereográfica polar sur validada
