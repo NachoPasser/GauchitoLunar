@@ -40,13 +40,14 @@ export function formatReadable(iso, { year = true } = {}) {
   return `${get("day")} ${get("month").replace(".", "")}${year ? ` ${get("year")}` : ""}`;
 }
 
-// Valida un rango. Devuelve { ok, days, error } (error = mensaje llano o null).
+// Valida un rango. Devuelve { ok, days, error }; error = { key, vars } (clave i18n + variables,
+// para que quien lo muestre lo traduzca) o null.
 export function validateRange(desde, hasta) {
-  if (!desde || !hasta) return { ok: false, days: null, error: "Elegí las dos fechas." };
+  if (!desde || !hasta) return { ok: false, days: null, error: { key: "dr.err.both" } };
   const days = daysBetween(desde, hasta);
-  if (days < 0) return { ok: false, days, error: "El fin no puede ser anterior al inicio." };
+  if (days < 0) return { ok: false, days, error: { key: "dr.err.order" } };
   if (days > MAX_DAYS) {
-    return { ok: false, days, error: `Máximo ${MAX_DAYS} días (elegiste ${days}).` };
+    return { ok: false, days, error: { key: "dr.err.max", vars: { max: MAX_DAYS, n: days } } };
   }
   return { ok: true, days, error: null };
 }

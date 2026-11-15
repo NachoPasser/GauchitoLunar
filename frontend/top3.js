@@ -8,6 +8,10 @@ import { getState, windowDays, startDate } from "./state.js";
 import { rankBy } from "./rank.js";
 import { fmtPct, fmtEnergy, fmtHours } from "./format.js";
 import { siteIcon } from "./icons.js";
+import { formatReadable } from "./dates.js";
+
+// Acceso corto al motor i18n (window.i18n lo define i18n.js, cargado antes de los módulos).
+const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
 
 // Cache de entries OK por (sitio × ventana × fecha). Reabrir el Top 3 no re-pide;
 // cambiar la ventana/fecha cambia la clave → refetch automático. Los errores NO se
@@ -59,19 +63,8 @@ export async function loadEntries(
 const STEPS = ["mixed", "energy", "comms"];   // orden del carrusel (01 = mixto)
 const W_COMMS = 0.5;   // peso de comms en el mixto (se muestra en la UI: honestidad §8)
 
-// Texto por criterio. `sub` explica cómo se ordena (lenguaje llano).
-const COPY = {
-  comms: { title: "Top 3 — Comunicación directa con la Tierra",
-    table: "ORDENADA POR TIEMPO CON LA TIERRA A LA VISTA",
-    sub: "Clasificación según el tiempo total de línea de vista directa con la Tierra durante la ventana de tiempo elegida." },
-  energy: { title: "Top 3 — Energía solar captada",
-    table: "ORDENADA POR ENERGÍA SOLAR",
-    sub: "Clasificación según la energía solar total que recibiría un panel solar apoyado " +
-      "en el suelo durante la ventana de tiempo elegida." },
-  mixed: { title: "Top 3 — Equilibrio entre comunicación y energía",
-    table: "ORDENADA POR ÍNDICE MIXTO",
-    sub: "Clasificación según el equilibrio entre energía solar total y tiempo de comunicación con la Tierra." },
-};
+// Título y bajada por criterio (traducidos): claves t3.<criterio>.title / .sub.
+const copy = (step) => ({ title: T(`t3.${step}.title`), sub: T(`t3.${step}.sub`) });
 
 const enc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
   .replace(/"/g, "&quot;");
@@ -79,16 +72,16 @@ const pos = (n) => `#${String(n).padStart(2, "0")}`;
 const coords = (e) =>
   `${Math.abs(e.lat).toFixed(2)}°S ${(((e.lon % 360) + 360) % 360).toFixed(2)}°E`;
 const kindTag = (k) => `<span class="t3-kind">${siteIcon(k, 13)}${
-  k === "pin" ? "TUYO" : "PREDEFINIDO"}</span>`;
+  T(k === "pin" ? "t3.kind.pin" : "t3.kind.seed")}</span>`;
 
-// "20 NOV – 20 DIC 2026 (30 DÍAS)" desde rangoFechas (UTC); sin rango → solo días.
+// "VENTANA: 20 NOV – 20 DIC 2026 (30 DÍAS)" / "WINDOW: …" desde rangoFechas (UTC); sin rango,
+// solo los días. Las fechas siguen el idioma activo (dates.js).
 function windowLabel(win) {
   const { desde, hasta } = getState().rangoFechas || {};
-  if (!desde || !hasta) return `VENTANA: ${win} DÍAS`;
-  const f = (d, o) => new Date(`${d}T00:00:00Z`).toLocaleDateString("es",
-    { timeZone: "UTC", day: "2-digit", month: "short", ...o })
-    .replace(/\./g, "").toUpperCase();
-  return `VENTANA: ${f(desde)} – ${f(hasta, { year: "numeric" })} (${win} DÍAS)`;
+  if (!desde || !hasta) return T("t3.windowDays", { n: win });
+  return T("t3.window", { n: win,
+    from: formatReadable(desde, { year: false }).toUpperCase(),
+    to: formatReadable(hasta).toUpperCase() });
 }
 
 // Bloque de telemetría de la tarjeta según el criterio: KPI principal + medidor + 2
@@ -108,22 +101,23 @@ function telemetry(step, e, win) {
       <div class="t3-meter ${meterCls}"><div style="width:${Math.round(pct * 100)}%"></div></div>
     </div>`;
   if (step === "comms") {
-    return kpi(`Tiempo con la Tierra a la vista (de ${win * 24} h)`,
+    return kpi(T("t3.k.commsEyebrow", { h: win * 24 }),
       `${fmtPct(e.vis)} <small>(${visH} h)</small>`, "t3-earth",
-      "LÍNEA DE VISTA", "t3-pillbox--earth", e.vis) +
-      sec("Corte más largo", fmtHours(e.gap), "", "Energía solar", energy, "t3-sun");
+      T("t3.k.lineOfSight"), "t3-pillbox--earth", e.vis) +
+      sec(T("t3.k.longestGap"), fmtHours(e.gap), "", T("t3.k.solar"), energy, "t3-sun");
   }
   if (step === "energy") {
-    return kpi("Energía captada (panel horizontal)",
+    return kpi(T("t3.k.energyEyebrow"),
       `${fmtEnergy(e.energy)} <small>kWh/m²</small>`, "t3-sun",
-      `${fmtPct(e.lit)} CON SOL`, "t3-pillbox--sun", e.score.energy, "t3-meter--sun") +
-      sec("Promedio diario", `${(e.energy / win).toFixed(2)} kWh/m²`, "",
-        "Tierra a la vista", comms, "t3-earth");
+      T("t3.k.lit", { pct: fmtPct(e.lit) }), "t3-pillbox--sun", e.score.energy,
+      "t3-meter--sun") +
+      sec(T("t3.k.daily"), `${(e.energy / win).toFixed(2)} kWh/m²`, "",
+        T("t3.k.earthView"), comms, "t3-earth");
   }
-  return kpi("Índice mixto (comunicación + energía)",
+  return kpi(T("t3.k.mixedEyebrow"),
     `${Math.round(e.score.mixed * 100)} <small>/ 100</small>`, "t3-earth",
     "", "", e.score.mixed) +
-    sec("Energía solar", energy, "t3-sun", "Tierra a la vista", comms, "t3-earth");
+    sec(T("t3.k.solar"), energy, "t3-sun", T("t3.k.earthView"), comms, "t3-earth");
 }
 
 // Carga: 3 tarjetas "esqueleto" con la forma real del podio + una barra de progreso que
@@ -160,7 +154,8 @@ function card(step, e, win, slide) {
   return `<article class="t3-rank t3-rank--${e.rank} ${slide}">
     <div>
       <div class="t3-rank__top">
-        <span class="t3-badge ${first ? "t3-badge--1" : ""}">PUESTO ${pos(e.rank)}</span>
+        <span class="t3-badge ${first ? "t3-badge--1" : ""}">${
+          T("t3.rank", { n: pos(e.rank) })}</span>
         ${kindTag(e.kind)}
       </div>
       <h3 class="t3-name">${enc(e.name)}</h3>
@@ -169,7 +164,7 @@ function card(step, e, win, slide) {
     <div class="t3-tele">
       ${telemetry(step, e, win)}
       <button type="button" class="t3-inspect ${first ? "t3-inspect--primary" : ""}"
-        ${detailAttrs(e)}><span>Ver detalle</span><span>→</span></button>
+        ${detailAttrs(e)}><span>${T("t3.detail")}</span><span>→</span></button>
     </div>
   </article>`;
 }
@@ -184,14 +179,14 @@ function row(step, e, win) {
     ${td("energy", fmtEnergy(e.energy))}
     ${td("comms", `${fmtPct(e.vis)} (${Math.round(e.vis * win * 24)} h)`)}
     <td style="text-align:right"><button type="button" class="t3-row-btn"
-      ${detailAttrs(e)}>DETALLE →</button></td>
+      ${detailAttrs(e)}>${T("t3.rowDetail")}</button></td>
   </tr>`;
 }
 
 const noDataRow = (e) => `<tr><td class="t3-td-pos">—</td>
   <td><div class="t3-td-site">${siteIcon(e.kind, 16)}<div>
     <strong>${enc(e.name)}</strong><small>${coords(e)}</small></div></div></td>
-  <td class="t3-td-muted" colspan="4">sin datos (no se pudieron cargar sus efemérides)</td></tr>`;
+  <td class="t3-td-muted" colspan="4">${T("t3.noData")}</td></tr>`;
 
 export function createTop3({ onDetail } = {}) {
   const $ = (id) => document.getElementById(id);
@@ -206,7 +201,7 @@ export function createTop3({ onDetail } = {}) {
 
   // Encabezado, pills, barra de progreso y columna activa del paso actual.
   function renderChrome(slide) {
-    const c = COPY[step], i = STEPS.indexOf(step);
+    const c = copy(step), i = STEPS.indexOf(step);
     $("top3-window").textContent = windowLabel(win);
     $("top3-title").textContent = c.title;
     $("top3-sub").textContent = c.sub;
@@ -234,14 +229,14 @@ export function createTop3({ onDetail } = {}) {
       showToggle(false); setTable(false);
     };
     if (loading) { empty(loadingHTML()); return setProgress(prog.done, prog.total); }
-    if (error) return empty(msg(`No se pudo cargar: ${enc(error)}`, true));
+    if (error) return empty(msg(T("t3.error", { msg: enc(error) }), true));
     if (!entries) return empty("");
     const { ranked, noData } = rankBy(entries, step, { wComms: W_COMMS });
-    if (!ranked.length) return empty(msg("Ningún sitio con datos para rankear."));
+    if (!ranked.length) return empty(msg(T("t3.empty")));
     cards.innerHTML = ranked.slice(0, 3).map((e) => card(step, e, win, slide)).join("");
     tbody.innerHTML = ranked.map((e) => row(step, e, win)).join("") +
       noData.map(noDataRow).join("");
-    $("top3-count").textContent = `${entries.length} SITIOS EVALUADOS`;
+    $("top3-count").textContent = T("t3.count", { n: entries.length });
     showToggle(true);
   }
 
@@ -250,9 +245,9 @@ export function createTop3({ onDetail } = {}) {
     prog = { done, total };
     const box = cards.querySelector(".t3-load");
     if (!loading || !box) return;
-    box.querySelector(".t3-load__txt").textContent = total
-      ? "Calculando energía y visibilidad de la Tierra" : "Preparando el cálculo";
-    box.querySelector(".t3-load__n").textContent = total ? `${done} / ${total} sitios` : "";
+    const txt = box.querySelector(".t3-load__txt"), n = box.querySelector(".t3-load__n");
+    txt.textContent = T(total ? "t3.load.calc" : "t3.load.prep");
+    n.textContent = total ? T("t3.load.n", { done, total }) : "";
     box.querySelector(".t3-load__bar > span").style.width =
       `${total ? Math.max(6, Math.round((done / total) * 100)) : 6}%`;
   }
@@ -280,11 +275,16 @@ export function createTop3({ onDetail } = {}) {
     render(d < 0 ? "t3-slide-prev" : "t3-slide-next");
   };
 
+  // Texto del botón de la tabla según esté abierta o no (se re-aplica al cambiar de idioma).
+  const syncToggleText = () => {
+    $("top3-toggle-text").textContent =
+      T(table.classList.contains("is-open") ? "t3.toggleHide" : "t3.toggleShow");
+  };
+
   function setTable(open) {
     table.classList.toggle("is-open", open);
     $("top3-toggle").setAttribute("aria-expanded", String(open));
-    $("top3-toggle-text").textContent = open
-      ? "OCULTAR TABLA DE POSICIONES" : "VER TABLA DE POSICIONES COMPLETA";
+    syncToggleText();
     $("top3-toggle-arrow").textContent = open ? "↑" : "↓";
     if (open) table.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
@@ -316,6 +316,14 @@ export function createTop3({ onDetail } = {}) {
     if (e.key === "Escape") close();
     else if (e.key === "ArrowLeft") shift(-1);
     else if (e.key === "ArrowRight") shift(1);
+  });
+
+  // Al cambiar de idioma: el texto estático lo re-aplica i18n.apply; acá se regenera lo que
+  // se arma por JS (encabezado, tarjetas, tabla, carga) y el texto del botón de la tabla.
+  document.addEventListener("i18n:change", () => {
+    if (!isOpen()) return;
+    render();
+    syncToggleText();
   });
 
   return { open, close };

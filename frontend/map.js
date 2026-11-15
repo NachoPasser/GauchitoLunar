@@ -432,7 +432,7 @@ const dateRange = createDateRange($("date-range"), {
       else await refreshRefArrows();
       setStatus("");
     } catch (e) {
-      setStatus(`No se pudieron actualizar las fechas: ${e.message}`);
+      setStatus(T("dr.statusError", { msg: e.message }));
     }
   },
 });

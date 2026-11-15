@@ -293,19 +293,21 @@
       <div class="t3-card">
         <div class="t3-topbar">
           <div class="t3-meta">
-            <span class="t3-tag">RANKING DE SITIOS DE ATERRIZAJE</span>
+            <span class="t3-tag" data-i18n="t3.tag">RANKING DE SITIOS DE ATERRIZAJE</span>
             <span id="top3-window"></span>
           </div>
           <div class="t3-topbar__right">
-            <div class="t3-pills" id="top3-tabs" role="tablist" aria-label="Criterios">
+            <div class="t3-pills" id="top3-tabs" role="tablist" aria-label="Criterios"
+                 data-i18n-attr="aria-label:t3.criteria">
               <button type="button" class="t3-pill is-active" data-step="mixed" role="tab"
-                      title="Mixto">01</button>
+                      title="Mixto" data-i18n-attr="title:top3.tab.mixed">01</button>
               <button type="button" class="t3-pill" data-step="energy" role="tab"
-                      title="Energía solar">02</button>
+                      title="Energía solar" data-i18n-attr="title:top3.tab.energy">02</button>
               <button type="button" class="t3-pill" data-step="comms" role="tab"
-                      title="Comunicación con la Tierra">03</button>
+                      title="Comunicación con la Tierra" data-i18n-attr="title:t3.pill.comms">03</button>
             </div>
-            <button type="button" id="top3-close" class="t3-close" aria-label="Cerrar">✕</button>
+            <button type="button" id="top3-close" class="t3-close" aria-label="Cerrar"
+                    data-i18n-attr="aria-label:common.close">✕</button>
           </div>
         </div>
         <div class="t3-progress" aria-hidden="true"><span></span><span></span><span></span></div>
@@ -315,10 +317,13 @@
           <p id="top3-sub" class="t3-sub"></p>
         </header>
 
-        <section class="t3-stage" aria-label="Top 3 por criterio">
-          <button type="button" id="top3-prev" class="t3-arrow" aria-label="Criterio anterior">‹</button>
+        <section class="t3-stage" aria-label="Top 3 por criterio"
+                 data-i18n-attr="aria-label:t3.stage">
+          <button type="button" id="top3-prev" class="t3-arrow" aria-label="Criterio anterior"
+                  data-i18n-attr="aria-label:t3.prev">‹</button>
           <div id="top3-content" class="t3-cards"></div>
-          <button type="button" id="top3-next" class="t3-arrow" aria-label="Siguiente criterio">›</button>
+          <button type="button" id="top3-next" class="t3-arrow" aria-label="Siguiente criterio"
+                  data-i18n-attr="aria-label:t3.next">›</button>
         </section>
 
         <div class="t3-toggle-wrap">
@@ -329,20 +334,21 @@
           </button>
         </div>
 
-        <section id="top3-table" class="t3-table" aria-label="Tabla de posiciones completa">
+        <section id="top3-table" class="t3-table" aria-label="Tabla de posiciones completa"
+                 data-i18n-attr="aria-label:t3.table.aria">
           <div class="t3-table__head">
-            <span id="top3-table-title" class="t3-eyebrow">TABLA DE POSICIONES</span>
+            <span id="top3-table-title" class="t3-eyebrow" data-i18n="t3.tableEyebrow">TABLA DE POSICIONES</span>
             <span id="top3-count" class="t3-count"></span>
           </div>
           <div class="t3-table__wrap">
             <table>
               <thead><tr>
-                <th>POS</th>
-                <th>SITIO CANDIDATO</th>
-                <th data-col="mixed">ÍNDICE MIXTO</th>
-                <th data-col="energy">ENERGÍA (kWh/m²)</th>
-                <th data-col="comms">TIERRA A LA VISTA</th>
-                <th style="text-align:right">DETALLE</th>
+                <th data-i18n="t3.th.pos">POS</th>
+                <th data-i18n="t3.th.site">SITIO CANDIDATO</th>
+                <th data-col="mixed" data-i18n="t3.th.mixed">ÍNDICE MIXTO</th>
+                <th data-col="energy" data-i18n="t3.th.energy">ENERGÍA (kWh/m²)</th>
+                <th data-col="comms" data-i18n="t3.th.comms">TIERRA A LA VISTA</th>
+                <th style="text-align:right" data-i18n="t3.th.detail">DETALLE</th>
               </tr></thead>
               <tbody id="top3-tbody"></tbody>
             </table>

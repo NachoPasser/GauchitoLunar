@@ -8,6 +8,9 @@
 const NS = "http://www.w3.org/2000/svg";
 const RED = "#e63946", GRAFITO = "#161a23";
 
+// Acceso corto al motor i18n (window.i18n lo define i18n.js, cargado antes de los módulos).
+const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
+
 function node(tag, attrs, parent) {
   const e = document.createElementNS(NS, tag);
   for (const k in attrs) e.setAttribute(k, attrs[k]);
@@ -32,13 +35,16 @@ function draw(svg, w, h) {
   line(svg, w - 36, 6, w - 24, 6, RED, 2);
 
   // 1. Solapa de ficha (arriba izquierda) con indicador rojo y etiqueta.
+  // El ancho de la solapa se adapta al texto (en inglés es más largo que en español).
+  const label = T("frame.tab");
+  const tw = Math.max(120, Math.round(36 + label.length * 6.2));
   const tab = node("g", { transform: "translate(54, 0)" }, svg);
-  node("path", { d: "M 0,0 L 8,-14 L 112,-14 L 120,0 Z", fill: GRAFITO, stroke: "#64748b",
-    "stroke-width": 1.3, "stroke-linejoin": "round" }, tab);
+  node("path", { d: `M 0,0 L 8,-14 L ${tw - 8},-14 L ${tw},0 Z`, fill: GRAFITO,
+    stroke: "#64748b", "stroke-width": 1.3, "stroke-linejoin": "round" }, tab);
   node("circle", { cx: 20, cy: -7, r: 2, fill: RED }, tab);
   const t = node("text", { x: 28, y: -4, fill: "#cbd5e1", "font-size": 8.5,
     "font-family": "JetBrains Mono, monospace", "font-weight": 700, "letter-spacing": 1 }, tab);
-  t.textContent = "POLO SUR LUNAR";
+  t.textContent = label;
 
   // 2. Lente de inspección sobre riel (arriba derecha).
   const rail = node("g", { transform: `translate(${w - 99}, 0)` }, svg);
@@ -93,4 +99,5 @@ export function mountMoonFrame(frame) {
   redraw();
   if ("ResizeObserver" in window) new ResizeObserver(redraw).observe(frame);
   else window.addEventListener("resize", redraw);
+  document.addEventListener("i18n:change", redraw);   // la solapa lleva texto traducido
 }
