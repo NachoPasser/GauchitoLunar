@@ -30,8 +30,9 @@ def to_intervals(track: list[dict], state_true: str, state_false: str) -> list[d
         while j + 1 < n and track[j + 1]["visible"] == vis:
             j += 1
         start = times[i]
-        end = times[j + 1] if j + 1 < n else times[j]   # último tramo: recortado
-        dur_h = (end - start).total_seconds() / 3600.0
+        # último tramo: j+1 no existe → usar j; si i==j el tramo es un punto, dur=0
+        end = times[j + 1] if j + 1 < n else times[j]
+        dur_h = max(0.0, (end - start).total_seconds() / 3600.0)
         out.append({
             "state": state_true if vis else state_false,
             "start": start.isoformat(),

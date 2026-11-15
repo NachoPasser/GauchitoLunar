@@ -16,9 +16,16 @@ import ephem
 START = datetime(2026, 11, 14, tzinfo=timezone.utc)
 
 
-def _write_cache(dirpath, lat, lon, target):
+def _write_cache(dirpath, lat, lon, target, days=40):
+    """Escribe caché mínima que cubre [2026-11-14, 2026-11-14 + days]."""
+    from datetime import timedelta
+    t0 = datetime(2026, 11, 14, tzinfo=timezone.utc)
+    points = [
+        {"t": t0.isoformat(), "az": 1.0, "el": 2.0},
+        {"t": (t0 + timedelta(days=days)).isoformat(), "az": 1.0, "el": 2.0},
+    ]
     p = dirpath / f"{lat:+.4f}_{lon:+.4f}_{target}.json"
-    p.write_text(json.dumps({"points": [{"t": "2026-11-14T00:00", "az": 1.0, "el": 2.0}]}))
+    p.write_text(json.dumps({"points": points}))
 
 
 @pytest.fixture

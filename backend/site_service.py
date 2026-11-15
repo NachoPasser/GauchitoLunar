@@ -17,7 +17,9 @@ from metrics import compute_metrics
 from tracks import build_tracks
 
 # Default alineado al inicio del cache de Horizons (ver fetch_horizons.py).
-DEFAULT_START = datetime(2026, 11, 14, tzinfo=timezone.utc)
+# Sitios semilla arrancan 2026-11-20; los que arrancan el 14 (ej. -86.0, -87.5)
+# también son válidos desde esta fecha.
+DEFAULT_START = datetime(2026, 11, 20, tzinfo=timezone.utc)
 
 
 def _parse_start(date: str | None) -> datetime:
