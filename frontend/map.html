@@ -66,14 +66,17 @@
                            border:2.5px solid #f59e0b"></span>activo</span>
           </div>
 
-          <!-- Botón Comparar: debajo del disco, centrado; color que contraste con el fondo -->
-          <button id="top3-btn" type="button" class="btn absolute z-30"
-                  style="bottom:9%;left:50%;transform:translateX(-50%);
-                         padding:.3rem 1rem;font-size:.82rem;
-                         background:#2563eb;color:#fff;
-                         border:1.5px solid rgba(255,255,255,.22);border-radius:9999px"
-                  title="Comparar sitios">
-            🏆 Comparar
+          <!-- Botón Comparar: debajo del disco, centrado. Mismo lenguaje que el marco del mapa
+               (grafito, mono, luz roja de estado) y un podio en SVG en vez de emoji. -->
+          <button id="top3-btn" type="button" class="compare-btn absolute z-30"
+                  title="Comparar sitios (Top 3)">
+            <span class="compare-btn__led" aria-hidden="true"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+              <path d="M3 21V13h5v8M9.5 21V6h5v15M16 21v-6h5v6"/>
+            </svg>
+            <span>COMPARAR</span>
           </button>
 
           <!-- Capa de fondo: estrellas del cielo (detrás de la luna) -->

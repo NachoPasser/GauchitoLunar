@@ -527,3 +527,24 @@ input[type="range"].zoom-range::-moz-range-thumb {
 :root { --brand-h: 108px; }
 .brand { height: var(--brand-h); padding: 1rem 0 2.25rem; box-sizing: border-box;
   align-self: flex-start; }
+
+/* Botón "Comparar" del mapa: placa CLARA con texto oscuro (contrasta con la luna gris y el
+   cielo oscuro), tipografía mono y luz roja de estado. Al pasar el mouse se vuelve roja,
+   como los demás botones de la app. */
+.compare-btn {
+  bottom: 9%; left: 50%; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: .55rem; cursor: pointer;
+  padding: .5rem 1.05rem .5rem .85rem; border-radius: 10px;
+  background: #f8fafc; border: 1.5px solid #ffffff; color: #0f172a;
+  font: 700 .72rem/1 var(--mono); letter-spacing: .12em;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .6), 0 0 0 1px rgba(15, 23, 42, .35);
+  transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+.compare-btn > svg { color: #0032a0; transition: color .15s; }
+.compare-btn__led { width: 6px; height: 6px; border-radius: 50%; background: #e63946;
+  transition: background .15s; }
+.compare-btn:hover { background: #e92637; border-color: #e92637; color: #fff; }
+.compare-btn:hover > svg { color: #fff; }
+.compare-btn:hover .compare-btn__led { background: #fff; }
+.compare-btn:active { transform: translateX(-50%) translateY(1px); }
+.compare-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
