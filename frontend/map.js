@@ -12,8 +12,9 @@ import { drawGlobe as drawGlobeInto, GLOBE_DARK } from "./globe.js";
 import { showWelcome } from "./welcome.js";
 import { mountMoonFrame } from "./moonFrame.js";
 import { initLayout, getScale } from "./layout.js";
+import { createDateRange } from "./dateRange.js";
 import { windowDays, startDate, addSitio, removeSitio, setSitioActivo, getState,
-  renameSitio } from "./state.js";
+  renameSitio, setRango } from "./state.js";
 
 const $ = (id) => document.getElementById(id);
 const stage = $("map-stage");
@@ -404,6 +405,37 @@ async function placeMoonBg(capMeta) {
   img.src = `${mapUrl("hillshade")}&_=${Date.now()}`;
 }
 
+// Sitio de referencia de las flechas Sol/Tierra cuando no hay un sitio activo.
+let refSite = { lat: -89.9, lon: 0 };
+
+// Dibuja las flechas Sol/Tierra de referencia al INICIO del rango vigente.
+async function refreshRefArrows() {
+  const rs = await getSite(refSite.lat, refSite.lon, { windowDays: 1, date: startDate() });
+  const s0 = rs.sun_track[0], e0 = rs.earth_track[0];
+  drawDirArrows(s0.az, e0.az, s0.t.slice(0, 16).replace("T", " "),
+    localFrame(refSite.lat, refSite.lon));
+}
+
+// Selector de fechas: al aplicar un rango nuevo se refresca todo lo que depende de él.
+// (El Top 3 lee el rango al abrirse; el detalle y las flechas se recargan acá.)
+const dateRange = createDateRange($("date-range"), {
+  getRange: () => getState().rangoFechas,
+  onApply: async ({ desde, hasta }) => {
+    setRango(desde, hasta);
+    dateRange.refresh();
+    const detailOpen = $("detail-overlay").classList.contains("is-open");
+    const cur = getState().sitioActivo;
+    try {
+      // Con el detalle abierto se recarga (sus flechas siguen al slider); si no, las de referencia.
+      if (detailOpen && cur) await modal.show(cur.lat, cur.lon, cur.name);
+      else await refreshRefArrows();
+      setStatus("");
+    } catch (e) {
+      setStatus(`No se pudieron actualizar las fechas: ${e.message}`);
+    }
+  },
+});
+
 async function init() {
   // Bienvenida frente a la luna: el mapa carga detrás y, al fijar las fechas, se quita.
   const welcome = showWelcome();
@@ -421,12 +453,10 @@ async function init() {
     const pins = getState().sitios;
     pins.forEach((s) => addMarker(s.lon, s.lat, s.name, "pin"));
     // Flechas de dirección: sitio de referencia cerca del polo, al inicio del rango.
+    refSite = sites[0] || refSite;
     await welcome;                           // necesita el rango elegido en la bienvenida
-    const ref = sites[0] || { lat: -89.9, lon: 0 };
-    const rs = await getSite(ref.lat, ref.lon, { windowDays: 1, date: startDate() });
-    const s0 = rs.sun_track[0], e0 = rs.earth_track[0];
-    drawDirArrows(s0.az, e0.az, s0.t.slice(0, 16).replace("T", " "),
-      localFrame(ref.lat, ref.lon));
+    dateRange.refresh();
+    await refreshRefArrows();
   } catch (e) {
     setStatus(`No se pudo cargar el mapa (¿backend activo?): ${e.message}`);
   }

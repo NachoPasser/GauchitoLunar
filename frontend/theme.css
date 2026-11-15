@@ -526,7 +526,7 @@ input[type="range"].zoom-range::-moz-range-thumb {
 /* 108 = 1rem arriba + logo 56px + 2.25rem abajo (aire entre el logo y el marco). */
 :root { --brand-h: 108px; }
 .brand { height: var(--brand-h); padding: 1rem 0 2.25rem; box-sizing: border-box;
-  align-self: flex-start; }
+  align-self: stretch; display: flex; align-items: flex-start; gap: 1rem; }
 
 /* Botón "Comparar" del mapa: placa CLARA con texto oscuro (contrasta con la luna gris y el
    cielo oscuro), tipografía mono y luz roja de estado. Al pasar el mouse se vuelve roja,
@@ -548,3 +548,58 @@ input[type="range"].zoom-range::-moz-range-thumb {
 .compare-btn:hover .compare-btn__led { background: #fff; }
 .compare-btn:active { transform: translateX(-50%) translateY(1px); }
 .compare-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* Selector de fechas del mapa (dateRange.js): chip claro como el botón Comparar, a la derecha
+   del logo, y un panel blanco desplegable. Inputs y botones con el lenguaje de la bienvenida. */
+.dr { position: relative; margin-left: auto; }
+.dr__chip {
+  display: inline-flex; align-items: center; gap: .5rem; cursor: pointer;
+  padding: .45rem .7rem; border-radius: 10px; background: #f8fafc;
+  border: 1.5px solid #fff; color: #0f172a; font: 700 .68rem/1 var(--mono);
+  letter-spacing: .08em; box-shadow: 0 6px 18px rgba(0, 0, 0, .6), 0 0 0 1px rgba(15, 23, 42, .35);
+  transition: background .15s, border-color .15s, color .15s;
+}
+.dr__chip > svg:first-child { color: #0032a0; transition: color .15s; }
+.dr__days { padding: .15rem .4rem; border-radius: 5px; background: #dbeafe; color: #0032a0; }
+.dr__chev { transition: transform .15s; }
+.dr__chip[aria-expanded="true"] .dr__chev { transform: rotate(180deg); }
+.dr__chip:hover { background: #e92637; border-color: #e92637; color: #fff; }
+.dr__chip:hover > svg:first-child { color: #fff; }
+.dr__chip:hover .dr__days { background: rgba(255, 255, 255, .25); color: #fff; }
+.dr__chip:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.dr__pop {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; width: 300px;
+  padding: 1rem; border-radius: 14px; background: #fff; color: #0f172a;
+  border: 1px solid #e2e8f0; box-shadow: 0 18px 45px rgba(0, 0, 0, .55);
+}
+.dr__pop[hidden] { display: none; }
+.dr__title { margin: 0 0 .7rem; font-size: .95rem; font-weight: 700; letter-spacing: -.01em; }
+.dr__fields { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.dr__field { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+.dr__field > span { font: 700 .6rem/1 var(--mono); letter-spacing: .08em; color: #0032a0; }
+.dr__input {
+  width: 100%; min-width: 0; padding: .45rem .5rem; border-radius: 8px; background: #fff;
+  border: 1.5px solid #0032a0; color: #0f172a; font: 500 .72rem/1.2 var(--mono);
+}
+.dr__input:focus { outline: none; box-shadow: 0 0 0 3px rgba(0, 50, 160, .18); }
+.dr__presets { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+.dr__preset {
+  cursor: pointer; padding: .3rem .55rem; border-radius: 7px; background: #fff;
+  border: 1px solid #cbd5e1; color: #0032a0; font: 600 .66rem/1 var(--mono);
+  transition: background .12s, color .12s, border-color .12s;
+}
+.dr__preset:hover { background: #0032a0; border-color: #0032a0; color: #fff; }
+.dr__msg { margin: .6rem 0 0; min-height: 1rem; font-size: .72rem; color: #64748b; }
+.dr__msg.is-err { color: #e03c31; font-weight: 600; }
+.dr__actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .7rem; }
+.dr__btn {
+  cursor: pointer; padding: .5rem .85rem; border-radius: 8px; font: 700 .68rem/1 var(--mono);
+  letter-spacing: .06em; text-transform: uppercase; border: 1px solid transparent;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.dr__btn--ghost { background: #f8fafc; border-color: #e2e8f0; color: #475569; }
+.dr__btn--ghost:hover { color: #0032a0; border-color: #0032a0; }
+.dr__btn--ok { background: #0032a0; color: #fff; }
+.dr__btn--ok:hover:not(:disabled) { background: #e92637; }
+.dr__btn--ok:disabled { opacity: .4; cursor: not-allowed; }

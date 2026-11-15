@@ -4,6 +4,7 @@
 // { destroy } para quitar los listeners globales al cerrarla.
 
 import { setRango } from "./state.js";
+import { MAX_DAYS, parseISO, addDays, daysBetween, formatReadable } from "./dates.js";
 import { drawGlobe, GLOBE_LIGHT } from "./globe.js";
 
 export function initWelcome(root, { onSubmit } = {}) {
@@ -55,8 +56,8 @@ export function initWelcome(root, { onSubmit } = {}) {
   // =========================================================
   // 2. CONTROL DE DOS CALENDARIOS Y LÍMITE DE 30 DÍAS (PASO 3)
   // =========================================================
-  const MAX_MISSION_DAYS = 30;
-  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  const MAX_MISSION_DAYS = MAX_DAYS;
+  const parseISODate = parseISO, addDaysISO = addDays, formatReadableDate = formatReadable;
 
   const dateForm = $('mission-date-form');
   const startDateInput = $('start-date-input');
@@ -67,36 +68,6 @@ export function initWelcome(root, { onSubmit } = {}) {
   const feedbackTitle = $('feedback-title');
   const feedbackDetail = $('feedback-detail');
   const clearBtn = $('clear-feedback');
-
-  // Convierte "YYYY-MM-DD" a objeto Date en UTC (evita desfases por zona horaria)
-  function parseISODate(isoStr) {
-    if (!isoStr) return null;
-    const [y, m, d] = isoStr.split('-').map(Number);
-    return new Date(Date.UTC(y, m - 1, d));
-  }
-
-  // Convierte objeto Date UTC a "YYYY-MM-DD"
-  function toISODate(dateObj) {
-    return dateObj.toISOString().split('T')[0];
-  }
-
-  // Suma N días a una fecha ISO
-  function addDaysISO(isoStr, days) {
-    const date = parseISODate(isoStr);
-    date.setUTCDate(date.getUTCDate() + days);
-    return toISODate(date);
-  }
-
-  // Formatea fecha legible en español (ej: "20 nov 2026")
-  function formatReadableDate(isoStr) {
-    const date = parseISODate(isoStr);
-    return date.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'UTC'
-    });
-  }
 
   // Muestra mensaje en la caja de telemetría (normal o error)
   function showFeedback(title, detailHTML, isError = false) {
@@ -157,7 +128,7 @@ export function initWelcome(root, { onSubmit } = {}) {
       return null;
     }
 
-    const diffDays = Math.round((end - start) / MS_PER_DAY);
+    const diffDays = daysBetween(startDateInput.value, endDateInput.value);
 
     if (diffDays < 0 || diffDays > MAX_MISSION_DAYS) {
       durationBadge.textContent = `EXCEDE LÍMITE (${diffDays} DÍAS)`;
