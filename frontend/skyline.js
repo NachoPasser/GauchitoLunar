@@ -45,7 +45,7 @@ function niceStep(rough) {
 
 export function createSkyline(svg, { onWindowChange } = {}) {
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.style.cursor = "ew-resize";   // afforda "arrastrable en horizontal"
+  svg.style.cursor = "crosshair";    // la ventana sigue el cursor en hover
   svg.style.touchAction = "none";   // el drag no scrollea en touch
   const stars = makeStars(150);
   const st = {
@@ -105,18 +105,20 @@ export function createSkyline(svg, { onWindowChange } = {}) {
   }
   let dragging = false, panStartX = 0, panStartC = 0;
   svg.addEventListener("pointerdown", (e) => {
+    if (!st.firstPerson) return;
     dragging = true;
     svg.setPointerCapture(e.pointerId);
-    if (st.firstPerson) { panStartX = e.clientX; panStartC = viewCenter(); }
-    else centerWindow(azAtClientX(e.clientX));   // panorámica: aim absoluto al puntero
+    panStartX = e.clientX; panStartC = viewCenter();
   });
   svg.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
-    if (st.firstPerson) {                        // 1ª persona: arrastrar = girar la cabeza
+    if (st.firstPerson) {
+      if (!dragging) return;
       const r = svg.getBoundingClientRect();
       const dAz = ((e.clientX - panStartX) / r.width) * AZ_WIN_WIDTH;
-      centerWindow(normAz(panStartC - dAz));     // arrastrar a la derecha → mirar a la izq.
-    } else centerWindow(azAtClientX(e.clientX));
+      centerWindow(normAz(panStartC - dAz));     // arrastrar a la derecha → girar a la izq.
+    } else {
+      centerWindow(azAtClientX(e.clientX));      // panorámica: ventana sigue el cursor
+    }
   });
   const endDrag = () => { dragging = false; };
   svg.addEventListener("pointerup", endDrag);
@@ -128,7 +130,7 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     const hs = st.mask.map((m) => m.h_deg);
     const els = [...st.sun, ...st.earth].map((p) => p.el);
     const hi = Math.max(5, Math.ceil(Math.max(0, ...hs, ...els) + 1));
-    const lo = Math.min(-2, Math.floor(Math.min(0, ...hs)));
+    const lo = Math.min(-2, Math.floor(Math.min(0, ...hs, ...els)));
     return [lo, hi];
   }
 
@@ -291,7 +293,7 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     }));
   }
 
-  // Parte un track en subtramos por wrap de azimut y por cambio de visibilidad.
+  // Parte un track en subtramos por wrap de azimut (>180°) y por cambio de visibilidad.
   function segments(track) {
     const segs = [];
     let cur = null;
@@ -308,9 +310,8 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     return segs;
   }
 
-  // Track: brillante = visible, punteado apagado = tapado por el terreno.
-  // En 1ª persona parte el track en tramos de puntos dentro del FOV (evita que una línea
-  // cruce el "seam" de 180° de atrás). En panorámica es un único tramo con todo el track.
+  // Track: sólido y opaco donde el astro está visible; punteado y tenue donde está tapado.
+  // En 1ª persona, fovRuns() limita al FOV para evitar cruzar el seam de 180° de atrás.
   function fovRuns(track) {
     if (!st.firstPerson) return [track];
     const c = viewCenter(), half = AZ_WIN_WIDTH / 2, runs = [];
@@ -323,6 +324,7 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     }
     return runs;
   }
+
 
   function drawTrack(y, track, color) {
     for (const run of fovRuns(track)) {
@@ -346,25 +348,6 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     }
   }
 
-  // Etiqueta "tapado por el terreno" sobre el primer tramo bloqueado.
-  function drawBlockedLabel(y) {
-    for (const track of [st.earth, st.sun]) {
-      const seg = segments(track).find((s) => !s.visible && s.pts.length > 2);
-      if (!seg) continue;
-      const mid = seg.pts[Math.floor(seg.pts.length / 2)];
-      // Clamp para que la etiqueta no se recorte en los bordes (no medimos ancho:
-      // ~54px de medio-texto) y halo blanco para legibilidad sobre el terreno.
-      const cx = Math.min(Math.max(x(mid.az), PAD.l + 54), W - PAD.r - 54);
-      const t = el("text", {
-        x: cx, y: y(mid.el) - 7, "text-anchor": "middle", "font-size": 10,
-        fill: "#cbd5e1", stroke: GROUND, "stroke-width": 3, "paint-order": "stroke",
-      });
-      t.textContent = "tapado por el terreno";
-      svg.appendChild(t);
-      return;
-    }
-  }
-
   function drawLegend() {
     [["Sol", SUN], ["Tierra", EARTH]].forEach(([lbl, c], i) => {
       const gx = W - PAD.r - 118 + i * 62, gy = PAD.t + 8;
@@ -377,7 +360,7 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     });
   }
 
-  // Marcador del instante actual: relleno = visible, hueco = tapado.
+  // Marcador del instante actual: relleno si visible, hueco si tapado.
   function drawCursor(y) {
     if (st.cursor == null) return;
     const half = AZ_WIN_WIDTH / 2, c = viewCenter();
@@ -420,7 +403,6 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     drawCommsMargin(y);
     drawTrack(y, st.earth, EARTH);
     drawTrack(y, st.sun, SUN);
-    if (!st.firstPerson) drawBlockedLabel(y);
     drawCursor(y);
     drawLegend();
   }

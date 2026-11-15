@@ -3,49 +3,78 @@
 // Tierra cobalto), no un rating. Reusable por H3/H5. Formateo vía format.js.
 
 import { fmtEnergy, fmtPct, fmtHours, fmtDays, fmtDeg } from "./format.js";
+import { initTooltips } from "./tooltip.js";
+
+// Atributos de tooltip (tooltip.js): texto + enfocable para teclado/tap.
+const tip = (text) => `data-tip="${text}" tabindex="0"`;
+
+// Textos de ayuda en lenguaje llano, uno por métrica.
+const TIPS = {
+  sunPill: "Si ahora le da el Sol a este punto. Los grados indican cuánto pasa el Sol" +
+    " por encima de las montañas; si son negativos, está escondido detrás.",
+  energy: "Energía que juntó hasta este momento un panel solar de 1 m² apoyado en el" +
+    " piso. Solo crece mientras le da el Sol.",
+  litPct: "Porcentaje del tiempo elegido donde llega el Sol a este punto.",
+  earthClear: "Cuánto asoma la Tierra por encima de las montañas. Si el número es" +
+    " negativo, el relieve la tapa y no hay señal.",
+  earthPct: "Porcentaje del tiempo elegido donde se puede hablar directo con la Tierra, sin" +
+    " satélites de relevo.",
+  sunEvent: "Cuánto falta para que el Sol se esconda tras las montañas, o para que" +
+    " vuelva a salir.",
+  earthEvent: "Cuánto falta para perder la señal con la Tierra, o para recuperarla.",
+  sunStrip: "Cada bloque es una racha seguida de luz (ámbar) o de oscuridad (gris), y su" +
+    " ancho muestra cuánto dura. Las noches largas son las difíciles: hay que" +
+    " aguantarlas con baterías. El signo ≥ marca rachas que siguen más allá de las" +
+    " fechas elegidas.",
+  earthStrip: "Cada bloque es una racha seguida con señal (azul) o sin señal (gris), y su" +
+    " ancho muestra cuánto dura. Un bloque gris largo significa días sin hablar con la" +
+    " Tierra. El signo ≥ marca rachas que siguen más allá de las fechas elegidas.",
+};
+const earthPillTip = (margin) => "Si desde acá se ve la Tierra. Cuando se ve, se puede" +
+  " hablar con ella directo." +
+  (margin > 0 ? ` Pedimos que asome al menos ${margin}° sobre las montañas.` : "");
 
 // Estilo por estado de los cartuchos (SPEC §3.1), alineado a los tokens de marca.
 const STATE = {
   lit: { bg: "#f59e0b", tx: "#3a2500", name: "con luz" },
   dark: { bg: "#dfe3ea", tx: "#5b6575", name: "sin luz" },
-  visible: { bg: "#0032a0", tx: "#ffffff", name: "a la vista" },
-  hidden: { bg: "#dfe3ea", tx: "#5b6575", name: "sin enlace" },
+  visible: { bg: "#0032a0", tx: "#ffffff", name: "con señal" },
+  hidden: { bg: "#dfe3ea", tx: "#5b6575", name: "sin señal" },
 };
 
-// Una tira de cartuchos: cada tramo con ancho ∝ duración; "≥" = recortado. El label
-// se muestra solo si el tramo es lo bastante ancho (evita texto cortado).
-function strip(title, intervals) {
+// Una tira de cartuchos (z14): cada tramo con ancho ∝ duración; "≥" = recortado.
+// El label se muestra solo si el tramo es lo bastante ancho (evita texto cortado).
+function strip(title, intervals, help) {
   const total = intervals.reduce((a, iv) => a + iv.duration_h, 0) || 1;
-  const segs = intervals.map((iv, i) => {
+  const segs = intervals.map((iv) => {
     const s = STATE[iv.state];
-    const first = i === 0, last = i === intervals.length - 1;
-    const radius = `${first ? "border-top-left-radius:6px;border-bottom-left-radius:6px;" : ""}` +
-      `${last ? "border-top-right-radius:6px;border-bottom-right-radius:6px;" : ""}`;
     const clipped = iv.clipped_start || iv.clipped_end;
     const wide = iv.duration_h / total > 0.08;        // ~espacio para el texto
     const label = wide ? `${clipped ? "≥" : ""}${fmtDays(iv.duration_days)} d` : "";
-    const tip = `${s.name} · ${fmtDays(iv.duration_days)} días` +
-      `${clipped ? " (recortado por la ventana)" : ""}`;
-    return `<div title="${tip}" style="flex:${iv.duration_h} 0 0;background:${s.bg};` +
-      `color:${s.tx};${radius}" class="h-7 flex items-center justify-center text-[10px] ` +
-      `font-semibold overflow-hidden whitespace-nowrap mono">${label}</div>`;
+    const tipText = `${fmtDays(iv.duration_days)} días seguidos ${s.name}` +
+      `${clipped ? ", o más (sigue fuera de tus fechas)" : ""}`;
+    return `<div class="cartucho__seg" data-tip="${tipText}"
+      style="flex:${iv.duration_h} 0 0;background:${s.bg};color:${s.tx}">${label}</div>`;
   }).join("");
   return `<div>
-    <p class="text-xs mb-1.5" style="color:var(--ink-2)">${title}</p>
-    <div class="flex gap-px rounded-md overflow-hidden" style="background:var(--border)">${segs}</div>
+    <p class="cartucho__title"><span class="has-tip" ${tip(help)}>${title}</span></p>
+    <div class="cartucho__bar mono">${segs}</div>
   </div>`;
 }
 
 export function renderCartuchos(root, site) {
-  // `relative` para posicionar la aguja; #cartucho-needle = indicador del instante
-  // del slider, alineado por fracción de tiempo sobre ambas tiras (ver detailModal).
+  // Las tiras van metidas el radio del thumb del slider (.cartuchos) para que la
+  // fracción de tiempo de la barra caiga justo bajo el centro del thumb. Así la
+  // aguja (#cartucho-needle, left = i/max en detailModal) coincide con ambos.
+  initTooltips();
   root.innerHTML = `
-    <div class="relative space-y-3 pt-1 pb-2">
-      ${strip("Días con / sin luz solar", site.sun_intervals)}
-      ${strip("Días con / sin enlace a la Tierra", site.earth_intervals)}
-      <div id="cartucho-needle" class="absolute top-0 bottom-0 w-0 pointer-events-none"
-           style="left:0;border-left:2px dashed var(--ink);opacity:.5;transform:translateX(-50%)"></div>
-    </div>`;
+    <section class="cartuchos">
+      <div class="cartuchos__track">
+        ${strip("Días con / sin luz solar", site.sun_intervals, TIPS.sunStrip)}
+        ${strip("Días con / sin enlace a la Tierra", site.earth_intervals, TIPS.earthStrip)}
+        <div id="cartucho-needle" class="cartucho__needle" style="left:0"></div>
+      </div>
+    </section>`;
 }
 
 // Horas desde el índice i hasta el próximo cambio de visibilidad del track, o null
@@ -60,52 +89,61 @@ function hoursToChange(track, i) {
   return null;
 }
 
-// Estado + cuenta regresiva adaptativa: si está visible, cuánto falta para el ocaso;
-// si está oculto, cuánto para la próxima salida. v = {on,off,set,rise,noSet,noRise}.
-function countdown(track, i, visible, v) {
+// Íconos de la fila de eventos (trazos estilo lucide, 24×24).
+const ICON = {
+  sunset: `<path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/>
+    <path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/>
+    <path d="m16 14-4 4-4-4"/><path d="M16 18a4 4 0 0 0-8 0"/>`,
+  sunrise: `<path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/>
+    <path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/>
+    <path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/>`,
+  linkOn: `<path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/>
+    <circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/>
+    <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>`,
+  linkOff: `<circle cx="12" cy="12" r="7"/><path d="M2 15h20"/><path d="m15 18-3 3-3-3"/>`,
+};
+
+// Próximo evento de un track en el instante i. Visible → evento "malo" (ocaso /
+// corte, caja neutra); oculto → evento "bueno" (amanecer / enlace, caja de color).
+// v = {set, rise, iconSet, iconRise}. Sin cambio en la ventana → "—".
+function nextEvent(track, i, v) {
+  const visible = track[i].visible;
   const h = hoursToChange(track, i);
-  const state = visible ? v.on : v.off;
-  const tail = h == null
-    ? `sin ${visible ? v.noSet : v.noRise} en la ventana`
-    : `${visible ? v.set : v.rise} en ${fmtHours(h)}`;
-  return `${state}, ${tail}`;
+  const what = visible ? v.set : v.rise;
+  return {
+    label: h == null ? `Sin ${what.toLowerCase()} en la ventana` : `${what} en`,
+    value: h == null ? "—" : fmtHours(h),
+    icon: visible ? v.iconSet : v.iconRise,
+    good: !visible,
+  };
 }
 
-// Línea de estado del instante del cursor (reemplaza al time-label fijo): fecha UTC +
-// elevación, estado y cuenta regresiva de Sol y Tierra. Todo derivado del track.
-export function instantLine(site, i) {
-  const s = site.sun_track[i], e = site.earth_track[i];
-  const t = s.t.slice(0, 16).replace("T", " ");
-  const sun = countdown(site.sun_track, i, s.visible,
-    { on: "con luz", off: "sin luz", set: "ocaso", rise: "amanece",
-      noSet: "ocaso", noRise: "salida" });
-  const ear = countdown(site.earth_track, i, e.visible,
-    { on: "a la vista", off: "sin enlace", set: "corte", rise: "enlace",
-      noSet: "corte", noRise: "enlace" });
-  // La elevación de la Tierra se movió al panel (despeje sobre el horizonte); acá
-  // queda solo estado + cuenta regresiva para no duplicar el número.
-  return `${t} UTC` +
-    ` · <b style="color:var(--sun)">Sol</b> ${fmtDeg(s.el, 1)} ${sun}` +
-    ` · <b style="color:var(--earth)">Tierra</b> ${ear}`;
+// Fecha UTC del instante del cursor + día de la ventana ("DÍA 03 / 30"). El día
+// es 1-based (las primeras 24 h son el día 1) y nunca supera window_days.
+export function instantStamp(site, i) {
+  const track = site.sun_track;
+  const stamp = `${track[i].t.slice(0, 16).replace("T", " ")} UTC`;
+  const total = site.params.window_days;
+  const elapsed = (new Date(track[i].t) - new Date(track[0].t)) / 8.64e7;
+  const day = Math.min(total, Math.floor(elapsed) + 1);
+  const pad = (n) => String(n).padStart(2, "0");
+  return { stamp, day: `DÍA ${pad(day)} / ${pad(total)}` };
 }
 
 // Integral de energía acumulada (kWh/m²) muestra a muestra: mismo modelo que el
-// backend (S·max(0,sin e) horizontal, S·max(0,cos e) sun-tracking; solo si visible).
-// Devuelve prefijos h[i]/v[i] = energía acumulada hasta el instante i inclusive.
+// backend para el panel horizontal (S·max(0,sin e), solo si visible). Devuelve
+// h[i] = energía acumulada hasta el instante i inclusive.
 function energyPrefix(track) {
+  if (!track || track.length < 2) return track ? track.map(() => 0) : [];
   const S = 1361.0;   // W/m² — constants.SOLAR_CONSTANT_W_M2
   const dtH = (new Date(track[1].t) - new Date(track[0].t)) / 3.6e6;
-  const h = [], v = [];
-  let ah = 0, av = 0;
+  const h = [];
+  let acc = 0;
   for (const p of track) {
-    if (p.visible) {
-      const e = (p.el * Math.PI) / 180;
-      ah += (S * Math.max(0, Math.sin(e)) * dtH) / 1000;
-      av += (S * Math.max(0, Math.cos(e)) * dtH) / 1000;
-    }
-    h.push(ah); v.push(av);
+    if (p.visible) acc += (S * Math.max(0, Math.sin((p.el * Math.PI) / 180)) * dtH) / 1000;
+    h.push(acc);
   }
-  return { h, v };
+  return h;
 }
 
 // h(az) de la máscara por vecino más cercano (robusto a 360 o 720 muestras).
@@ -116,64 +154,97 @@ function horizonAt(mask, az) {
   return mask[idx].h_deg;
 }
 
-// Renderiza el scaffold de métricas y devuelve un updater(i) que refresca las partes
-// que dependen del instante: energía ACUMULADA al cursor (Sol) y despeje sobre el
-// horizonte (Tierra). Los % son fijos de la ventana. Necesita la máscara para el despeje.
+// Tarjeta de un astro (z14): cabecera con píldora de estado, valor principal que
+// cambia con el slider y una fila fija con el % de la ventana. kind = sun | earth.
+// tips = {pill, value, foot}: ayuda de cada métrica (tooltip.js).
+function teleCard(kind, title, valueLabel, footLabel, footValue, tips) {
+  return `
+    <section class="tele-card tele-card--${kind}">
+      <div class="tele-card__head">
+        <span class="tele-card__title">${title}</span>
+        <span class="tele-pill has-tip" data-role="pill" ${tip(tips.pill)}>—</span>
+      </div>
+      <div class="has-tip" ${tip(tips.value)}>
+        <span class="tele-card__label">${valueLabel}</span>
+        <span class="tele-card__value" data-role="value">—</span>
+      </div>
+      <div class="tele-card__foot has-tip" ${tip(tips.foot)}>
+        <span class="tele-card__label">${footLabel}</span>
+        <span class="tele-card__pct">${footValue}</span>
+      </div>
+    </section>`;
+}
+
+// Un evento de la fila (ícono + "Ocaso en" + valor); se completa en el update.
+function eventSlot(kind, help) {
+  return `
+    <div class="tele-event tele-event--${kind} has-tip" ${tip(help)}>
+      <div class="tele-event__icon" data-role="box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" data-role="icon"></svg>
+      </div>
+      <div class="min-w-0">
+        <span class="tele-card__label truncate" data-role="label">—</span>
+        <span class="tele-event__value mono" data-role="value">—</span>
+      </div>
+    </div>`;
+}
+
+// Renderiza tarjetas Sol/Tierra + fila de eventos y devuelve un updater(i) para lo
+// que depende del instante: estado, energía ACUMULADA al cursor, despeje de la
+// Tierra sobre el horizonte y cuenta regresiva. Los % son fijos de la ventana.
 export function renderMetrics(root, site, mask) {
   const m = site.metrics, p = site.params;
-  const { h: prefixH, v: prefixV } = energyPrefix(site.sun_track);
-  const t0 = new Date(site.sun_track[0].t);
+  const energy = energyPrefix(site.sun_track);
+  initTooltips();
 
   root.innerHTML = `
     <div class="space-y-3 pb-1">
-
-      <div class="card">
-        <p class="metric__label mb-2">Energía solar acumulada
-          <span style="color:var(--ink-3)">· kWh/m² · <span id="energy-elapsed">—</span></span>
-        </p>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <p class="metric__value metric__value--sun" id="energy-h">—</p>
-            <p class="metric__sub">panel horizontal</p>
-          </div>
-          <div>
-            <p class="metric__value" id="energy-v">—</p>
-            <p class="metric__sub">panel que sigue al Sol</p>
-          </div>
-        </div>
+      <div class="tele-grid">
+        ${teleCard("sun", "Sol", "Energía acumulada", "Tiempo con luz total",
+          fmtPct(m.lit_fraction),
+          { pill: TIPS.sunPill, value: TIPS.energy, foot: TIPS.litPct })}
+        ${teleCard("earth", "Tierra", "Sobre el horizonte", "Tiempo a la vista total",
+          fmtPct(m.earth_vis_fraction),
+          { pill: earthPillTip(p.comms_margin_deg), value: TIPS.earthClear,
+            foot: TIPS.earthPct })}
       </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <div class="card" style="border-left:4px solid var(--sun)">
-          <p class="text-sm font-semibold" style="color:var(--ink)">Sol · potencia</p>
-          <p class="text-sm mt-1" style="color:var(--ink-2)">
-            <b style="color:var(--ink)">${fmtPct(m.lit_fraction)}</b> del tiempo con luz</p>
-        </div>
-        <div class="card" style="border-left:4px solid var(--earth)">
-          <p class="text-sm font-semibold" style="color:var(--ink)">Tierra · enlace directo</p>
-          <p class="text-sm mt-1" style="color:var(--ink-2)">
-            <b style="color:var(--ink)" id="earth-clear">—</b> sobre el horizonte</p>
-          <p class="text-xs mt-1" style="color:var(--ink-3)">
-            <b style="color:var(--ink-2)">${fmtPct(m.earth_vis_fraction)}</b> del tiempo a la vista
-            · margen ${p.comms_margin_deg}°</p>
-        </div>
+      <div class="tele-events">
+        ${eventSlot("sun", TIPS.sunEvent)}${eventSlot("earth", TIPS.earthEvent)}
       </div>
-
     </div>`;
 
-  const elH = root.querySelector("#energy-h");
-  const elV = root.querySelector("#energy-v");
-  const elapsed = root.querySelector("#energy-elapsed");
-  const clear = root.querySelector("#earth-clear");
+  const q = (sel, role) => root.querySelector(`${sel} [data-role="${role}"]`);
+  const sunPill = q(".tele-card--sun", "pill"), sunVal = q(".tele-card--sun", "value");
+  const earPill = q(".tele-card--earth", "pill"), earVal = q(".tele-card--earth", "value");
+
+  function setEvent(kind, ev) {
+    const sel = `.tele-event--${kind}`;
+    q(sel, "box").classList.toggle("is-good", ev.good);
+    q(sel, "icon").innerHTML = ev.icon;
+    q(sel, "label").textContent = ev.label;
+    q(sel, "value").textContent = ev.value;
+  }
 
   return function updateInstant(i) {
-    elH.textContent = fmtEnergy(prefixH[i]);
-    elV.textContent = fmtEnergy(prefixV[i]);
-    const days = (new Date(site.sun_track[i].t) - t0) / 8.64e7;
-    elapsed.textContent = `${fmtDays(days)} de ${p.window_days} d`;
-    const e = site.earth_track[i];
+    const s = site.sun_track[i], e = site.earth_track[i];
+    // Igual que la Tierra: despeje sobre las MONTAÑAS (el − h(az)), no sobre el 0°.
+    // Positivo = cuánto falta para que lo tape el relieve; negativo = cuánto para salir.
+    const sc = s.el - horizonAt(mask, s.az);
+    const scTxt = `${sc >= 0 ? "+" : ""}${fmtDeg(sc, 1)}`;
+    sunPill.textContent = `${s.visible ? "Con luz" : "En sombra"} · ${scTxt}`;
+    sunPill.classList.toggle("is-on", s.visible);
+    sunVal.innerHTML = `${fmtEnergy(energy[i])} <small>kWh/m²</small>`;
+
     const cl = e.el - horizonAt(mask, e.az);
-    clear.textContent = `${cl >= 0 ? "+" : ""}${cl.toFixed(1)}°`;
-    clear.style.color = cl >= 0 ? "var(--earth)" : "var(--ink-3)";
+    earPill.textContent = e.visible ? "Enlace" : "Sin enlace";
+    earPill.classList.toggle("is-on", e.visible);
+    earVal.textContent = `${cl >= 0 ? "+" : ""}${cl.toFixed(1)}°`;
+    earVal.classList.toggle("is-on", cl >= 0);
+
+    setEvent("sun", nextEvent(site.sun_track, i, { set: "Ocaso", rise: "Amanecer",
+      iconSet: ICON.sunset, iconRise: ICON.sunrise }));
+    setEvent("earth", nextEvent(site.earth_track, i, { set: "Corte de enlace",
+      rise: "Enlace", iconSet: ICON.linkOff, iconRise: ICON.linkOn }));
   };
 }

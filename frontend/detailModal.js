@@ -4,14 +4,19 @@
 
 import { getMask, getSite } from "./api.js";
 import { createSkyline } from "./skyline.js";
-import { renderMetrics, renderCartuchos, instantLine } from "./panel.js";
+import { renderMetrics, renderCartuchos, instantStamp } from "./panel.js";
+import { renderLanderFrame } from "./landerFrame.js";
 
 export function createDetailModal({ windowDays = 30, date = null,
                                     onAzimuthWindow = null, onInstant = null } = {}) {
+  // windowDays / date pueden ser valores fijos o funciones () → valor.
+  // Usar resolve() para leer siempre el estado actual en el momento de abrir.
+  const resolve = (v) => (typeof v === "function" ? v() : v);
   const $ = (id) => document.getElementById(id);
   const sky = createSkyline($("skyline"), { onWindowChange: onAzimuthWindow });
   let fullSky = false;
   let firstPerson = false;
+  let loading = false;       // true mientras showSite espera la respuesta del backend
   let data = null;          // respuesta /api/site del sitio activo (para el slider)
   let updateMetrics = null; // updater(i) de las métricas por instante (ver panel.js)
 
@@ -22,12 +27,66 @@ export function createDetailModal({ windowDays = 30, date = null,
     s.className = `text-xs ${isError ? "text-red-500" : "text-slate-400"}`;
   }
 
+  // Marco del lander según la visibilidad en el instante i (default: slider actual).
+  // Sin datos aún → todo "encendido". renderLanderFrame memoiza: llamarlo de más es
+  // barato.
+  function updateFrame(i = Number($("time-slider")?.value) || 0) {
+    const hasSolar = Boolean(data?.sun_track?.[i]?.visible ?? true);
+    const hasEarth = Boolean(data?.earth_track?.[i]?.visible ?? true);
+    renderLanderFrame(hasEarth, hasSolar);
+  }
+
+  // Loader minimalista del detalle: esqueleto del layout + barra que avanza por los
+  // PASOS reales del cálculo (honesto y pedagógico). Oculta el contenido real (no salta).
+  const LOAD_STEPS = [
+    "Trazando el horizonte desde el DEM",
+    "Bajando efemérides del Sol y la Tierra (JPL Horizons)",
+    "Integrando energía y visibilidad",
+  ];
+  let loadingEl = null, stepTimer = null;
+  const contentEls = () => [$("skyline").parentElement, $("metrics"), $("cartuchos")];
+
+  function showLoading() {
+    if (!loadingEl) {
+      const wrap = $("skyline").parentElement;
+      loadingEl = document.createElement("div");
+      loadingEl.className = "detail-loading";
+      loadingEl.innerHTML =
+        '<div class="sk sk--sky"></div>' +
+        '<div class="load-bar"><span></span></div>' +
+        '<p class="load-step mono"></p>' +
+        '<div class="sk-metrics"><div class="sk sk--card"></div>' +
+        '<div class="sk sk--card"></div><div class="sk sk--card"></div></div>';
+      wrap.parentElement.insertBefore(loadingEl, wrap);
+    }
+    loadingEl.style.display = "";
+    for (const el of contentEls()) el.style.display = "none";
+    const stepEl = loadingEl.querySelector(".load-step");
+    const bar = loadingEl.querySelector(".load-bar > span");
+    let i = 0;
+    const tick = () => {
+      stepEl.textContent = LOAD_STEPS[i];
+      bar.style.width = `${Math.round(((i + 1) / LOAD_STEPS.length) * 100)}%`;
+      if (i < LOAD_STEPS.length - 1) i++;
+    };
+    tick();
+    stepTimer = setInterval(tick, 1100);
+  }
+  function hideLoading() {
+    if (stepTimer) { clearInterval(stepTimer); stepTimer = null; }
+    if (loadingEl) loadingEl.style.display = "none";
+    for (const el of contentEls()) el.style.display = "";
+  }
+
   function updateCursor(i) {
     if (!data) return;
     sky.setCursor(i);
     sky.draw();
     if (updateMetrics) updateMetrics(i);
-    $("time-label").innerHTML = instantLine(data, i);
+    const { stamp, day } = instantStamp(data, i);
+    $("time-label").textContent = stamp;
+    const dayBadge = $("day-badge");
+    if (dayBadge) dayBadge.textContent = day;
     if (onInstant) {
       const s = data.sun_track[i], e = data.earth_track[i];
       onInstant(s.az, e.az, s.t.slice(0, 16).replace("T", " "));
@@ -37,19 +96,29 @@ export function createDetailModal({ windowDays = 30, date = null,
       const max = Number($("time-slider").max) || 1;
       needle.style.left = `${(i / max) * 100}%`;
     }
+    updateFrame(i);
   }
 
   async function showSite(lat, lon, name) {
-    // Un sitio nuevo (libre) baja efemérides de Horizons en vivo la 1ª vez (~unos
-    // segundos); luego queda cacheado. Avisamos para que la espera no confunda.
-    setStatus("Cargando… (un sitio nuevo puede tardar unos segundos la 1ª vez)");
+    // El nombre/coords del sitio se muestran YA (pedagógico), y el loader corre mientras
+    // un sitio nuevo baja efemérides de Horizons en vivo (~unos segundos la 1ª vez).
+    $("site-name").textContent = name || "Sitio nuevo";
+    $("site-coords").textContent = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
+    setStatus("");
+    const panel = $("detail-panel");
+    if (panel) {
+      panel.classList.remove("lander-touchdown-anim");
+      void panel.offsetWidth;
+      panel.classList.add("lander-touchdown-anim");
+    }
+    loading = true;
+    showLoading();
     try {
       const [mask, site] = await Promise.all([
         getMask(lat, lon),
-        getSite(lat, lon, { windowDays, date }),
+        getSite(lat, lon, { windowDays: resolve(windowDays), date: resolve(date) }),
       ]);
       $("site-name").textContent = name || site.site.name;
-      $("site-coords").textContent = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
       data = site;
       sky.setMask(mask.horizon_mask);
       sky.setTracks(site.sun_track, site.earth_track);
@@ -61,16 +130,84 @@ export function createDetailModal({ windowDays = 30, date = null,
       slider.value = 0;
       updateMetrics = renderMetrics($("metrics"), site, mask.horizon_mask);
       renderCartuchos($("cartuchos"), site);   // crea #cartucho-needle antes del cursor
+      hideLoading();                           // revelar antes del cursor (necesita layout)
       updateCursor(0);
-      setStatus("");
     } catch (e) {
-      setStatus(`No se pudo cargar (¿backend activo?): ${e.message}`, true);
+      hideLoading();
+      const msg = e.status === 503
+        ? "Sin efemérides para este sitio. Probá uno predefinido o conectate a internet."
+        : `No se pudo cargar (¿backend activo?): ${e.message}`;
+      setStatus(msg, true);
+    } finally {
+      loading = false;
     }
   }
 
   const overlay = () => $("detail-overlay");
   function close() { overlay().classList.remove("is-open"); }
-  function openEmpty() { overlay().classList.add("is-open"); }
+  function openEmpty() {
+    overlay().classList.add("is-open");
+    // Un frame después el panel ya tiene layout; cambios de tamaño posteriores
+    // (animación de apertura, contenido que carga) los toma el ResizeObserver.
+    requestAnimationFrame(() => updateFrame());
+  }
+
+  // Botón 🗑: visible solo si el sitio es borrable (chincheta propia).
+  function setupDelete(onDelete) {
+    const btn = $("delete-btn");
+    if (!btn) return;
+    btn.onclick = onDelete || null;
+    btn.classList.toggle("hidden", !onDelete);
+  }
+
+  // Botón ✏: visible solo para chinchetas propias. Abre un input inline sobre el h2.
+  // onRename(newName) debe devolver true si acepta, false si rechaza (duplicado).
+  function setupRename(onRename) {
+    const btn = $("rename-btn");
+    if (!btn) return;
+    btn.onclick = null;
+    btn.classList.toggle("hidden", !onRename);
+    if (!onRename) return;
+    btn.onclick = () => {
+      const nameEl = $("site-name");
+      if (!nameEl) return;
+      const original = nameEl.textContent.trim();
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.value = original;
+      inp.maxLength = 40;
+      inp.className = nameEl.className;
+      inp.style.cssText =
+        "font:inherit;color:inherit;background:transparent;" +
+        "border:none;border-bottom:1.5px solid #60a5fa;outline:none;" +
+        "width:100%;min-width:0;";
+      nameEl.style.display = "none";
+      nameEl.insertAdjacentElement("afterend", inp);
+      inp.focus(); inp.select();
+      const finish = (save) => {
+        inp.remove();
+        nameEl.style.display = "";
+        if (save) {
+          const v = inp.value.trim() || original;
+          if (v !== original) {
+            const accepted = onRename(v);
+            if (accepted !== false) {
+              nameEl.textContent = v;
+            } else {
+              nameEl.textContent = original;
+              setStatus("Ya existe un sitio con ese nombre", true);
+              setTimeout(() => setStatus(""), 2500);
+            }
+          }
+        }
+      };
+      inp.addEventListener("blur", () => finish(true));
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); inp.blur(); }
+        if (e.key === "Escape") { finish(false); }
+      });
+    };
+  }
 
   // Wiring de controles (una sola vez).
   $("close-btn").addEventListener("click", close);
@@ -81,23 +218,36 @@ export function createDetailModal({ windowDays = 30, date = null,
     fullSky = !fullSky;
     sky.setFullSky(fullSky);
     sky.draw();
-    $("fullsky-btn").classList.toggle("bg-slate-100", fullSky);
+    $("fullsky-btn").setAttribute("aria-pressed", String(fullSky));
   });
-  $("fpv-btn").addEventListener("click", () => {
+  const fpvBtn = $("fpv-btn");
+  if (fpvBtn) fpvBtn.addEventListener("click", () => {
     firstPerson = !firstPerson;
     sky.setFirstPerson(firstPerson);
     sky.draw();
-    $("fpv-btn").classList.toggle("bg-slate-100", firstPerson);
-    $("fpv-btn").setAttribute("aria-pressed", String(firstPerson));
+    fpvBtn.classList.toggle("bg-slate-100", firstPerson);
+    fpvBtn.setAttribute("aria-pressed", String(firstPerson));
   });
   $("time-slider").addEventListener("input", (e) => {
     updateCursor(Number(e.target.value));
   });
 
+  // Redibujar el marco si el panel cambia de tamaño (solo con el modal abierto).
+  const refit = () => { if (overlay().classList.contains("is-open")) updateFrame(); };
+  const panel = $("detail-panel");
+  if (panel && window.ResizeObserver) new ResizeObserver(refit).observe(panel);
+  else window.addEventListener("resize", refit);
+
   return {
-    open(lat, lon, name) { openEmpty(); showSite(lat, lon, name); },
+    open(lat, lon, name, opts = {}) {
+      openEmpty();
+      setupDelete(opts.onDelete);
+      setupRename(opts.onRename);
+      showSite(lat, lon, name);
+    },
     show: showSite,
     openEmpty,
     close,
+    isLoading: () => loading,
   };
 }

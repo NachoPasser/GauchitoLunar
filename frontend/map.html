@@ -8,68 +8,166 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="theme.css" />
 </head>
-<body class="app-bg min-h-screen">
+<body class="app-bg page-space min-h-screen">
+
+  <!-- Cielo de fondo de TODA la página: estrellas (las dibuja map.js). z-index -1 =
+       sobre el fondo del body, debajo de todo el contenido. -->
+  <svg id="page-stars" class="fixed inset-0 w-full h-full pointer-events-none" aria-hidden="true"
+       viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" style="z-index:-1"></svg>
 
   <!-- Top-bar -->
-  <header class="max-w-[1600px] mx-auto px-5 pt-6 pb-3 flex items-center justify-between gap-4">
-    <h1 class="text-xl font-bold" style="color:var(--ink)">Lunar Landing Site Navigator</h1>
-    <button id="top3-btn" class="btn btn--primary">🏆 Top 3</button>
+  <header class="max-w-[1600px] mx-auto px-5 pt-6 pb-3 flex items-center gap-4">
+    <h1 class="text-xl font-bold" style="color:#e8eefc">Lunar Landing Site Navigator</h1>
   </header>
 
   <main class="max-w-[1600px] mx-auto px-5 pb-10 flex justify-center items-start">
     <div class="panel shrink-0">
-      <div class="panel__head">
-        <div>
-          <div class="panel__title">Mapa del polo sur</div>
-        </div>
-        <div class="legend">
-          <span class="legend__item"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2l2.6 6.3 6.8.5-5.2 4.4 1.7 6.6L12 16.9 6.1 20.3l1.7-6.6L2.6 9.3l6.8-.5z" fill="#0032a0" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>predefinido</span>
-          <span class="legend__item"><svg width="13" height="17" viewBox="0 0 22 28"><path d="M11 27C11 27 20 16 20 10a9 9 0 10-18 0c0 6 9 17 9 17z" fill="#fc3d21" stroke="#fff" stroke-width="2"/><circle cx="11" cy="10" r="3.2" fill="#fff"/></svg>tuyo</span>
-          <span class="legend__item"><span style="display:inline-block;width:13px;height:13px;border-radius:999px;border:2.5px solid var(--sun)"></span>seleccionado</span>
-        </div>
-      </div>
-
       <!-- Lienzo del mapa: stage cuadrado (cielo estrellado) + disco circular de luna.
            La textura vive en el disco; las estrellas y las flechas Sol/Tierra, en el margen. -->
-      <div class="panel__body" style="padding:1.25rem;background:#0a0f22">
-        <div id="map-stage" class="relative aspect-square mx-auto rounded-lg overflow-hidden"
+      <div class="panel__body" style="padding:0;background:#0a0f22">
+        <div id="map-stage" class="relative aspect-square mx-auto overflow-hidden select-none"
              style="width:min(74vmin,680px);background:radial-gradient(circle at 50% 44%,#16203f 0%,#0b1124 62%,#070a16 100%)">
-          <!-- Chrome EXTERIOR: flechas de dirección + globo, sobre el margen claro -->
+          <!-- Isla izquierda: sliders de lat/lon -->
+          <div id="coords-island" class="absolute top-3 left-3 z-30 rounded-xl px-3 py-2.5"
+               style="background:rgba(11,17,36,.88);border:1px solid rgba(255,255,255,.18);
+                      backdrop-filter:blur(6px)">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span id="lat-display" class="mono text-xs select-none"
+                    style="color:#cbd5e1;min-width:4rem;text-align:right">88.0°S</span>
+              <input id="coords-lat" type="range" min="-90" max="-85" step="0.1" value="-88"
+                     class="zoom-range w-20" />
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="lon-display" class="mono text-xs select-none"
+                    style="color:#cbd5e1;min-width:4rem;text-align:right">0°E</span>
+              <input id="coords-lon" type="range" min="0" max="359" step="1" value="0"
+                     class="zoom-range w-20" />
+              <button id="coords-add" type="button" title="Agregar sitio"
+                      class="w-6 h-6 flex items-center justify-center rounded-full text-sm font-bold"
+                      style="background:rgba(96,165,250,.2);color:#60a5fa;
+                             border:1px solid rgba(96,165,250,.4);line-height:1">+</button>
+            </div>
+          </div>
+
+          <!-- Isla derecha: leyenda -->
+          <div id="legend-island" class="absolute top-3 right-3 z-30 flex items-center gap-3 px-3 py-2 rounded-xl"
+               style="background:rgba(11,17,36,.88);border:1px solid rgba(255,255,255,.18);
+                      backdrop-filter:blur(6px)">
+            <span class="legend__item" style="color:rgba(203,213,225,.85)">
+              <svg width="14" height="14" viewBox="0 0 24 24"><path d="M12 2l2.6 6.3 6.8.5-5.2 4.4 1.7 6.6L12 16.9 6.1 20.3l1.7-6.6L2.6 9.3l6.8-.5z" fill="#60a5fa" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>predefinido</span>
+            <span class="legend__item" style="color:rgba(203,213,225,.85)">
+              <svg width="11" height="15" viewBox="0 0 22 28"><path d="M11 27C11 27 20 16 20 10a9 9 0 10-18 0c0 6 9 17 9 17z" fill="#E03C31" stroke="#fff" stroke-width="2"/><circle cx="11" cy="10" r="3.2" fill="#fff"/></svg>tuyo</span>
+            <span class="legend__item" style="color:rgba(203,213,225,.85)">
+              <span style="display:inline-block;width:11px;height:11px;border-radius:999px;
+                           border:2.5px solid #f59e0b"></span>activo</span>
+          </div>
+
+          <!-- Botón Comparar: debajo del disco, centrado; color que contraste con el fondo -->
+          <button id="top3-btn" type="button" class="btn absolute z-30"
+                  style="bottom:9%;left:50%;transform:translateX(-50%);
+                         padding:.3rem 1rem;font-size:.82rem;
+                         background:#2563eb;color:#fff;
+                         border:1.5px solid rgba(255,255,255,.22);border-radius:9999px"
+                  title="Comparar sitios">
+            🏆 Comparar
+          </button>
+
+          <!-- Capa de fondo: estrellas del cielo (detrás de la luna) -->
           <svg id="map-chrome-outer" class="absolute inset-0 w-full h-full pointer-events-none"
                viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
 
-          <!-- Disco de luna (circular, recorta la textura cuadrada) -->
-          <div id="map-disk" class="absolute rounded-full overflow-hidden"
-               style="inset:14%;background:#0d1426">
-            <img id="map-bg" alt="Mapa de luz promedio del polo sur lunar"
-                 class="absolute inset-0 w-full h-full object-cover select-none"
-                 draggable="false"
-                 style="filter:contrast(.68) brightness(1.12) saturate(.85)" />
-            <!-- Velo que calma el contraste y asienta el borde del disco -->
+          <!-- Capa de mundo transformable (zoom y arrastre con clic izquierdo) -->
+          <div id="map-world" class="absolute inset-0 w-full h-full" style="transform-origin:0 0">
+            <!-- Luna de fondo (hillshade del DEM, hasta ~80°S): rodea el casquete para que
+                 se lea como la tapa de una esfera. Sobre las estrellas, bajo el casquete y el
+                 chrome de frente. Posición/escala se calculan en map.js (placeMoonBg). -->
+            <!-- max-w-none: el preflight de Tailwind capa los <img> a max-width:100% y
+                 rompería el 144% que setea placeMoonBg (quedaría cielo sin tapar). -->
+            <img id="map-moon-bg" alt="" class="absolute max-w-none pointer-events-none select-none"
+                 draggable="false" />
+            <!-- Velo sobre la luna de fondo: la apaga para que el casquete clickable (sin velo,
+                 más brillante) se distinga de la luna decorativa. Opaco abajo, sin estrellas
+                 sangrando a través del terreno. -->
             <div class="absolute inset-0 pointer-events-none"
-                 style="background:radial-gradient(circle at 50% 46%,rgba(13,20,38,0) 52%,rgba(13,20,38,.42) 100%)"></div>
-            <svg id="map-chrome" class="absolute inset-0 w-full h-full pointer-events-none"
-                 viewBox="0 0 1000 1000" preserveAspectRatio="none"
-                 style="filter:drop-shadow(0 0 1.5px rgba(0,0,0,.9))"></svg>
-            <div id="map-markers" class="absolute inset-0"></div>
+                 style="background:rgba(10,15,34,.70)"></div>
 
-            <!-- Botón flotante al clickear zona libre -->
-            <div id="free-popup"
-                 class="card absolute z-20 hidden -translate-x-1/2 -translate-y-full p-1"
-                 style="box-shadow:var(--shadow-md)">
-              <button id="free-add" class="btn btn--ghost btn--sm w-full justify-start">📍 Agregar este sitio</button>
-              <button id="free-detail" class="btn btn--ghost btn--sm w-full justify-start">🔭 Ver detalle acá</button>
+            <!-- Disco de luna (circular, recorta la textura cuadrada). SOLO textura + velo:
+                 su overflow:hidden no toca los overlays (que viven en #map-overlay). -->
+            <!-- La máscara circular (difuminado del borde) vive en theme.css: #map-disk,
+                 knob único --disk-fade. -->
+            <div id="map-disk" class="absolute" style="inset:14%;background:#0d1426">
+              <img id="map-bg" alt="Mapa de luz promedio del polo sur lunar"
+                   class="absolute inset-0 w-full h-full object-cover select-none"
+                   draggable="false"
+                   style="filter:contrast(.68) brightness(1.12) saturate(.85)" />
+              <!-- Velo sutil (sin anillo oscuro: el casquete se funde en la luna de fondo). -->
+              <div class="absolute inset-0 pointer-events-none"
+                   style="background:radial-gradient(circle at 50% 46%,rgba(13,20,38,0) 64%,rgba(13,20,38,.16) 100%)"></div>
             </div>
 
-            <p id="map-status" class="mono absolute left-3 bottom-3 text-[11px]"
-               style="color:rgba(255,255,255,.8)"></p>
+            <!-- Overlays sobre el disco: MISMA caja (inset 14%) pero SIN recorte, así
+                 cuña/pines/popup/tooltip no se esconden pasando el borde del disco. -->
+            <div id="map-overlay" class="absolute" style="inset:14%">
+              <svg id="map-chrome" class="absolute inset-0 w-full h-full pointer-events-none"
+                   viewBox="0 0 1000 1000" preserveAspectRatio="none" overflow="visible"></svg>
+              <div id="map-markers" class="absolute inset-0"></div>
+            </div>
+          </div>
 
-            <!-- Lectura lat/lon viva: sigue al cursor sobre el disco (honesta a la
-                 proyección polar; la grilla cartesiana sería engañosa acá). -->
-            <div id="map-cursor" class="mono absolute z-20 hidden pointer-events-none"
-                 style="background:rgba(11,17,36,.82);border:1px solid rgba(255,255,255,.18);
-                        color:#e8eefc;padding:2px 7px;border-radius:6px;font-size:11px;
-                        white-space:nowrap;transform:translate(12px,-130%)"></div>
+          <!-- Viñetado fijo del marco: oscurece el margen exterior del disco,
+               no escala con el zoom. Transparente dentro del disco (r≈36% del stage). -->
+          <div class="absolute inset-0 pointer-events-none"
+               style="background:radial-gradient(circle at 50% 50%,
+                      transparent 62%,rgba(2,4,14,.2) 78%,rgba(2,4,14,.55) 100%)"></div>
+
+          <!-- Lectura lat/lon viva: fuera de #map-world para no escalar con el zoom. -->
+          <div id="map-cursor" class="mono absolute z-30 hidden pointer-events-none"
+               style="background:rgba(11,17,36,.82);border:1px solid rgba(255,255,255,.18);
+                      color:#e8eefc;padding:2px 7px;border-radius:6px;font-size:11px;
+                      white-space:nowrap;transform:translate(12px,-130%)"></div>
+
+          <!-- Chrome de FRENTE (sobre la luna): globo-localizador, barra de escala y
+               flechas Sol/Tierra. Deben quedar por encima del anillo lunar. -->
+          <svg id="map-chrome-fg" class="absolute inset-0 w-full h-full pointer-events-none"
+               viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
+
+          <!-- Estado / error en esquina inferior izquierda -->
+          <p id="map-status"
+             class="mono absolute left-3 bottom-3 text-[11px] pointer-events-none z-20"
+             style="color:rgba(255,255,255,.8)"></p>
+
+          <!-- Barra simple de zoom abajo a la derecha de la card -->
+          <div id="map-zoom-bar"
+               class="absolute right-3 bottom-3 z-30 flex items-center gap-1.5 px-2 py-1"
+               style="background:rgba(11,17,36,.85);border:1px solid rgba(255,255,255,.18);
+                      border-radius:9999px;box-shadow:0 4px 16px rgba(0,0,0,.4);
+                      backdrop-filter:blur(6px);user-select:none">
+            <button id="zoom-out-btn" type="button"
+                    class="w-6 h-6 flex items-center justify-center rounded-full text-white/80
+                           hover:text-white hover:bg-white/10 transition-colors"
+                    title="Alejar (−)" aria-label="Alejar">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+            <input id="zoom-slider" type="range" min="1" max="5" step="0.05" value="1"
+                   class="zoom-range w-16 sm:w-20 cursor-pointer" aria-label="Nivel de zoom" />
+            <button id="zoom-in-btn" type="button"
+                    class="w-6 h-6 flex items-center justify-center rounded-full text-white/80
+                           hover:text-white hover:bg-white/10 transition-colors"
+                    title="Acercar (+)" aria-label="Acercar">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+            <button id="zoom-reset-btn" type="button"
+                    class="mono text-[11px] px-1 text-white/70 hover:text-white transition-colors"
+                    title="Restablecer zoom (1.0×)" aria-label="Restablecer zoom">
+              <span id="zoom-label">1.0×</span>
+            </button>
           </div>
         </div>
       </div>
@@ -78,34 +176,66 @@
     <!-- COLUMNA DE DETALLE: entra como card a la derecha y empuja el mapa a la
          izquierda (no es overlay; vive en el flujo). Mismos ids que detail.html. -->
     <div id="detail-overlay" class="detail-col">
-      <aside id="detail-panel" class="detail-col__inner panel" role="region"
+      <aside id="detail-panel" class="detail-col__inner artemis-chassis relative rounded-[22px] p-3 sm:p-[15px] overflow-visible transition-transform duration-300" role="region"
              aria-labelledby="site-name">
-      <div class="panel__head">
-        <div>
-          <h2 id="site-name" class="panel__title text-lg">—</h2>
-          <p id="site-coords" class="mono text-xs" style="color:var(--ink-3)"></p>
-        </div>
-        <button id="close-btn" class="btn btn--ghost btn--sm" aria-label="Cerrar"
-                style="font-size:1.1rem;padding:.3rem .55rem">×</button>
-      </div>
-      <div class="panel__body space-y-4">
-        <div class="flex flex-wrap items-center gap-3">
-          <button id="fullsky-btn" class="btn btn--sm" aria-pressed="false">Cielo completo (0–90°)</button>
-          <button id="fpv-btn" class="btn btn--sm" aria-pressed="false">Primera persona</button>
-          <span id="status" class="text-xs" style="color:var(--ink-3)"></span>
-        </div>
-        <div>
-          <svg id="skyline" class="w-full" role="img"
-               aria-label="Skyline: elevación del Sol y la Tierra sobre el horizonte"></svg>
-          <div class="mt-2">
-            <input id="time-slider" type="range" min="0" max="0" value="0"
-                   class="field-range" aria-label="Instante dentro de la ventana" />
-            <p id="time-label" class="mono text-xs mt-1" style="color:var(--ink-2)"></p>
+        <!-- CAPA SVG DEL LANDER: Antena, panel solar, toberas RCS y patas articuladas -->
+        <svg id="nasa-lander-frame" class="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-20"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+
+        <!-- INTERIOR BLANCO (estilo z14) -->
+        <div class="panel detail-panel__card relative z-10 w-full flex flex-col overflow-hidden">
+          <header class="panel__head detail-head">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1 min-w-0">
+                <h2 id="site-name" class="detail-head__title min-w-0 truncate">—</h2>
+                <button id="rename-btn" type="button" class="btn btn--ghost btn--sm hidden shrink-0"
+                        aria-label="Renombrar sitio" style="padding:0.2rem;line-height:1">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+              </div>
+              <p id="site-coords" class="mono detail-head__coords"></p>
+              <p id="status" class="text-xs mt-1" style="color:var(--ink-3)"></p>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button id="delete-btn" type="button" class="btn btn--ghost btn--sm hidden" aria-label="Eliminar sitio"
+                      style="color:var(--accent-red);font-size:0.8rem;padding:0.25rem 0.5rem">🗑 Eliminar</button>
+              <button id="fpv-btn" type="button" class="btn btn--sm" aria-pressed="false"
+                      title="Vista de primera persona: render 3D del terreno">
+                Primera persona
+              </button>
+              <button id="fullsky-btn" type="button" class="toggle-pill" aria-pressed="false"
+                      title="Normalmente agrandamos las montañas para que se vean bien. Activalo para verlas en su tamaño real, con el cielo completo.">
+                <span class="toggle-pill__switch" aria-hidden="true"></span>Escala real
+              </button>
+              <button id="close-btn" type="button" class="icon-btn" aria-label="Cerrar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </header>
+          <div class="panel__body space-y-4">
+            <div>
+              <svg id="skyline" class="w-full" role="img"
+                   aria-label="Skyline: elevación del Sol y la Tierra sobre el horizonte"></svg>
+              <div class="mt-2">
+                <input id="time-slider" type="range" min="0" max="0" value="0"
+                       class="field-range" aria-label="Instante dentro de la ventana" />
+                <div class="time-row mono">
+                  <span id="time-label" class="time-row__stamp"></span>
+                  <span id="day-badge" class="time-row__day"></span>
+                </div>
+              </div>
+            </div>
+            <div id="metrics"></div>
+            <div id="cartuchos"></div>
           </div>
         </div>
-        <div id="metrics"></div>
-        <div id="cartuchos"></div>
-      </div>
       </aside>
     </div>
   </main>

@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telemetría de Sitio // Kapton & Titanio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #000000;
+      min-height: 100vh;
+    }
+
+    /* Chasis exterior con textura sutil de titanio y borde Kapton */
+    .kapton-chassis {
+      background: linear-gradient(145deg, #243044 0%, #1E293B 55%, #162030 100%);
+      border: 2px solid #D97706;
+      box-shadow:
+        0 20px 50px rgba(217, 119, 6, 0.18),
+        inset 0 1px 0 rgba(251, 191, 36, 0.35);
+    }
+
+    /* Slider personalizado Kapton & Titanio */
+    .kapton-range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 9999px;
+      outline: none;
+    }
+
+    .kapton-range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #D97706;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 0 2px #1E293B;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .kapton-range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+    }
+
+    .kapton-range-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #D97706;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 0 2px #1E293B;
+      cursor: pointer;
+    }
+
+    /* Animación de ondas de radio en la antena parabólica */
+    @keyframes radio-wave-pulse {
+      0% {
+        opacity: 0.95;
+        transform: scale(0.92);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.32);
+      }
+    }
+
+    .lander-radio-wave {
+      transform-box: fill-box;
+      transform-origin: bottom left;
+      animation: radio-wave-pulse 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    }
+
+    .lander-radio-wave.delay-1 {
+      animation-delay: 0.65s;
+    }
+
+    .lander-radio-wave.delay-2 {
+      animation-delay: 1.3s;
+    }
+
+    /* Amortiguación sutil al cambiar de sitio de aterrizaje */
+    @keyframes lander-touchdown {
+      0%   { transform: translateY(0px); }
+      35%  { transform: translateY(6px); }
+      70%  { transform: translateY(-2px); }
+      100% { transform: translateY(0px); }
+    }
+
+    .lander-touchdown-anim {
+      animation: lander-touchdown 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center p-4 sm:p-10 bg-black">
+
+  <!-- BLOQUE PRINCIPAL CON CHASIS KAPTON & TITANIO -->
+  <div id="nasa-framed-block" class="kapton-chassis relative w-full max-w-3xl my-14 sm:my-16 p-[18px] sm:p-[24px] rounded-2xl overflow-visible transition-transform duration-300">
+    
+    <!-- CAPA SVG DEL LANDER: Antena, panel solar, toberas RCS y patas articuladas -->
+    <svg
+      id="nasa-lander-frame"
+      class="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-20"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    ></svg>
+
+    <!-- INTERIOR BLANCO TÉCNICO CÁLIDO (#F8FAFC) -->
+    <div class="relative z-10 w-full bg-[#F8FAFC] rounded-xl p-5 sm:p-7 flex flex-col gap-4 overflow-hidden border border-amber-500/30">
+
+      <!-- =========================================================
+           1. ENCABEZADO DE IDENTIFICACIÓN Y VEREDICTO
+           ========================================================= -->
+      <header class="border-b border-slate-200 pb-3.5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <!-- Selector rápido de puntos de ejemplo -->
+          <div class="flex items-center gap-1.5" role="group" aria-label="Puntos candidatos de ejemplo">
+            <span class="font-['JetBrains_Mono'] text-[10px] font-semibold uppercase text-slate-400 mr-1">Sitio:</span>
+            <button type="button" data-site="shackleton" class="site-pill cursor-pointer px-2.5 py-1 rounded font-['JetBrains_Mono'] text-[10px] font-semibold transition-colors bg-[#1E293B] text-amber-300 border border-amber-500/40">
+              A-04 SHACKLETON
+            </button>
+            <button type="button" data-site="malapert" class="site-pill cursor-pointer px-2.5 py-1 rounded font-['JetBrains_Mono'] text-[10px] font-semibold transition-colors bg-slate-200/70 text-slate-700 hover:text-amber-700">
+              B-11 MALAPERT
+            </button>
+            <button type="button" data-site="cabeus" class="site-pill cursor-pointer px-2.5 py-1 rounded font-['JetBrains_Mono'] text-[10px] font-semibold transition-colors bg-slate-200/70 text-slate-700 hover:text-amber-700">
+              C-02 CABEUS
+            </button>
+          </div>
+
+          <!-- Semáforo Global de Misión -->
+          <div id="mission-verdict-badge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider bg-emerald-50 border-emerald-200 text-emerald-800">
+            <span id="verdict-dot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span id="verdict-text">VIABLE // ÓPTIMO</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mt-1">
+          <div>
+            <h1 id="site-title" class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Borde Cráter Shackleton
+            </h1>
+            <p id="site-coords" class="font-['JetBrains_Mono'] text-[11px] text-slate-500 mt-0.5">
+              89.54° S, 129.78° E &nbsp;//&nbsp; ALT: +1,840 m &nbsp;//&nbsp; SECTOR POLAR SUR
+            </p>
+          </div>
+
+          <!-- Timestamp activo -->
+          <div class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-left sm:text-right shrink-0 shadow-2xs">
+            <span class="block font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+              Instante evaluado
+            </span>
+            <span id="current-timestamp" class="font-['JetBrains_Mono'] text-xs font-bold text-amber-700">
+              25 NOV 2026 — 00:00 UTC
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <!-- =========================================================
+           2. LOS 2 PILARES DE LA MISIÓN (ENERGÍA Y COMUNICACIÓN)
+           ========================================================= -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        
+        <!-- MÓDULO 01: ENERGÍA SOLAR -->
+        <section class="rounded-xl border border-slate-200 bg-white p-4 flex flex-col justify-between shadow-2xs">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-['JetBrains_Mono'] text-[10px] font-bold text-slate-800 uppercase tracking-wider">
+                01 // ENERGÍA SOLAR
+              </span>
+              <span id="solar-status-tag" class="font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                SOL DIRECTO
+              </span>
+            </div>
+
+            <!-- Valor principal + barra -->
+            <div class="mt-3 flex items-baseline justify-between">
+              <div>
+                <span id="solar-watts" class="font-['JetBrains_Mono'] text-2xl font-bold text-slate-950">1,180</span>
+                <span class="font-['JetBrains_Mono'] text-xs text-slate-500">W/m²</span>
+              </div>
+              <span id="solar-efficiency" class="font-['JetBrains_Mono'] text-xs font-semibold text-amber-700">
+                86% CAP.
+              </span>
+            </div>
+
+            <div class="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1.5">
+              <div id="solar-bar" class="h-full bg-amber-500 transition-all duration-300" style="width: 86%"></div>
+            </div>
+          </div>
+
+          <!-- Detalles técnicos solares -->
+          <dl class="mt-3.5 pt-2.5 border-t border-slate-100 grid grid-cols-2 gap-2 font-['JetBrains_Mono'] text-[11px]">
+            <div>
+              <dt class="text-[9px] uppercase text-slate-400">Elevación / Azimut</dt>
+              <dd id="solar-angles" class="font-semibold text-slate-800 mt-0.5">+0.9° / 142° SE</dd>
+            </div>
+            <div>
+              <dt class="text-[9px] uppercase text-slate-400">Próximo cambio</dt>
+              <dd id="solar-next-change" class="font-semibold text-slate-800 mt-0.5">Sombra en 4d 11h</dd>
+            </div>
+          </dl>
+        </section>
+
+        <!-- MÓDULO 02: VISIBILIDAD DE LA TIERRA -->
+        <section class="rounded-xl border border-slate-200 bg-white p-4 flex flex-col justify-between shadow-2xs">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-['JetBrains_Mono'] text-[10px] font-bold text-slate-800 uppercase tracking-wider">
+                02 // ENLACE TIERRA
+              </span>
+              <span id="earth-status-tag" class="font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                ENLACE DIRECTO
+              </span>
+            </div>
+
+            <!-- Valor principal + barra -->
+            <div class="mt-3 flex items-baseline justify-between">
+              <div>
+                <span id="earth-elevation" class="font-['JetBrains_Mono'] text-2xl font-bold text-slate-950">+4.2°</span>
+                <span class="font-['JetBrains_Mono'] text-xs text-slate-500">horizonte</span>
+              </div>
+              <span id="earth-signal" class="font-['JetBrains_Mono'] text-xs font-semibold text-slate-700">
+                LOS ACTIVO
+              </span>
+            </div>
+
+            <div class="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1.5">
+              <div id="earth-bar" class="h-full bg-[#1E293B] transition-all duration-300" style="width: 78%"></div>
+            </div>
+          </div>
+
+          <!-- Detalles técnicos de comunicación -->
+          <dl class="mt-3.5 pt-2.5 border-t border-slate-100 grid grid-cols-2 gap-2 font-['JetBrains_Mono'] text-[11px]">
+            <div>
+              <dt class="text-[9px] uppercase text-slate-400">Azimut / Latencia</dt>
+              <dd id="earth-angles" class="font-semibold text-slate-800 mt-0.5">014° NNE / 1.28s</dd>
+            </div>
+            <div>
+              <dt class="text-[9px] uppercase text-slate-400">Ventana restante</dt>
+              <dd id="earth-next-change" class="font-semibold text-slate-800 mt-0.5">6d 18h activos</dd>
+            </div>
+          </dl>
+        </section>
+
+      </div>
+
+      <!-- =========================================================
+           3. CONDICIONES FÍSICAS DEL TERRENO (3 MINI-MÉTRICAS)
+           ========================================================= -->
+      <section class="grid grid-cols-3 gap-2.5" aria-label="Condiciones físicas del terreno">
+        <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <span class="block font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+            Pendiente (Slope)
+          </span>
+          <div class="mt-0.5 flex items-baseline justify-between gap-1">
+            <span id="terrain-slope" class="font-['JetBrains_Mono'] text-sm sm:text-base font-bold text-slate-900">6.4°</span>
+            <span id="terrain-slope-note" class="font-['JetBrains_Mono'] text-[9px] text-emerald-700 font-semibold">SEGURA</span>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <span class="block font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+            Temp. Superficie
+          </span>
+          <div class="mt-0.5 flex items-baseline justify-between gap-1">
+            <span id="terrain-temp" class="font-['JetBrains_Mono'] text-sm sm:text-base font-bold text-slate-900">-42 °C</span>
+            <span id="terrain-temp-note" class="font-['JetBrains_Mono'] text-[9px] text-slate-500">NOMINAL</span>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <span class="block font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+            Dist. a Hielo (PSR)
+          </span>
+          <div class="mt-0.5 flex items-baseline justify-between gap-1">
+            <span id="terrain-psr" class="font-['JetBrains_Mono'] text-sm sm:text-base font-bold text-slate-900">380 m</span>
+            <span id="terrain-psr-note" class="font-['JetBrains_Mono'] text-[9px] text-amber-700 font-semibold">ACCESIBLE</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========================================================
+           4. LÍNEA DE TIEMPO DE 30 DÍAS + CONTROL TEMPORAL
+           ========================================================= -->
+      <section class="rounded-xl border border-slate-200 p-3.5 bg-white">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <span class="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider text-slate-800">
+            Simulación de ciclo (30 días // 20 Nov – 20 Dic 2026)
+          </span>
+
+          <!-- Botones paso a paso + Slider -->
+          <div class="flex items-center gap-1.5">
+            <button type="button" id="step-back-btn" class="cursor-pointer font-['JetBrains_Mono'] text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-300 hover:border-amber-600 text-slate-700 hover:text-amber-700 transition-colors">
+              -6h
+            </button>
+            <span id="day-counter-label" class="font-['JetBrains_Mono'] text-[10px] font-bold text-slate-900 px-1.5">
+              DÍA 06 / 30
+            </span>
+            <button type="button" id="step-fwd-btn" class="cursor-pointer font-['JetBrains_Mono'] text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-300 hover:border-amber-600 text-slate-700 hover:text-amber-700 transition-colors">
+              +6h
+            </button>
+          </div>
+        </div>
+
+        <!-- Gráfico de Pistas Paralelas + Aguja Kapton -->
+        <div class="relative select-none py-1">
+          <!-- Aguja vertical ámbar Kapton #D97706 -->
+          <div id="timeline-needle" class="absolute top-0 bottom-0 w-[2px] bg-[#D97706] z-10 pointer-events-none transition-all duration-75" style="left: 16.6%;">
+            <div class="w-2.5 h-2.5 rounded-full bg-[#F59E0B] border-2 border-[#1E293B] shadow -translate-x-[4px] -translate-y-1"></div>
+          </div>
+
+          <!-- Pista 1: Luz Solar -->
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-12 font-['JetBrains_Mono'] text-[9px] font-bold uppercase text-slate-500 shrink-0">SOL</span>
+            <div id="solar-timeline-track" class="flex-1 h-3 bg-slate-100 rounded overflow-hidden flex gap-[1px]"></div>
+          </div>
+
+          <!-- Pista 2: Visibilidad Tierra -->
+          <div class="flex items-center gap-2">
+            <span class="w-12 font-['JetBrains_Mono'] text-[9px] font-bold uppercase text-slate-500 shrink-0">TIERRA</span>
+            <div id="earth-timeline-track" class="flex-1 h-3 bg-slate-100 rounded overflow-hidden flex gap-[1px]"></div>
+          </div>
+
+          <!-- Slider para arrastrar cómodamente -->
+          <input
+            id="mission-time-slider"
+            type="range"
+            min="0"
+            max="720"
+            step="6"
+            value="120"
+            aria-label="Desplazar hora de la misión"
+            class="kapton-range-slider w-full mt-2 cursor-pointer"
+          />
+        </div>
+
+        <div class="flex items-center justify-between font-['JetBrains_Mono'] text-[9px] text-slate-400 mt-0.5">
+          <span>20 NOV (0h)</span>
+          <span class="flex items-center gap-3">
+            <span class="inline-flex items-center gap-1"><i class="w-2 h-2 rounded-xs bg-amber-400 inline-block"></i> Luz solar</span>
+            <span class="inline-flex items-center gap-1"><i class="w-2 h-2 rounded-xs bg-[#1E293B] inline-block"></i> Enlace Tierra</span>
+          </span>
+          <span>20 DIC (720h)</span>
+        </div>
+      </section>
+
+      <!-- =========================================================
+           PIE DE ACCIONES
+           ========================================================= -->
+      <footer class="pt-2 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          id="back-to-map-btn"
+          class="font-['JetBrains_Mono'] text-xs font-semibold text-slate-500 hover:text-slate-900 px-2 py-2 transition-colors cursor-pointer"
+        >
+          ← VOLVER AL MAPA
+        </button>
+
+        <div class="flex items-center gap-2">
+          <span id="save-toast" class="hidden font-['JetBrains_Mono'] text-[10px] font-semibold text-emerald-700">
+            ✓ GUARDADO EN COMPARATIVA
+          </span>
+          <button
+            type="button"
+            id="save-site-btn"
+            class="group bg-[#1E293B] hover:bg-[#D97706] text-amber-300 hover:text-slate-950 border border-amber-500/40 font-['JetBrains_Mono'] text-xs font-semibold tracking-wider uppercase px-4 py-2.5 rounded-lg transition-colors duration-150 flex items-center gap-2 cursor-pointer"
+          >
+            <span>+ GUARDAR EN COMPARATIVA</span>
+          </button>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. BASE DE DATOS DE SITIOS DE ATERRIZAJE (30 días = 120 bloques de 6h)
+    // =========================================================================
+    const SITES_DATA = {
+      shackleton: {
+        title: "Borde Cráter Shackleton",
+        coords: "89.54° S, 129.78° E  //  ALT: +1,840 m  //  SECTOR POLAR SUR",
+        slope: "6.4°",
+        slopeNote: "SEGURA",
+        psr: "380 m",
+        psrNote: "ACCESIBLE",
+        solarPattern: (slot) => (slot % 48) < 40,
+        earthPattern: (slot) => (slot % 60) < 46,
+        baseAzimuthSolar: 142,
+        baseAzimuthEarth: 14
+      },
+      malapert: {
+        title: "Macizo Malapert (Pico Alpha)",
+        coords: "85.98° S, 000.45° E  //  ALT: +4,920 m  //  CORDILLERA SUR",
+        slope: "9.8°",
+        slopeNote: "MODERADA",
+        psr: "1,120 m",
+        psrNote: "DISTANTE",
+        solarPattern: (slot) => (slot % 56) < 42,
+        earthPattern: (slot) => (slot % 72) < 64,
+        baseAzimuthSolar: 118,
+        baseAzimuthEarth: 358
+      },
+      cabeus: {
+        title: "Terraza Norte Cráter Cabeus",
+        coords: "84.91° S, 324.50° E  //  ALT: -410 m  //  CUENCA CABEUS",
+        slope: "4.1°",
+        slopeNote: "ÓPTIMA",
+        psr: "145 m",
+        psrNote: "INMEDIATA",
+        solarPattern: (slot) => (slot % 44) < 26,
+        earthPattern: (slot) => (slot % 52) < 34,
+        baseAzimuthSolar: 165,
+        baseAzimuthEarth: 332
+      }
+    };
+
+    let currentSiteKey = "shackleton";
+    let currentHours = 120; // Día 06 / 30 (25 Nov 2026)
+
+    // =========================================================================
+    // 2. RENDERIZADO DEL BORDE SVG "KAPTON & TITANIO"
+    // =========================================================================
+    function renderLanderFrame(hasEarthLink = true, hasSolarLight = true) {
+      const container = document.getElementById('nasa-framed-block');
+      const svg = document.getElementById('nasa-lander-frame');
+      if (!container || !svg) return;
+
+      const w = container.offsetWidth;
+      const h = container.offsetHeight;
+      const isMobile = w < 540;
+
+      const legSpreadOuter = isMobile ? 22 : 44;
+      const legSpreadInner = isMobile ? 68 : 115;
+      const legHeight = isMobile ? 42 : 54;
+      const padY = h + legHeight;
+
+      const antX = w - (isMobile ? 54 : 84);
+      const panelX = isMobile ? 36 : 56;
+      const midY = Math.round(h * 0.48);
+
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+      svg.innerHTML = `
+        <defs>
+          <!-- Gradiente metálico de foil Kapton dorado -->
+          <linearGradient id="kapton-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FDE68A" />
+            <stop offset="45%" stop-color="#F59E0B" />
+            <stop offset="100%" stop-color="#B45309" />
+          </linearGradient>
+
+          <!-- Gradiente de puntales de titanio -->
+          <linearGradient id="titanium-strut" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#475569" />
+            <stop offset="50%" stop-color="#94A3B8" />
+            <stop offset="100%" stop-color="#334155" />
+          </linearGradient>
+
+          <!-- Patrón de celdas solares -->
+          <pattern id="solar-grid" width="8" height="8" patternUnits="userSpaceOnUse">
+            <path d="M 8 0 L 0 0 0 8" fill="none" stroke="#FBBF24" stroke-width="0.6" stroke-opacity="0.4"/>
+          </pattern>
+        </defs>
+
+        <!-- 1. REMACHES DE ALUMINIO EN ESQUINAS Y PUNTOS DE ANCLAJE -->
+        <g fill="#94A3B8" stroke="#0F172A" stroke-width="0.6">
+          <circle cx="10" cy="10" r="2.2" />
+          <circle cx="${w - 10}" cy="10" r="2.2" />
+          <circle cx="10" cy="${h - 10}" r="2.2" />
+          <circle cx="${w - 10}" cy="${h - 10}" r="2.2" />
+          <circle cx="${w * 0.25}" cy="9" r="1.4" />
+          <circle cx="${w * 0.75}" cy="9" r="1.4" />
+        </g>
+
+        <!-- Placa identificatoria en oro Kapton en el borde superior -->
+        <text x="${w / 2}" y="12.5" text-anchor="middle" fill="#FBBF24" fill-opacity="0.9"
+              font-family="'JetBrains_Mono', monospace" font-size="8.5" font-weight="700" letter-spacing="2.2">
+          LM-DESCENT STAGE // KAPTON THERMAL BUS
+        </text>
+
+        <!-- 2. PANEL SOLAR DESPLEGABLE (ARRIBA IZQUIERDA) -->
+        <g id="lander-solar-array">
+          <!-- Brazo articulado de titanio -->
+          <line x1="${panelX + 28}" y1="2" x2="${panelX + 28}" y2="-16" stroke="#94A3B8" stroke-width="4" />
+          <circle cx="${panelX + 28}" cy="-10" r="3.2" fill="url(#kapton-gold)" stroke="#1E293B" stroke-width="1" />
+          <!-- Ala fotovoltaica -->
+          <rect x="${panelX - 18}" y="-34" width="92" height="18" rx="3"
+                fill="${hasSolarLight ? '#1E293B' : '#090D16'}" stroke="url(#kapton-gold)" stroke-width="1.6" />
+          <rect x="${panelX - 18}" y="-34" width="92" height="18" rx="3" fill="url(#solar-grid)" />
+          <!-- LED de carga solar -->
+          <circle cx="${panelX + 66}" cy="-25" r="2.6" fill="${hasSolarLight ? '#FBBF24' : '#475569'}" />
+        </g>
+
+        <!-- 3. ANTENA PARABÓLICA DE ALTA GANANCIA (ARRIBA DERECHA) -->
+        <g id="lander-dish">
+          <rect x="${antX - 8}" y="-6" width="16" height="8" rx="2" fill="#1E293B" stroke="#94A3B8" stroke-width="1.2" />
+          <line x1="${antX}" y1="-6" x2="${antX + 6}" y2="-22" stroke="#CBD5E1" stroke-width="2.5" stroke-linecap="round" />
+          <!-- Plato parabólico revestido en oro Kapton -->
+          <path d="M ${antX - 14} -34 Q ${antX + 6} -12 ${antX + 26} -22"
+                fill="none" stroke="url(#kapton-gold)" stroke-width="3.2" stroke-linecap="round" />
+          <path d="M ${antX - 14} -34 Q ${antX + 6} -12 ${antX + 26} -22"
+                fill="none" stroke="#1E293B" stroke-width="1" stroke-linecap="round" />
+          <!-- Receptor central (Feed horn) -->
+          <line x1="${antX + 6}" y1="-22" x2="${antX + 14}" y2="-34" stroke="#94A3B8" stroke-width="2" />
+          <circle cx="${antX + 15}" cy="-35" r="3" fill="#F59E0B" stroke="#FFFFFF" stroke-width="0.9" />
+
+          ${hasEarthLink ? `
+            <g transform="translate(${antX + 18}, -38)">
+              <path class="lander-radio-wave" d="M 2 -6 A 8 8 0 0 1 8 2" fill="none" stroke="#FBBF24" stroke-width="1.8" stroke-linecap="round" />
+              <path class="lander-radio-wave delay-1" d="M 4 -12 A 15 15 0 0 1 15 4" fill="none" stroke="#F59E0B" stroke-width="1.5" stroke-linecap="round" />
+              <path class="lander-radio-wave delay-2" d="M 6 -18 A 22 22 0 0 1 22 6" fill="none" stroke="#D97706" stroke-width="1.2" stroke-linecap="round" />
+            </g>
+          ` : ''}
+        </g>
+
+        <!-- 4. TOBERAS LATERALES DE CONTROL RCS (TITANIO + KAPTON) -->
+        <g transform="translate(0, ${midY})">
+          <rect x="-8" y="-12" width="10" height="24" rx="2" fill="#1E293B" stroke="url(#kapton-gold)" stroke-width="1.4" />
+          <polygon points="-5,-12 -9,-21 -1,-21" fill="#94A3B8" stroke="#1E293B" stroke-width="1" />
+          <polygon points="-5,12 -9,21 -1,21" fill="#94A3B8" stroke="#1E293B" stroke-width="1" />
+          <polygon points="-8,-4 -16,-7 -16,7 -8,4" fill="url(#kapton-gold)" stroke="#1E293B" stroke-width="1" />
+        </g>
+
+        <g transform="translate(${w}, ${midY})">
+          <rect x="-2" y="-12" width="10" height="24" rx="2" fill="#1E293B" stroke="url(#kapton-gold)" stroke-width="1.4" />
+          <polygon points="5,-12 9,-21 1,-21" fill="#94A3B8" stroke="#1E293B" stroke-width="1" />
+          <polygon points="5,12 9,21 1,21" fill="#94A3B8" stroke="#1E293B" stroke-width="1" />
+          <polygon points="8,-4 16,-7 16,7 8,4" fill="url(#kapton-gold)" stroke="#1E293B" stroke-width="1" />
+        </g>
+
+        <!-- 5. TOBERA DEL MOTOR PRINCIPAL DE DESCENSO -->
+        <g transform="translate(${w / 2}, ${h})">
+          <polygon points="-16,0 16,0 24,18 -24,18" fill="#1E293B" stroke="#94A3B8" stroke-width="1.4" />
+          <line x1="-19" y1="6" x2="19" y2="6" stroke="#F59E0B" stroke-width="1.6" />
+          <line x1="-21" y1="12" x2="21" y2="12" stroke="#94A3B8" stroke-width="1" stroke-opacity="0.7" />
+        </g>
+
+        <!-- 6. HORIZONTE DEL REGOLITO LUNAR BAJO LAS PATAS -->
+        <path d="M ${-legSpreadOuter - 26} ${padY + 2}
+                 Q ${w * 0.25} ${padY - 3} ${w * 0.5} ${padY + 2}
+                 T ${w + legSpreadOuter + 26} ${padY + 2}"
+              fill="none" stroke="#94A3B8" stroke-width="1.3" stroke-dasharray="4 4" stroke-opacity="0.65" />
+
+        <!-- 7. PATAS DE ATERRIZAJE ARTICULADAS (TITANIO + FOIL KAPTON) -->
+        <!-- Traseras -->
+        <g opacity="0.6">
+          <line x1="${legSpreadInner}" y1="${h - 2}" x2="${legSpreadInner - 18}" y2="${padY - 4}" stroke="#64748B" stroke-width="3.5" />
+          <line x1="${legSpreadInner + 22}" y1="${h - 2}" x2="${legSpreadInner - 12}" y2="${padY - 16}" stroke="#94A3B8" stroke-width="1.5" />
+          <ellipse cx="${legSpreadInner - 18}" cy="${padY - 3}" rx="12" ry="3" fill="#B45309" stroke="#FDE68A" stroke-width="0.8" />
+        </g>
+
+        <g opacity="0.6">
+          <line x1="${w - legSpreadInner}" y1="${h - 2}" x2="${w - legSpreadInner + 18}" y2="${padY - 4}" stroke="#64748B" stroke-width="3.5" />
+          <line x1="${w - legSpreadInner - 22}" y1="${h - 2}" x2="${w - legSpreadInner + 12}" y2="${padY - 16}" stroke="#94A3B8" stroke-width="1.5" />
+          <ellipse cx="${w - legSpreadInner + 18}" cy="${padY - 3}" rx="12" ry="3" fill="#B45309" stroke="#FDE68A" stroke-width="0.8" />
+        </g>
+
+        <!-- Delantera izquierda -->
+        <g>
+          <!-- Puntal principal de titanio -->
+          <line x1="26" y1="${h - 4}" x2="${-legSpreadOuter}" y2="${padY}" stroke="url(#titanium-strut)" stroke-width="5.5" stroke-linecap="round" />
+          <!-- Envoltura térmica Kapton en sección superior -->
+          <line x1="26" y1="${h - 4}" x2="${26 - (26 + legSpreadOuter) * 0.55}" y2="${h - 4 + (padY - h + 4) * 0.55}"
+                stroke="url(#kapton-gold)" stroke-width="3.2" stroke-linecap="round" />
+          <!-- Barra estabilizadora diagonal -->
+          <line x1="64" y1="${h - 2}" x2="${-legSpreadOuter * 0.45}" y2="${h + legHeight * 0.55}" stroke="#94A3B8" stroke-width="2.2" />
+          <!-- Rótula amortiguadora -->
+          <circle cx="${-legSpreadOuter * 0.45}" cy="${h + legHeight * 0.55}" r="3.4" fill="url(#kapton-gold)" stroke="#1E293B" stroke-width="1" />
+          <!-- Plato de apoyo lunar dorado -->
+          <path d="M ${-legSpreadOuter - 16} ${padY + 2} Q ${-legSpreadOuter} ${padY - 5} ${-legSpreadOuter + 16} ${padY + 2} Z"
+                fill="url(#kapton-gold)" stroke="#FEF3C7" stroke-width="1.1" />
+        </g>
+
+        <!-- Delantera derecha -->
+        <g>
+          <line x1="${w - 26}" y1="${h - 4}" x2="${w + legSpreadOuter}" y2="${padY}" stroke="url(#titanium-strut)" stroke-width="5.5" stroke-linecap="round" />
+          <line x1="${w - 26}" y1="${h - 4}" x2="${(w - 26) + (26 + legSpreadOuter) * 0.55}" y2="${h - 4 + (padY - h + 4) * 0.55}"
+                stroke="url(#kapton-gold)" stroke-width="3.2" stroke-linecap="round" />
+          <line x1="${w - 64}" y1="${h - 2}" x2="${w + legSpreadOuter * 0.45}" y2="${h + legHeight * 0.55}" stroke="#94A3B8" stroke-width="2.2" />
+          <circle cx="${w + legSpreadOuter * 0.45}" cy="${h + legHeight * 0.55}" r="3.4" fill="url(#kapton-gold)" stroke="#1E293B" stroke-width="1" />
+          <path d="M ${w + legSpreadOuter - 16} ${padY + 2} Q ${w + legSpreadOuter} ${padY - 5} ${w + legSpreadOuter + 16} ${padY + 2} Z"
+                fill="url(#kapton-gold)" stroke="#FEF3C7" stroke-width="1.1" />
+        </g>
+      `;
+    }
+
+    // =========================================================================
+    // 3. ACTUALIZACIÓN DE TELEMETRÍA Y LÍNEA DE TIEMPO
+    // =========================================================================
+    function buildTimelineTracks(site) {
+      const solarTrack = document.getElementById('solar-timeline-track');
+      const earthTrack = document.getElementById('earth-timeline-track');
+      solarTrack.innerHTML = '';
+      earthTrack.innerHTML = '';
+
+      for (let i = 0; i < 120; i++) {
+        const sDiv = document.createElement('div');
+        sDiv.className = `flex-1 h-full ${site.solarPattern(i) ? 'bg-amber-400' : 'bg-slate-200'}`;
+        solarTrack.appendChild(sDiv);
+
+        const eDiv = document.createElement('div');
+        eDiv.className = `flex-1 h-full ${site.earthPattern(i) ? 'bg-[#1E293B]' : 'bg-slate-200'}`;
+        earthTrack.appendChild(eDiv);
+      }
+    }
+
+    function computeNextTransitionHours(patternFn, currentSlot) {
+      const currentVal = patternFn(currentSlot);
+      for (let offset = 1; offset <= 120; offset++) {
+        if (patternFn(currentSlot + offset) !== currentVal) {
+          return offset * 6;
+        }
+      }
+      return 720;
+    }
+
+    function formatDuration(hours) {
+      const d = Math.floor(hours / 24);
+      const h = hours % 24;
+      return `${d}d ${h}h`;
+    }
+
+    function updateTelemetryUI() {
+      const site = SITES_DATA[currentSiteKey];
+      const slot = Math.min(119, Math.floor(currentHours / 6));
+
+      const baseDate = new Date(Date.UTC(2026, 10, 20, 0, 0, 0));
+      const activeDate = new Date(baseDate.getTime() + currentHours * 3600 * 1000);
+      const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+      const dayStr = String(activeDate.getUTCDate()).padStart(2, '0');
+      const monthStr = months[activeDate.getUTCMonth()];
+      const hourStr = String(activeDate.getUTCHours()).padStart(2, '0');
+
+      document.getElementById('current-timestamp').textContent = `${dayStr} ${monthStr} 2026 — ${hourStr}:00 UTC`;
+      const dayNumber = Math.min(30, Math.floor(currentHours / 24) + 1);
+      document.getElementById('day-counter-label').textContent = `DÍA ${String(dayNumber).padStart(2, '0')} / 30`;
+
+      const pct = (currentHours / 720) * 100;
+      document.getElementById('timeline-needle').style.left = `${pct}%`;
+
+      document.getElementById('site-title').textContent = site.title;
+      document.getElementById('site-coords').textContent = site.coords;
+      document.getElementById('terrain-slope').textContent = site.slope;
+      document.getElementById('terrain-slope-note').textContent = site.slopeNote;
+      document.getElementById('terrain-psr').textContent = site.psr;
+      document.getElementById('terrain-psr-note').textContent = site.psrNote;
+
+      // Estado Solar
+      const hasSolar = site.solarPattern(slot);
+      const solarTag = document.getElementById('solar-status-tag');
+      const hoursToSolarChange = computeNextTransitionHours(site.solarPattern, slot);
+
+      if (hasSolar) {
+        const cap = Math.round(78 + Math.sin(slot * 0.25) * 14);
+        const watts = Math.round((cap / 100) * 1361);
+        const elev = (0.4 + Math.abs(Math.sin(slot * 0.2)) * 1.4).toFixed(1);
+        const az = (site.baseAzimuthSolar + slot * 3) % 360;
+
+        solarTag.textContent = "SOL DIRECTO";
+        solarTag.className = "font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800";
+        document.getElementById('solar-watts').textContent = watts.toLocaleString('en-US');
+        document.getElementById('solar-efficiency').textContent = `${cap}% CAP.`;
+        document.getElementById('solar-bar').style.width = `${cap}%`;
+        document.getElementById('solar-angles').textContent = `+${elev}° / ${String(az).padStart(3, '0')}°`;
+        document.getElementById('solar-next-change').textContent = `Sombra en ${formatDuration(hoursToSolarChange)}`;
+        document.getElementById('terrain-temp').textContent = `${Math.round(-48 + cap * 0.12)} °C`;
+        document.getElementById('terrain-temp-note').textContent = "NOMINAL";
+      } else {
+        const az = (site.baseAzimuthSolar + slot * 3) % 360;
+        solarTag.textContent = "EN SOMBRA";
+        solarTag.className = "font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700";
+        document.getElementById('solar-watts').textContent = "0";
+        document.getElementById('solar-efficiency').textContent = "0% (BATERÍA)";
+        document.getElementById('solar-bar').style.width = "0%";
+        document.getElementById('solar-angles').textContent = `-1.2° / ${String(az).padStart(3, '0')}°`;
+        document.getElementById('solar-next-change').textContent = `Sol en ${formatDuration(hoursToSolarChange)}`;
+        document.getElementById('terrain-temp').textContent = "-168 °C";
+        document.getElementById('terrain-temp-note').textContent = "CRIOGÉNICO";
+      }
+
+      // Estado Enlace Tierra
+      const hasEarth = site.earthPattern(slot);
+      const earthTag = document.getElementById('earth-status-tag');
+      const hoursToEarthChange = computeNextTransitionHours(site.earthPattern, slot);
+
+      if (hasEarth) {
+        const elev = (2.1 + Math.abs(Math.cos(slot * 0.18)) * 3.8).toFixed(1);
+        const barPct = Math.min(96, Math.round(55 + parseFloat(elev) * 6));
+        const az = (site.baseAzimuthEarth + Math.round(Math.sin(slot * 0.15) * 6) + 360) % 360;
+
+        earthTag.textContent = "ENLACE DIRECTO";
+        earthTag.className = "font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800";
+        document.getElementById('earth-elevation').textContent = `+${elev}°`;
+        document.getElementById('earth-signal').textContent = "LOS ACTIVO";
+        document.getElementById('earth-bar').style.width = `${barPct}%`;
+        document.getElementById('earth-angles').textContent = `${String(az).padStart(3, '0')}° / 1.28s`;
+        document.getElementById('earth-next-change').textContent = `${formatDuration(hoursToEarthChange)} activos`;
+      } else {
+        earthTag.textContent = "SIN VISIBILIDAD";
+        earthTag.className = "font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800";
+        document.getElementById('earth-elevation').textContent = "-1.4°";
+        document.getElementById('earth-signal').textContent = "HORIZONTE BLOQ.";
+        document.getElementById('earth-bar').style.width = "0%";
+        document.getElementById('earth-angles').textContent = "--- / RELAY REQ.";
+        document.getElementById('earth-next-change').textContent = `Señal en ${formatDuration(hoursToEarthChange)}`;
+      }
+
+      // Semáforo Global de Misión
+      const badge = document.getElementById('mission-verdict-badge');
+      const dot = document.getElementById('verdict-dot');
+      const vText = document.getElementById('verdict-text');
+
+      if (hasSolar && hasEarth) {
+        badge.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider bg-emerald-50 border-emerald-200 text-emerald-800";
+        dot.className = "w-2 h-2 rounded-full bg-emerald-500";
+        vText.textContent = "VIABLE // ÓPTIMO";
+      } else if (hasSolar || hasEarth) {
+        badge.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider bg-amber-50 border-amber-200 text-amber-800";
+        dot.className = "w-2 h-2 rounded-full bg-amber-500";
+        vText.textContent = "PARCIAL // RESERVA";
+      } else {
+        badge.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider bg-rose-50 border-rose-200 text-rose-800";
+        dot.className = "w-2 h-2 rounded-full bg-rose-600";
+        vText.textContent = "CRÍTICO // SIN ENLACE";
+      }
+
+      renderLanderFrame(hasEarth, hasSolar);
+    }
+
+    // =========================================================================
+    // 4. EVENTOS DE INTERACCIÓN
+    // =========================================================================
+    document.querySelectorAll('.site-pill').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        currentSiteKey = btn.dataset.site;
+
+        document.querySelectorAll('.site-pill').forEach((b) => {
+          b.className = "site-pill cursor-pointer px-2.5 py-1 rounded font-['JetBrains_Mono'] text-[10px] font-semibold transition-colors bg-slate-200/70 text-slate-700 hover:text-amber-700";
+        });
+        btn.className = "site-pill cursor-pointer px-2.5 py-1 rounded font-['JetBrains_Mono'] text-[10px] font-semibold transition-colors bg-[#1E293B] text-amber-300 border border-amber-500/40";
+
+        const block = document.getElementById('nasa-framed-block');
+        block.classList.remove('lander-touchdown-anim');
+        void block.offsetWidth;
+        block.classList.add('lander-touchdown-anim');
+
+        buildTimelineTracks(SITES_DATA[currentSiteKey]);
+        updateTelemetryUI();
+      });
+    });
+
+    const slider = document.getElementById('mission-time-slider');
+    slider.addEventListener('input', (e) => {
+      currentHours = parseInt(e.target.value, 10);
+      updateTelemetryUI();
+    });
+
+    document.getElementById('step-back-btn').addEventListener('click', () => {
+      currentHours = Math.max(0, currentHours - 6);
+      slider.value = currentHours;
+      updateTelemetryUI();
+    });
+
+    document.getElementById('step-fwd-btn').addEventListener('click', () => {
+      currentHours = Math.min(720, currentHours + 6);
+      slider.value = currentHours;
+      updateTelemetryUI();
+    });
+
+    document.getElementById('save-site-btn').addEventListener('click', () => {
+      const toast = document.getElementById('save-toast');
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 2400);
+    });
+
+    window.addEventListener('resize', () => {
+      const site = SITES_DATA[currentSiteKey];
+      const slot = Math.min(119, Math.floor(currentHours / 6));
+      renderLanderFrame(site.earthPattern(slot), site.solarPattern(slot));
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      buildTimelineTracks(SITES_DATA[currentSiteKey]);
+      updateTelemetryUI();
+    });
+  </script>
+</body>
+</html>

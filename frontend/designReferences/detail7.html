@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shackleton (borde) // Telemetría Vertical</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f1f5f9;
+      min-height: 100vh;
+    }
+
+    .nasa-range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 5px;
+      background: #e2e8f0;
+      border-radius: 9999px;
+      outline: none;
+      margin: 0;
+    }
+
+    .nasa-range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #FC3D21;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 0 2px #0f172a;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .nasa-range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    .nasa-range-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #FC3D21;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 0 2px #0f172a;
+      cursor: pointer;
+    }
+
+    @keyframes radio-wave-pulse {
+      0%   { opacity: 0.95; transform: scale(0.92); }
+      100% { opacity: 0; transform: scale(1.32); }
+    }
+
+    .lander-radio-wave {
+      transform-box: fill-box;
+      transform-origin: bottom left;
+      animation: radio-wave-pulse 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    }
+    .lander-radio-wave.delay-1 { animation-delay: 0.65s; }
+    .lander-radio-wave.delay-2 { animation-delay: 1.3s; }
+  </style>
+</head>
+<body class="flex items-center justify-center p-4 sm:p-8">
+
+  <!-- MARCO EXTERIOR AZUL NASA #0032A0 -->
+  <div id="lander-frame-wrapper" class="relative w-full max-w-[470px] my-10 bg-[#0032A0] p-[12px] sm:p-[15px] rounded-[22px] shadow-[0_20px_45px_rgba(0,50,160,0.2)] overflow-visible">
+    
+    <!-- HARDWARE SVG DEL LANDER -->
+    <svg
+      id="lander-hardware-svg"
+      class="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-20"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    ></svg>
+
+    <!-- INTERIOR BLANCO VERTICAL -->
+    <div class="relative z-10 w-full bg-white rounded-[14px] p-4 sm:p-5 flex flex-col gap-3.5 overflow-hidden">
+
+      <!-- ===================================================================
+           1. CABECERA COMPACTA
+           =================================================================== -->
+      <header class="flex items-start justify-between gap-2">
+        <div>
+          <h1 class="text-lg font-bold text-slate-950 tracking-tight leading-tight">
+            Shackleton (borde)
+          </h1>
+          <span class="font-['JetBrains_Mono'] text-xs text-slate-500 block mt-0.5">
+            -89.90°, 0.00°E
+          </span>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <button
+            type="button"
+            class="px-2.5 py-1 rounded-full border border-slate-300 bg-white hover:border-[#0032A0] text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
+          >
+            Cielo (0–90°)
+          </button>
+          <button
+            type="button"
+            aria-label="Cerrar"
+            class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- ===================================================================
+           2. VISOR DEL HORIZONTE
+           =================================================================== -->
+      <div class="relative w-full rounded-xl overflow-hidden border border-slate-800 bg-[#0d1021]">
+        <svg id="horizon-sky-svg" viewBox="0 0 460 175" class="w-full h-auto block select-none">
+          <defs>
+            <linearGradient id="sky-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#191636" />
+              <stop offset="100%" stop-color="#0b1224" />
+            </linearGradient>
+            <linearGradient id="terrain-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#090c14" />
+              <stop offset="100%" stop-color="#040509" />
+            </linearGradient>
+          </defs>
+
+          <rect width="460" height="175" fill="url(#sky-grad)" />
+          <rect x="0" y="0" width="70" height="175" fill="#a855f7" fill-opacity="0.08" />
+          <line x1="70" y1="0" x2="70" y2="175" stroke="#c084fc" stroke-opacity="0.35" stroke-width="1" />
+          <rect x="374" y="0" width="86" height="175" fill="#a855f7" fill-opacity="0.08" />
+          <line x1="374" y1="0" x2="374" y2="175" stroke="#c084fc" stroke-opacity="0.35" stroke-width="1" />
+
+          <!-- Grilla -->
+          <g stroke="#ffffff" stroke-opacity="0.08" stroke-width="1">
+            <line x1="0" y1="32" x2="460" y2="32" />
+            <line x1="0" y1="90" x2="460" y2="90" />
+            <line x1="0" y1="148" x2="460" y2="148" />
+            <line x1="115" y1="0" x2="115" y2="175" />
+            <line x1="230" y1="0" x2="230" y2="175" />
+            <line x1="345" y1="0" x2="345" y2="175" />
+          </g>
+
+          <g fill="#94a3b8" font-family="'JetBrains_Mono', monospace" font-size="8.5">
+            <text x="7" y="29">20°</text>
+            <text x="7" y="87">10°</text>
+            <text x="7" y="145">0°</text>
+          </g>
+
+          <!-- Leyenda -->
+          <g font-family="'JetBrains_Mono', monospace" font-size="9" font-weight="600">
+            <line x1="356" y1="14" x2="370" y2="14" stroke="#FBBF24" stroke-width="2" />
+            <text x="374" y="17" fill="#FDE68A">Sol</text>
+            <line x1="404" y1="14" x2="418" y2="14" stroke="#3B82F6" stroke-width="2" />
+            <text x="422" y="17" fill="#93C5FD">Tierra</text>
+          </g>
+
+          <!-- Órbitas -->
+          <path d="M 0 135 Q 230 138 460 133" fill="none" stroke="#FBBF24" stroke-width="1.5" stroke-dasharray="3 3" stroke-opacity="0.55" />
+          <path d="M 0 135 L 68 135 M 290 136 L 460 133" fill="none" stroke="#FBBF24" stroke-width="2" />
+          <path d="M 0 116 Q 10 133 14 166 M 440 166 Q 440 105 446 120 Q 452 135 456 166" fill="none" stroke="#3B82F6" stroke-width="2" />
+
+          <!-- Terreno -->
+          <path
+            d="M 0 158 L 20 154 L 42 159 L 60 147 L 85 95 L 112 54 L 140 28 L 168 13 L 198 18 L 226 36 L 254 76 L 280 126 L 296 138 L 314 132 L 336 135 L 360 142 L 386 137 L 412 148 L 438 142 L 460 152 L 460 175 L 0 175 Z"
+            fill="url(#terrain-grad)"
+            stroke="#475569"
+            stroke-width="1.1"
+          />
+
+          <!-- Marcadores dinámicos -->
+          <g id="sun-marker" transform="translate(350, 134)">
+            <circle r="7.5" fill="#FBBF24" fill-opacity="0.25" />
+            <circle r="3.8" fill="#FBBF24" stroke="#FEF3C7" stroke-width="1" />
+          </g>
+          <g id="earth-marker" transform="translate(13, 154)">
+            <circle r="7" fill="#3B82F6" fill-opacity="0.25" />
+            <circle r="3.8" fill="#0f172a" stroke="#60A5FA" stroke-width="1.8" />
+          </g>
+
+          <g fill="#94a3b8" font-family="'JetBrains_Mono', monospace" font-size="9" font-weight="600">
+            <text x="8" y="169">N</text>
+            <text x="115" y="169" text-anchor="middle">E</text>
+            <text x="230" y="169" text-anchor="middle">S</text>
+            <text x="345" y="169" text-anchor="middle">O</text>
+            <text x="452" y="169" text-anchor="end">N</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- ===================================================================
+           3. SLIDER + TIMESTAMP
+           =================================================================== -->
+      <div>
+        <input
+          id="mission-slider"
+          type="range"
+          min="0"
+          max="30"
+          step="0.25"
+          value="12"
+          aria-label="Seleccionar día de la misión"
+          class="nasa-range-slider w-full cursor-pointer"
+        />
+        <div class="mt-1.5 flex items-center justify-between font-['JetBrains_Mono'] text-[11px]">
+          <span id="timestamp-label" class="font-bold text-slate-900">2026-12-01 19:20 UTC</span>
+          <span id="day-progress-badge" class="font-bold text-[#0032A0]">DÍA 12 / 30</span>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           4. TARJETAS SEPARADAS (SOL Y TIERRA)
+              <= 420px: 1 columna (2 filas) | >= 421px: 2 columnas
+           =================================================================== -->
+      <div class="grid grid-cols-1 min-[421px]:grid-cols-2 gap-2.5">
+
+        <!-- TARJETA SOL (Energía acum. + Tiempo c/ luz) -->
+        <section class="rounded-xl border border-slate-200 bg-slate-50/75 p-3 relative overflow-hidden">
+          <div class="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r bg-amber-400"></div>
+          <div class="pl-2 flex flex-col gap-2">
+            <div class="flex items-center justify-between gap-1">
+              <span class="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                SOL
+              </span>
+              <span id="solar-status-pill" class="font-['JetBrains_Mono'] text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                CON LUZ · +1.5°
+              </span>
+            </div>
+
+            <div>
+              <span class="block text-[10px] font-medium text-slate-500">Energía acum.</span>
+              <span id="solar-accum-val" class="font-['JetBrains_Mono'] text-lg font-bold text-amber-600 leading-tight block">
+                10.3 <small class="text-[10px] font-semibold text-slate-500">kWh/m²</small>
+              </span>
+            </div>
+
+            <div class="pt-1.5 border-t border-slate-200/80 flex items-baseline justify-between">
+              <span class="text-[10px] font-medium text-slate-500">Tiempo c/ luz</span>
+              <span class="font-['JetBrains_Mono'] text-sm font-bold text-slate-900">47%</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- TARJETA TIERRA (Ángulo horiz. + Tiempo a vista) -->
+        <section class="rounded-xl border border-slate-200 bg-slate-50/75 p-3 relative overflow-hidden">
+          <div class="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r bg-[#0032A0]"></div>
+          <div class="pl-2 flex flex-col gap-2">
+            <div class="flex items-center justify-between gap-1">
+              <span class="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                TIERRA
+              </span>
+              <span id="earth-status-pill" class="font-['JetBrains_Mono'] text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
+                SIN ENLACE
+              </span>
+            </div>
+
+            <div>
+              <span class="block text-[10px] font-medium text-slate-500">Ángulo horiz.</span>
+              <span id="earth-angle-val" class="font-['JetBrains_Mono'] text-lg font-bold text-slate-900 leading-tight block">
+                -1.2°
+              </span>
+            </div>
+
+            <div class="pt-1.5 border-t border-slate-200/80 flex items-baseline justify-between">
+              <span class="text-[10px] font-medium text-slate-500">Tiempo a vista</span>
+              <span class="font-['JetBrains_Mono'] text-sm font-bold text-[#0032A0]">60%</span>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ===================================================================
+           5. PRÓXIMOS EVENTOS FUERA DE LAS TARJETAS (CON ICONOS LADO A LADO)
+           =================================================================== -->
+      <div class="grid grid-cols-2 gap-2.5 px-1 py-0.5">
+
+        <!-- Evento Solar (Ocaso / Amanecer) -->
+        <div class="flex items-center gap-2.5">
+          <div id="solar-event-icon-box" class="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center shrink-0">
+            <svg id="solar-event-svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 10V2"/>
+              <path d="m4.93 10.93 1.41 1.41"/>
+              <path d="M2 18h2"/>
+              <path d="M20 18h2"/>
+              <path d="m19.07 10.93-1.41 1.41"/>
+              <path d="M22 22H2"/>
+              <path d="m16 14-4 4-4-4"/>
+              <path d="M16 18a4 4 0 0 0-8 0"/>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <span id="solar-next-lbl" class="block text-[10px] font-medium text-slate-500 leading-tight truncate">
+              Ocaso en
+            </span>
+            <span id="solar-next-val" class="font-['JetBrains_Mono'] text-sm font-bold text-slate-900 leading-tight block">
+              2.4 d
+            </span>
+          </div>
+        </div>
+
+        <!-- Evento Tierra (Earthset / Enlace) -->
+        <div class="flex items-center gap-2.5">
+          <div id="earth-event-icon-box" class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200/80 text-[#0032A0] flex items-center justify-center shrink-0">
+            <svg id="earth-event-svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/>
+              <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/>
+              <circle cx="12" cy="12" r="2"/>
+              <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/>
+              <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <span id="earth-next-lbl" class="block text-[10px] font-medium text-slate-500 leading-tight truncate">
+              Enlace en
+            </span>
+            <span id="earth-next-val" class="font-['JetBrains_Mono'] text-sm font-bold text-slate-900 leading-tight block">
+              11.3 d
+            </span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ===================================================================
+           6. BARRAS DE 30 DÍAS
+           =================================================================== -->
+      <section class="relative select-none space-y-2 pt-1 border-t border-slate-100">
+        <div
+          id="bars-cursor-needle"
+          class="absolute top-1 bottom-0 w-[2px] -ml-[1px] border-l-2 border-dashed border-slate-500 z-10 pointer-events-none will-change-[left]"
+          style="left: calc(40% + 1.6px);"
+        ></div>
+
+        <!-- Barra Sol -->
+        <div>
+          <div class="flex justify-between text-[11px] font-medium text-slate-600 mb-0.5">
+            <span>Días con / sin luz solar</span>
+          </div>
+          <div class="w-full h-4 rounded bg-slate-100 overflow-hidden flex font-['JetBrains_Mono'] text-[9px] font-bold">
+            <div style="width: 1.5%" class="bg-slate-200"></div>
+            <div style="width: 46.5%" class="bg-amber-400 text-slate-950 flex items-center justify-center">14 d</div>
+            <div style="width: 3.5%" class="bg-slate-200"></div>
+            <div style="width: 0.8%" class="bg-amber-400"></div>
+            <div style="width: 0.6%" class="bg-slate-200"></div>
+            <div style="width: 0.8%" class="bg-amber-400"></div>
+            <div style="width: 46.3%" class="bg-slate-200 text-slate-600 flex items-center justify-center">≥14 d</div>
+          </div>
+        </div>
+
+        <!-- Barra Tierra -->
+        <div>
+          <div class="flex justify-between text-[11px] font-medium text-slate-600 mb-0.5">
+            <span>Días con / sin enlace a la Tierra</span>
+          </div>
+          <div class="w-full h-4 rounded bg-slate-100 overflow-hidden flex font-['JetBrains_Mono'] text-[9px] font-bold">
+            <div style="width: 37%" class="bg-[#0032A0] text-white flex items-center justify-center">≥11 d</div>
+            <div style="width: 40%" class="bg-slate-200 text-slate-600 flex items-center justify-center">12 d</div>
+            <div style="width: 23%" class="bg-[#0032A0] text-white flex items-center justify-center">≥6.9 d</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    let lastHardwareState = "";
+
+    function renderLanderHardware(hasEarthLink = false, hasSolarLight = true, force = false) {
+      const wrapper = document.getElementById('lander-frame-wrapper');
+      const svg = document.getElementById('lander-hardware-svg');
+      if (!wrapper || !svg) return;
+
+      const w = wrapper.offsetWidth;
+      const h = wrapper.offsetHeight;
+      const currentState = `${w}x${h}-${hasEarthLink}-${hasSolarLight}`;
+
+      if (!force && currentState === lastHardwareState) return;
+      lastHardwareState = currentState;
+
+      const legSpreadOuter = 30;
+      const legSpreadInner = 78;
+      const legHeight = 40;
+      const padY = h + legHeight;
+      const antX = w - 66;
+      const panelX = 44;
+      const midY = Math.round(h * 0.48);
+
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+      svg.innerHTML = `
+        <defs>
+          <pattern id="solar-cells" width="7" height="7" patternUnits="userSpaceOnUse">
+            <path d="M 7 0 L 0 0 0 7" fill="none" stroke="#94A3B8" stroke-width="0.6" stroke-opacity="0.4"/>
+          </pattern>
+        </defs>
+
+        <g fill="#FFFFFF" fill-opacity="0.7">
+          <circle cx="9" cy="9" r="1.7" />
+          <circle cx="${w - 9}" cy="9" r="1.7" />
+          <circle cx="9" cy="${h - 9}" r="1.7" />
+          <circle cx="${w - 9}" cy="${h - 9}" r="1.7" />
+        </g>
+        <rect x="20" y="5" width="13" height="3" rx="1.5" fill="#FC3D21" />
+        <rect x="${w - 33}" y="5" width="13" height="3" rx="1.5" fill="#FC3D21" />
+
+        <!-- PANEL SOLAR -->
+        <g>
+          <line x1="${panelX + 24}" y1="2" x2="${panelX + 24}" y2="-13" stroke="#1E293B" stroke-width="3.5" />
+          <circle cx="${panelX + 24}" cy="-7" r="2.6" fill="#FC3D21" stroke="#FFFFFF" stroke-width="1" />
+          <rect x="${panelX - 16}" y="-26" width="80" height="14" rx="2.5"
+                fill="${hasSolarLight ? '#1E293B' : '#090D16'}" stroke="#FFFFFF" stroke-width="1.2" />
+          <rect x="${panelX - 16}" y="-26" width="80" height="14" rx="2.5" fill="url(#solar-cells)" />
+          <circle cx="${panelX + 56}" cy="-19" r="2.2" fill="${hasSolarLight ? '#FC3D21' : '#64748B'}" />
+        </g>
+
+        <!-- ANTENA PARABÓLICA -->
+        <g>
+          <rect x="${antX - 7}" y="-5" width="14" height="7" rx="1.5" fill="#1E293B" />
+          <line x1="${antX}" y1="-5" x2="${antX + 5}" y2="-18" stroke="#334155" stroke-width="2.2" stroke-linecap="round" />
+          <path d="M ${antX - 12} -27 Q ${antX + 5} -9 ${antX + 22} -18"
+                fill="none" stroke="#1E293B" stroke-width="2.5" stroke-linecap="round" />
+          <line x1="${antX + 5}" y1="-18" x2="${antX + 12}" y2="-27" stroke="#FC3D21" stroke-width="1.8" />
+          <circle cx="${antX + 13}" cy="-28" r="2.5" fill="#FC3D21" />
+
+          ${hasEarthLink ? `
+            <g transform="translate(${antX + 16}, -31)">
+              <path class="lander-radio-wave" d="M 2 -5 A 7 7 0 0 1 7 2" fill="none" stroke="#FC3D21" stroke-width="1.6" stroke-linecap="round" />
+              <path class="lander-radio-wave delay-1" d="M 4 -10 A 13 13 0 0 1 13 4" fill="none" stroke="#FC3D21" stroke-width="1.3" stroke-linecap="round" />
+              <path class="lander-radio-wave delay-2" d="M 5 -15 A 19 19 0 0 1 19 5" fill="none" stroke="#FC3D21" stroke-width="1" stroke-linecap="round" />
+            </g>
+          ` : ''}
+        </g>
+
+        <!-- TOBERAS RCS -->
+        <g transform="translate(0, ${midY})">
+          <rect x="-7" y="-10" width="9" height="20" rx="1.5" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.2" />
+          <polygon points="-4,-10 -8,-18 0,-18" fill="#FC3D21" />
+          <polygon points="-4,10 -8,18 0,18" fill="#FC3D21" />
+          <polygon points="-7,-3 -13,-5.5 -13,5.5 -7,3" fill="#334155" />
+        </g>
+        <g transform="translate(${w}, ${midY})">
+          <rect x="-2" y="-10" width="9" height="20" rx="1.5" fill="#FFFFFF" stroke="#1E293B" stroke-width="1.2" />
+          <polygon points="4,-10 8,-18 0,-18" fill="#FC3D21" />
+          <polygon points="4,10 8,18 0,18" fill="#FC3D21" />
+          <polygon points="7,-3 13,-5.5 13,5.5 7,3" fill="#334155" />
+        </g>
+
+        <!-- MOTOR PRINCIPAL -->
+        <g transform="translate(${w / 2}, ${h})">
+          <polygon points="-13,0 13,0 20,14 -20,14" fill="#1E293B" stroke="#FFFFFF" stroke-width="1.2" />
+          <line x1="-16" y1="5" x2="16" y2="5" stroke="#FC3D21" stroke-width="1.8" />
+        </g>
+
+        <!-- PATAS -->
+        <g opacity="0.6">
+          <line x1="${legSpreadInner}" y1="${h - 2}" x2="${legSpreadInner - 13}" y2="${padY - 3}" stroke="#475569" stroke-width="2.8" />
+          <ellipse cx="${legSpreadInner - 13}" cy="${padY - 2}" rx="8.5" ry="2.2" fill="#334155" />
+        </g>
+        <g opacity="0.6">
+          <line x1="${w - legSpreadInner}" y1="${h - 2}" x2="${w - legSpreadInner + 13}" y2="${padY - 3}" stroke="#475569" stroke-width="2.8" />
+          <ellipse cx="${w - legSpreadInner + 13}" cy="${padY - 2}" rx="8.5" ry="2.2" fill="#334155" />
+        </g>
+        <g>
+          <line x1="20" y1="${h - 4}" x2="${-legSpreadOuter}" y2="${padY}" stroke="#475569" stroke-width="3.2" stroke-linecap="round" />
+          <line x1="46" y1="${h - 2}" x2="${-legSpreadOuter * 0.45}" y2="${h + legHeight * 0.55}" stroke="#94A3B8" stroke-width="1.8" />
+          <circle cx="${-legSpreadOuter * 0.45}" cy="${h + legHeight * 0.55}" r="2.8" fill="#FC3D21" />
+          <ellipse cx="${-legSpreadOuter}" cy="${padY}" rx="10.5" ry="2.6" fill="#334155" />
+        </g>
+        <g>
+          <line x1="${w - 20}" y1="${h - 4}" x2="${w + legSpreadOuter}" y2="${padY}" stroke="#475569" stroke-width="3.2" stroke-linecap="round" />
+          <line x1="${w - 46}" y1="${h - 2}" x2="${w + legSpreadOuter * 0.45}" y2="${h + legHeight * 0.55}" stroke="#94A3B8" stroke-width="1.8" />
+          <circle cx="${w + legSpreadOuter * 0.45}" cy="${h + legHeight * 0.55}" r="2.8" fill="#FC3D21" />
+          <ellipse cx="${w + legSpreadOuter}" cy="${padY}" rx="10.5" ry="2.6" fill="#334155" />
+        </g>
+      `;
+    }
+
+    const slider = document.getElementById('mission-slider');
+    const needle = document.getElementById('bars-cursor-needle');
+
+    // SVGs de eventos (Amanecer vs Ocaso, Enlace vs Earthset)
+    const ICON_SUNSET = `
+      <path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/>
+      <path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/>
+      <path d="m16 14-4 4-4-4"/><path d="M16 18a4 4 0 0 0-8 0"/>
+    `;
+    const ICON_SUNRISE = `
+      <path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/>
+      <path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/>
+      <path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/>
+    `;
+    const ICON_LINK_ON = `
+      <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/>
+      <circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/>
+      <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>
+    `;
+    const ICON_EARTHSET = `
+      <circle cx="12" cy="12" r="7"/><path d="M2 15h20"/><path d="m15 18-3 3-3-3"/>
+    `;
+
+    function updateTelemetry(dayFloat) {
+      const ratio = dayFloat / 30;
+      const pct = ratio * 100;
+      const thumbOffsetPx = 8 - ratio * 16;
+      needle.style.left = `calc(${pct}% + ${thumbOffsetPx.toFixed(2)}px)`;
+
+      const startMs = Date.UTC(2026, 10, 19, 19, 20, 0);
+      const currentDate = new Date(startMs + dayFloat * 24 * 3600 * 1000);
+      const yyyy = currentDate.getUTCFullYear();
+      const mm = String(currentDate.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(currentDate.getUTCDate()).padStart(2, '0');
+      const hh = String(currentDate.getUTCHours()).padStart(2, '0');
+      const min = String(currentDate.getUTCMinutes()).padStart(2, '0');
+
+      const dayInt = Math.max(1, Math.min(30, Math.round(dayFloat) || 1));
+      document.getElementById('timestamp-label').textContent = `${yyyy}-${mm}-${dd} ${hh}:${min} UTC`;
+      document.getElementById('day-progress-badge').textContent = `DÍA ${String(dayInt).padStart(2, '0')} / 30`;
+
+      // Energía acumulada
+      const litDays = Math.min(14.4, dayFloat * 0.86);
+      document.getElementById('solar-accum-val').innerHTML = `${(litDays * 0.86).toFixed(1)} <small class="text-[10px] font-semibold text-slate-500">kWh/m²</small>`;
+
+      // Sol
+      const hasSolar = (dayFloat >= 0.45 && dayFloat <= 14.4);
+      const solarPill = document.getElementById('solar-status-pill');
+      const solarNextLbl = document.getElementById('solar-next-lbl');
+      const solarNextVal = document.getElementById('solar-next-val');
+      const solarIconBox = document.getElementById('solar-event-icon-box');
+      const solarEventSvg = document.getElementById('solar-event-svg');
+
+      if (hasSolar) {
+        const sunElev = (1.5 * Math.sin(((dayFloat - 0.45) / 13.95) * Math.PI)).toFixed(1);
+        const toSunset = Math.max(0.1, 14.4 - dayFloat).toFixed(1);
+        solarPill.textContent = `CON LUZ · +${sunElev}°`;
+        solarPill.className = "font-['JetBrains_Mono'] text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800";
+        solarNextLbl.textContent = "Ocaso en";
+        solarNextVal.textContent = `${toSunset} d`;
+        solarIconBox.className = "w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center shrink-0";
+        solarEventSvg.innerHTML = ICON_SUNSET;
+      } else {
+        const toSunrise = dayFloat < 0.45 ? (0.45 - dayFloat).toFixed(1) : (30 - dayFloat + 0.5).toFixed(1);
+        solarPill.textContent = "EN SOMBRA";
+        solarPill.className = "font-['JetBrains_Mono'] text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700";
+        solarNextLbl.textContent = "Amanecer en";
+        solarNextVal.textContent = `${toSunrise} d`;
+        solarIconBox.className = "w-8 h-8 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center shrink-0";
+        solarEventSvg.innerHTML = ICON_SUNRISE;
+      }
+
+      // Tierra
+      const hasEarth = (dayFloat <= 11.1 || dayFloat >= 23.3);
+      const earthPill = document.getElementById('earth-status-pill');
+      const earthAngleVal = document.getElementById('earth-angle-val');
+      const earthNextLbl = document.getElementById('earth-next-lbl');
+      const earthNextVal = document.getElementById('earth-next-val');
+      const earthIconBox = document.getElementById('earth-event-icon-box');
+      const earthEventSvg = document.getElementById('earth-event-svg');
+
+      if (hasEarth) {
+        const earthElev = dayFloat <= 11.1
+          ? (4.8 * Math.sin((dayFloat / 11.1) * Math.PI * 0.8 + 0.4)).toFixed(1)
+          : (3.9 * Math.sin(((dayFloat - 23.3) / 6.7) * Math.PI * 0.85)).toFixed(1);
+        const toEarthset = dayFloat <= 11.1
+          ? Math.max(0.1, 11.1 - dayFloat).toFixed(1)
+          : Math.max(0.1, 30 - dayFloat + 4.1).toFixed(1);
+
+        earthPill.textContent = "ENLACE";
+        earthPill.className = "font-['JetBrains_Mono'] text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-[#0032A0]";
+        earthAngleVal.textContent = `+${earthElev}°`;
+        earthAngleVal.className = "font-['JetBrains_Mono'] text-lg font-bold text-[#0032A0] leading-tight block";
+        earthNextLbl.textContent = "Earthset en";
+        earthNextVal.textContent = `${toEarthset} d`;
+        earthIconBox.className = "w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center shrink-0";
+        earthEventSvg.innerHTML = ICON_EARTHSET;
+      } else {
+        const earthElev = (-1.2 - Math.sin(((dayFloat - 11.1) / 12.2) * Math.PI) * 1.4).toFixed(1);
+        const toAos = Math.max(0.1, 23.3 - dayFloat).toFixed(1);
+
+        earthPill.textContent = "SIN ENLACE";
+        earthPill.className = "font-['JetBrains_Mono'] text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700";
+        earthAngleVal.textContent = `${earthElev}°`;
+        earthAngleVal.className = "font-['JetBrains_Mono'] text-lg font-bold text-slate-900 leading-tight block";
+        earthNextLbl.textContent = "Enlace en";
+        earthNextVal.textContent = `${toAos} d`;
+        earthIconBox.className = "w-8 h-8 rounded-lg bg-blue-50 border border-blue-200/80 text-[#0032A0] flex items-center justify-center shrink-0";
+        earthEventSvg.innerHTML = ICON_LINK_ON;
+      }
+
+      const sunX = 86 + ratio * 316;
+      document.getElementById('sun-marker').setAttribute('transform', `translate(${sunX.toFixed(1)}, 134)`);
+
+      const earthY = hasEarth ? 122 : 154;
+      document.getElementById('earth-marker').setAttribute('transform', `translate(13, ${earthY})`);
+
+      renderLanderHardware(hasEarth, hasSolar, false);
+    }
+
+    slider.addEventListener('input', (e) => updateTelemetry(parseFloat(e.target.value)));
+    window.addEventListener('resize', () => {
+      const val = parseFloat(slider.value);
+      renderLanderHardware(val <= 11.1 || val >= 23.3, val >= 0.45 && val <= 14.4, true);
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateTelemetry(parseFloat(slider.value));
+    });
+  </script>
+</body>
+</html>
