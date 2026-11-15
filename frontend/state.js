@@ -63,3 +63,10 @@ export function removeSitio(lat, lon) {
 export function setSitioActivo(s) {
   commit({ ...state, sitioActivo: s });
 }
+
+export function renameSitio(lat, lon, newName) {
+  const sitios = state.sitios.map((s) =>
+    Math.abs(s.lat - lat) < 1e-6 && Math.abs(s.lon - lon) < 1e-6
+      ? { ...s, name: newName } : s);
+  commit({ ...state, sitios });
+}

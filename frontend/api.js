@@ -7,7 +7,9 @@ async function _get(path) {
   if (!r.ok) {
     let detail = "";
     try { detail = (await r.json()).detail || ""; } catch { /* sin body JSON */ }
-    throw new Error(detail || `HTTP ${r.status}`);
+    const err = new Error(detail || `HTTP ${r.status}`);
+    err.status = r.status;
+    throw err;
   }
   return r.json();
 }

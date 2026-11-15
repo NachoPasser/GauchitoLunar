@@ -79,13 +79,26 @@ export function drawGlobe(g, { cx, cy, r, tilt = 28, cap = 18 }, pal, { eye = fa
   lbl("S", cy - r - 9, 0.95);
   lbl("N", cy + r + 22, 0.5);
   if (!eye) return;
-  // Ícono de perspectiva (ojo de perfil) sobre la S: dos trazos que se cruzan arriba
-  // (la mira) + base curva. Sin relleno, solo contorno.
-  const yT = cy - r - 60, yB = cy - r - 30, hw = 15, tl = 6;
-  const d =
-    `M${cx - hw} ${yB} L${cx + tl} ${yT}` +                 // abajo-izq → arriba-der
-    `M${cx + hw} ${yB} L${cx - tl} ${yT}` +                 // abajo-der → arriba-izq (cruzan)
-    `M${cx - hw} ${yB} Q${cx} ${yB + 5} ${cx + hw} ${yB}`;  // base curva
-  g.appendChild(svg("path", { d, fill: "none", stroke: pal.label, "stroke-opacity": 0.95,
-    "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+  // Ícono de perspectiva (ojo): vértice único arriba, dos líneas que abren hacia abajo
+  // (3× más grande, más estrecho), pestañas cortas hacia abajo. Sin cruce.
+  const EYE_HW = 22, EXT_Y = 8, EXT_X = 5, CURVE = 9;
+  const yV = cy - r - 80;     // vértice (punto único, punta del ojo)
+  const yBe = cy - r - 30;    // base (parte ancha, con pestañas)
+  const de =
+    `M${cx} ${yV} L${cx - EYE_HW} ${yBe}` +
+    `M${cx} ${yV} L${cx + EYE_HW} ${yBe}` +
+    `M${cx - EYE_HW} ${yBe} l${-EXT_X} ${EXT_Y}` +
+    `M${cx + EYE_HW} ${yBe} l${EXT_X} ${EXT_Y}` +
+    `M${cx - EYE_HW} ${yBe} Q${cx} ${yBe + CURVE} ${cx + EYE_HW} ${yBe}`;
+  g.appendChild(svg("path", { d: de, fill: "none", stroke: pal.label, "stroke-opacity": 0.95,
+    "stroke-width": 2.2, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+  // Iris de perfil: almendra horizontal (el ojo visto de costado) + pupila.
+  const irisY = yBe - 3, iW = 6, iH = 3.5;
+  const dIris = `M${cx - iW} ${irisY}` +
+    `Q${cx} ${irisY - iH} ${cx + iW} ${irisY}` +
+    `Q${cx} ${irisY + iH} ${cx - iW} ${irisY} Z`;
+  g.appendChild(svg("path", { d: dIris, fill: "none", stroke: pal.label,
+    "stroke-opacity": 0.88, "stroke-width": 1.5 }));
+  g.appendChild(svg("circle", { cx, cy: irisY, r: 2.2,
+    fill: pal.label, "fill-opacity": 0.65 }));
 }
