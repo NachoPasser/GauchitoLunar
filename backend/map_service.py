@@ -22,6 +22,19 @@ DATA = Path(__file__).resolve().parent.parent / "data"
 CACHE_DIR = DATA / "map_png"
 MAX_PX = 1536                       # tamaño máx. para web (raster original 5058²)
 
+
+def _resolve_data_path(filename: str) -> Path:
+    target = DATA / filename
+    if target.exists():
+        return target
+    stem = Path(filename).stem
+    for ext in (".TIF", ".tif", ".tiff", ".TIFF"):
+        cand = DATA / f"{stem}{ext}"
+        if cand.exists():
+            return cand
+    return target
+
+
 RASTERS = {
     "illumination": "AVGVISIB_85S_060M_201608.TIF",
     "earth": "AVGVISIB_85S_060M_201608_EARTH.TIF",
@@ -76,7 +89,7 @@ def _match_hist(src: np.ndarray, tmpl: np.ndarray) -> np.ndarray:
 
 def _illum_template() -> np.ndarray:
     """Distribución de grises [0,1] del casquete AVGVISIB (para igualar el hillshade)."""
-    band, valid = _read_decimated(DATA / RASTERS["illumination"])
+    band, valid = _read_decimated(_resolve_data_path(RASTERS["illumination"]))
     vmax = np.percentile(band[valid], 99) if valid.any() else 1.0
     return np.clip(band[valid] / (vmax or 1.0), 0.0, 1.0)
 
@@ -122,9 +135,9 @@ def get_map_meta(metric: str = "illumination") -> dict:
     `proj` describe la estereográfica polar sur esférica que el front reusa.
     """
     if metric == "hillshade":
-        path = DATA / DEM_FILE
+        path = _resolve_data_path(DEM_FILE)
     elif metric in RASTERS:
-        path = DATA / RASTERS[metric]
+        path = _resolve_data_path(RASTERS[metric])
     else:
         raise KeyError(metric)
     with rasterio.open(path) as ds:
@@ -160,10 +173,11 @@ def get_map_png(metric: str) -> bytes:
         return data
 
     if metric == "hillshade":
-        band, valid = _read_decimated(DATA / DEM_FILE, Resampling.average)
-        img = _hillshade_rgba(band, valid, _decimated_mpp(DATA / DEM_FILE))
+        dem_path = _resolve_data_path(DEM_FILE)
+        band, valid = _read_decimated(dem_path, Resampling.average)
+        img = _hillshade_rgba(band, valid, _decimated_mpp(dem_path))
     else:
-        band, valid = _read_decimated(DATA / RASTERS[metric])
+        band, valid = _read_decimated(_resolve_data_path(RASTERS[metric]))
         img = _psr_rgba(band, valid) if metric == "psr" else _grayscale_rgba(band, valid)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
