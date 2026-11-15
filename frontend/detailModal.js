@@ -15,6 +15,7 @@ export function createDetailModal({ windowDays = 30, date = null,
   const $ = (id) => document.getElementById(id);
   const sky = createSkyline($("skyline"), { onWindowChange: onAzimuthWindow });
   let fullSky = false;
+  let firstPerson = false;
   let playTimer = null;     // interval de reproducción automática del slider (play/pause)
   let loading = false;       // true mientras showSite espera la respuesta del backend
   let data = null;          // respuesta /api/site del sitio activo (para el slider)
@@ -220,6 +221,13 @@ export function createDetailModal({ windowDays = 30, date = null,
     sky.setFullSky(fullSky);
     sky.draw();
     $("fullsky-btn").setAttribute("aria-pressed", String(fullSky));
+  });
+  const fpvBtn = $("fpv-btn");
+  if (fpvBtn) fpvBtn.addEventListener("click", () => {
+    firstPerson = !firstPerson;
+    sky.setFirstPerson(firstPerson);
+    sky.draw();
+    fpvBtn.setAttribute("aria-pressed", String(firstPerson));
   });
 
   // Play/pause: reproduce la ventana de tiempo avanzando el slider solo y loopeando.
