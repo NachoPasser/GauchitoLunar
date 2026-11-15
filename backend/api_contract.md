@@ -2,7 +2,7 @@
 
 > Esta es la frontera entre backend y frontend. **No se cambia sin avisar a los 3.**
 > El frontend desarrolla contra `backend/mocks/*.json` (misma forma exacta).
-> En H1 el backend reemplaza los mocks por cálculo real **sin cambiar la forma**.
+> H1 ya reemplazó los mocks por cálculo real **sin cambiar la forma**; los JSON quedan de referencia.
 
 ## Convenciones (SPEC §3.0, fuente única: `constants.py`)
 
@@ -64,3 +64,6 @@ Raster/tiles PNG precalculado (fondo del mapa). Promedios ~18.6 años, **NO depe
 ## Utilitario (fuera del §5)
 
 `GET /api/sites` → `{ "sites": [ { "name", "lat", "lon", "note" }, ... ] }` (sitios semilla §4.5).
+
+`GET /api/map/meta?metric=illumination|earth|psr` → bounds + parámetros de proyección (CRS del
+raster: `R`, `lon0`, `bounds`) para que el frontend ubique puntos. Lo consume `proj.js`.

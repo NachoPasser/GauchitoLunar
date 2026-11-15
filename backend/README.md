@@ -21,7 +21,7 @@ bash fetch_data.sh                 # DEM 80 m + rasters de iluminación → ../d
 
 `fetch_horizons.py` opciones: `--start YYYY-MM-DD --days N --step 20m`.
 
-## Correr la API (mocks, estado H0)
+## Correr la API
 
 ```bash
 cd backend
@@ -29,8 +29,11 @@ cd backend
 # http://127.0.0.1:8000/docs
 ```
 
-Endpoints (ver `api_contract.md`): `/api/mask`, `/api/site`, `/api/map`, `/api/sites`.
-Hoy devuelven **mocks**; en H1 se reemplazan por cálculo real sin cambiar la forma.
+Endpoints (ver `api_contract.md`): `/api/mask`, `/api/site`, `/api/map`, `/api/map/meta`, `/api/sites`.
+Sirven **datos reales** (H0 y H1 cerrados): máscara por ray casting sobre el DEM, tracks desde el
+cache de Horizons, energía + métricas. Los `mocks/*.json` quedan como **fixtures de referencia** del
+contrato. Sitios libres (no semilla): si no hay cache, `/api/site` baja de Horizons en vivo on-miss
+(503 con CORS legible si no hay red).
 
 ## Archivos
 
