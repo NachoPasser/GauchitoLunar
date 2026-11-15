@@ -1,11 +1,13 @@
 // top3.js — comparación Top 3 (H5). Capa de datos (trae las métricas de todos los
 // sitios seleccionados: semilla ⭐ + chinchetas 📍, arma el array `entries` que
-// consume rank.js) + UI (modal con carrusel de 3 pasos: podio + tabla de ranking).
+// consume rank.js) + UI (consola tipo rack, ref. designReferences/top8.html: carrusel
+// de 3 pasos con podio + tabla de posiciones desplegable).
 
 import { getSites, getSite } from "./api.js";
 import { getState, windowDays, startDate } from "./state.js";
 import { rankBy } from "./rank.js";
 import { fmtPct, fmtEnergy, fmtHours } from "./format.js";
+import { siteIcon } from "./icons.js";
 
 // Cache de entries OK por (sitio × ventana × fecha). Reabrir el Top 3 no re-pide;
 // cambiar la ventana/fecha cambia la clave → refetch automático. Los errores NO se
@@ -23,7 +25,8 @@ async function fetchEntry(site, kind, win, date) {
     const entry = { ...base, ok: true,
       vis: m.earth_vis_fraction,            // 0..1, mayor mejor
       gap: m.longest_comms_gap_h,           // horas, menor mejor (desempate comms)
-      energy: m.energy_kwh_m2.horizontal }; // kWh/m² horizontal (decisión H5)
+      energy: m.energy_kwh_m2.horizontal,   // kWh/m² horizontal (decisión H5)
+      lit: m.lit_fraction };                // 0..1, fracción del tiempo con Sol
     cache.set(k, entry);
     return entry;
   } catch (e) {
@@ -43,129 +46,230 @@ export async function loadEntries({ win = windowDays(), date = startDate() } = {
   return Promise.all(all.map(([s, kind]) => fetchEntry(s, kind, win, date)));
 }
 
-// ── UI: modal + carrusel de 3 pasos (comms / energía / mixto). Cada paso: podio de
-// 3 tarjetas + tabla de ranking de todos los sitios; tarjetas y filas con "ver detalle".
-const STEPS = ["comms", "energy", "mixed"];
+
+// ── UI: consola rack con carrusel de 3 pasos (comms / energía / mixto). Cada paso:
+// podio de 3 tarjetas + tabla de posiciones desplegable; "ver detalle" en ambas.
+const STEPS = ["mixed", "energy", "comms"];   // orden del carrusel (01 = mixto)
+const W_COMMS = 0.5;   // peso de comms en el mixto (se muestra en la UI: honestidad §8)
+
+// Texto por criterio. `sub` explica cómo se ordena (lenguaje llano).
+const COPY = {
+  comms: { title: "Top 3 — Comunicación directa con la Tierra",
+    table: "ORDENADA POR TIEMPO CON LA TIERRA A LA VISTA",
+    sub: "Clasificación según el tiempo total de línea de vista directa con la Tierra durante la ventana de tiempo elegida." },
+  energy: { title: "Top 3 — Energía solar captada",
+    table: "ORDENADA POR ENERGÍA SOLAR",
+    sub: "Clasificación según la energía solar total que recibiría un panel solar apoyado " +
+      "en el suelo durante la ventana de tiempo elegida." },
+  mixed: { title: "Top 3 — Equilibrio entre comunicación y energía",
+    table: "ORDENADA POR ÍNDICE MIXTO",
+    sub: "Clasificación según el equilibrio entre energía solar total y tiempo de comunicación con la Tierra." },
+};
+
+const enc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+  .replace(/"/g, "&quot;");
+const pos = (n) => `#${String(n).padStart(2, "0")}`;
+const coords = (e) =>
+  `${Math.abs(e.lat).toFixed(2)}°S ${(((e.lon % 360) + 360) % 360).toFixed(2)}°E`;
+const kindTag = (k) => `<span class="t3-kind">${siteIcon(k, 13)}${
+  k === "pin" ? "TUYO" : "PREDEFINIDO"}</span>`;
+
+// "20 NOV – 20 DIC 2026 (30 DÍAS)" desde rangoFechas (UTC); sin rango → solo días.
+function windowLabel(win) {
+  const { desde, hasta } = getState().rangoFechas || {};
+  if (!desde || !hasta) return `VENTANA: ${win} DÍAS`;
+  const f = (d, o) => new Date(`${d}T00:00:00Z`).toLocaleDateString("es",
+    { timeZone: "UTC", day: "2-digit", month: "short", ...o })
+    .replace(/\./g, "").toUpperCase();
+  return `VENTANA: ${f(desde)} – ${f(hasta, { year: "numeric" })} (${win} DÍAS)`;
+}
+
+// Bloque de telemetría de la tarjeta según el criterio: KPI principal + medidor + 2
+// secundarios. Medidores: comms = % visible; energía/mixto = score normalizado 0–1.
+function telemetry(step, e, win) {
+  const visH = Math.round(e.vis * win * 24);
+  const energy = `${fmtEnergy(e.energy)} kWh/m²`;
+  const comms = `${fmtPct(e.vis)} (${visH} h)`;
+  const sec = (a, av, ac, b, bv, bc) => `<div class="t3-sec">
+      <div><span class="t3-sec__label">${a}</span><span class="t3-sec__val ${ac}">${av}</span></div>
+      <div><span class="t3-sec__label">${b}</span><span class="t3-sec__val ${bc}">${bv}</span></div>
+    </div>`;
+  const kpi = (eyebrow, val, cls, pill, pillCls, pct, meterCls = "") => `<div>
+      <span class="t3-eyebrow-sm">${eyebrow}</span>
+      <div class="t3-kpi"><span class="t3-kpi__val ${cls}">${val}</span>
+        ${pill ? `<span class="t3-pillbox ${pillCls}">${pill}</span>` : ""}</div>
+      <div class="t3-meter ${meterCls}"><div style="width:${Math.round(pct * 100)}%"></div></div>
+    </div>`;
+  if (step === "comms") {
+    return kpi(`Tiempo con la Tierra a la vista (de ${win * 24} h)`,
+      `${fmtPct(e.vis)} <small>(${visH} h)</small>`, "t3-earth",
+      "LÍNEA DE VISTA", "t3-pillbox--earth", e.vis) +
+      sec("Corte más largo", fmtHours(e.gap), "", "Energía solar", energy, "t3-sun");
+  }
+  if (step === "energy") {
+    return kpi("Energía captada (panel horizontal)",
+      `${fmtEnergy(e.energy)} <small>kWh/m²</small>`, "t3-sun",
+      `${fmtPct(e.lit)} CON SOL`, "t3-pillbox--sun", e.score.energy, "t3-meter--sun") +
+      sec("Promedio diario", `${(e.energy / win).toFixed(2)} kWh/m²`, "",
+        "Tierra a la vista", comms, "t3-earth");
+  }
+  return kpi("Índice mixto (comunicación + energía)",
+    `${Math.round(e.score.mixed * 100)} <small>/ 100</small>`, "t3-earth",
+    "", "", e.score.mixed) +
+    sec("Energía solar", energy, "t3-sun", "Tierra a la vista", comms, "t3-earth");
+}
+
+const detailAttrs = (e) =>
+  `data-lat="${e.lat}" data-lon="${e.lon}" data-name="${enc(e.name)}"`;
+
+function card(step, e, win, slide) {
+  const first = e.rank === 1;
+  return `<article class="t3-rank t3-rank--${e.rank} ${slide}">
+    <div>
+      <div class="t3-rank__top">
+        <span class="t3-badge ${first ? "t3-badge--1" : ""}">PUESTO ${pos(e.rank)}</span>
+        ${kindTag(e.kind)}
+      </div>
+      <h3 class="t3-name">${enc(e.name)}</h3>
+      <p class="t3-coords">${coords(e)}</p>
+    </div>
+    <div class="t3-tele">
+      ${telemetry(step, e, win)}
+      <button type="button" class="t3-inspect ${first ? "t3-inspect--primary" : ""}"
+        ${detailAttrs(e)}><span>Ver detalle</span><span>→</span></button>
+    </div>
+  </article>`;
+}
+
+function row(step, e, win) {
+  const td = (col, v) => `<td class="${step === col ? "t3-td-sorted" : "t3-td-mono"}">${v}</td>`;
+  return `<tr>
+    <td class="t3-td-pos ${e.rank <= 3 ? "is-top" : ""}">${pos(e.rank)}</td>
+    <td><div class="t3-td-site">${siteIcon(e.kind, 16)}<div>
+      <strong>${enc(e.name)}</strong><small>${coords(e)}</small></div></div></td>
+    ${td("mixed", `${Math.round(e.score.mixed * 100)} pts`)}
+    ${td("energy", fmtEnergy(e.energy))}
+    ${td("comms", `${fmtPct(e.vis)} (${Math.round(e.vis * win * 24)} h)`)}
+    <td style="text-align:right"><button type="button" class="t3-row-btn"
+      ${detailAttrs(e)}>DETALLE →</button></td>
+  </tr>`;
+}
+
+const noDataRow = (e) => `<tr><td class="t3-td-pos">—</td>
+  <td><div class="t3-td-site">${siteIcon(e.kind, 16)}<div>
+    <strong>${enc(e.name)}</strong><small>${coords(e)}</small></div></div></td>
+  <td class="t3-td-muted" colspan="4">sin datos (no se pudieron cargar sus efemérides)</td></tr>`;
 
 export function createTop3({ onDetail } = {}) {
   const $ = (id) => document.getElementById(id);
   const overlay = $("top3-overlay");
-  const content = $("top3-content");
-  let step = "comms", entries = null, loading = false, error = null;
+  const cards = $("top3-content");
+  const table = $("top3-table");
+  let step = STEPS[0], entries = null, loading = false, error = null, win = windowDays();
 
-  // Explica el criterio actual (honestidad §8: mostrar cómo se ordena / el peso).
-  const CAPTION = {
-    comms: "Ordenado por % de tiempo con la Tierra a la vista · desempate: menor corte continuo.",
-    energy: "Ordenado por energía solar captada (panel horizontal, kWh/m²).",
-    mixed: "Mitad comunicación, mitad energía (50/50), normalizado entre los sitios.",
-  };
-  const MEDAL = ["🥇", "🥈", "🥉"];
-  const enc = (s) => String(s).replace(/"/g, "&quot;");
-  const kindChip = (k) => (k === "pin"
-    ? `<span title="sitio tuyo">📍</span>` : `<span title="predefinido">⭐</span>`);
+  const msg = (text, isErr = false) =>
+    `<p class="t3-msg ${isErr ? "t3-msg--err" : ""}">${text}</p>`;
 
-  // Valor destacado de la tarjeta de podio según el criterio.
-  function headline(e) {
-    if (step === "comms") return [fmtPct(e.vis), `a la vista · corte ${fmtHours(e.gap)}`];
-    if (step === "energy") return [fmtEnergy(e.energy), "kWh/m² · panel horizontal"];
-    return [`${(e.score.mixed * 100).toFixed(0)}`, "score mixto / 100"];
+  // Encabezado, pills, barra de progreso y columna activa del paso actual.
+  function renderChrome(slide) {
+    const c = COPY[step], i = STEPS.indexOf(step);
+    $("top3-window").textContent = windowLabel(win);
+    $("top3-title").textContent = c.title;
+    $("top3-sub").textContent = c.sub;
+    overlay.querySelectorAll(".t3-pill").forEach((b) => {
+      const on = b.dataset.step === step;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-selected", String(on));
+    });
+    overlay.querySelectorAll(".t3-progress span").forEach((b, n) =>
+      b.classList.toggle("is-filled", n <= i));
+    overlay.querySelectorAll("th[data-col]").forEach((th) =>
+      th.classList.toggle("is-active", th.dataset.col === step));
+    const head = $("top3-head");
+    head.classList.remove("t3-slide-next", "t3-slide-prev");
+    if (slide) { void head.offsetWidth; head.classList.add(slide); }
   }
 
-  const detailBtn = (e, cls) => `<button class="${cls}" data-lat="${e.lat}" ` +
-    `data-lon="${e.lon}" data-name="${enc(e.name)}">ver detalle</button>`;
-
-  function card(e) {
-    const [big, sub] = headline(e);
-    const brand = e.rank === 1 ? "border-color:var(--brand)" : "";
-    const sun = step === "energy" ? " metric__value--sun" : "";
-    return `<div class="card" style="${brand};text-align:center">
-      <div class="text-2xl leading-none">${MEDAL[e.rank - 1]}</div>
-      <p class="font-semibold mt-1.5" style="color:var(--ink)">${kindChip(e.kind)} ${e.name}</p>
-      <p class="metric__value mt-2${sun}">${big}</p>
-      <p class="metric__sub">${sub}</p>
-      ${detailBtn(e, "btn btn--sm mt-3")}
-    </div>`;
-  }
-
-  function row(e) {
-    const top = e.rank <= 3;
-    const strong = (c) => (step === c ? "font-weight:600;color:var(--ink)" : "color:var(--ink-2)");
-    return `<tr style="${top ? "background:var(--surface-2)" : ""}">
-      <td class="px-2 py-1.5 mono" style="color:var(--ink-3)">${e.rank}</td>
-      <td class="px-2 py-1.5">${kindChip(e.kind)} ${e.name}</td>
-      <td class="px-2 py-1.5 mono text-right" style="${strong("comms")}">${fmtPct(e.vis)}</td>
-      <td class="px-2 py-1.5 mono text-right" style="${strong("energy")}">${fmtEnergy(e.energy)}</td>
-      <td class="px-2 py-1.5 mono text-right" style="${strong("mixed")}">${
-        (e.score.mixed * 100).toFixed(0)}</td>
-      <td class="px-2 py-1.5 text-right">${detailBtn(e, "btn btn--ghost btn--sm")}</td>
-    </tr>`;
-  }
-
-  function render() {
-    if (loading) { content.innerHTML = msg("Cargando métricas de los sitios…"); return; }
-    if (error) { content.innerHTML = msg(`No se pudo cargar: ${error}`, true); return; }
-    if (!entries) { content.innerHTML = ""; return; }
-    const { ranked, noData } = rankBy(entries, step);
-    if (!ranked.length) { content.innerHTML = msg("Ningún sitio con datos para rankear."); return; }
-    const podium = ranked.slice(0, 3).map(card).join("");
-    const ndRows = noData.map((e) =>
-      `<tr style="color:var(--ink-3)"><td class="px-2 py-1.5">–</td>
-        <td class="px-2 py-1.5">${kindChip(e.kind)} ${e.name}</td>
-        <td class="px-2 py-1.5 text-xs" colspan="4">sin datos</td></tr>`).join("");
-    content.innerHTML = `
-      <p class="text-xs" style="color:var(--ink-3)">${CAPTION[step]}</p>
-      <div class="grid grid-cols-3 gap-3 mt-3">${podium}</div>
-      <table class="w-full text-sm mt-5" style="border-collapse:collapse">
-        <thead><tr class="text-xs" style="color:var(--ink-3)">
-          <th class="px-2 py-1 font-medium text-left">#</th>
-          <th class="px-2 py-1 font-medium text-left">Sitio</th>
-          <th class="px-2 py-1 font-medium text-right">Visible</th>
-          <th class="px-2 py-1 font-medium text-right">kWh/m²</th>
-          <th class="px-2 py-1 font-medium text-right">Mixto</th>
-          <th class="px-2 py-1"></th>
-        </tr></thead>
-        <tbody>${ranked.map(row).join("")}${ndRows}</tbody>
-      </table>`;
-  }
-
-  function msg(text, isErr = false) {
-    return `<p class="text-sm py-6 text-center" style="color:${
-      isErr ? "var(--accent-red)" : "var(--ink-3)"}">${text}</p>`;
+  function render(slide = "") {
+    renderChrome(slide);
+    const tbody = $("top3-tbody");
+    // Sin datos (cargando / error / vacío): sin tabla ni botón para desplegarla.
+    const showToggle = (on) => { $("top3-toggle").parentElement.style.display = on ? "" : "none"; };
+    const empty = (html) => {
+      cards.innerHTML = html; tbody.innerHTML = ""; $("top3-count").textContent = "";
+      showToggle(false); setTable(false);
+    };
+    if (loading) return empty(msg("Cargando métricas de los sitios…"));
+    if (error) return empty(msg(`No se pudo cargar: ${enc(error)}`, true));
+    if (!entries) return empty("");
+    const { ranked, noData } = rankBy(entries, step, { wComms: W_COMMS });
+    if (!ranked.length) return empty(msg("Ningún sitio con datos para rankear."));
+    cards.innerHTML = ranked.slice(0, 3).map((e) => card(step, e, win, slide)).join("");
+    tbody.innerHTML = ranked.map((e) => row(step, e, win)).join("") +
+      noData.map(noDataRow).join("");
+    $("top3-count").textContent = `${entries.length} SITIOS EVALUADOS`;
+    showToggle(true);
   }
 
   async function load() {
+    win = windowDays();
     loading = true; error = null; render();
-    try { entries = await loadEntries(); }
+    try { entries = await loadEntries({ win }); }
     catch (e) { error = e.message; }
     finally { loading = false; render(); }
   }
 
-  function setStep(s) {
-    step = s;
-    document.querySelectorAll("#top3-tabs .seg__btn").forEach((b) =>
-      b.classList.toggle("is-active", b.dataset.step === s));
-    render();
+  function goTo(next) {
+    if (next === step) return;
+    const slide = STEPS.indexOf(next) < STEPS.indexOf(step) ? "t3-slide-prev" : "t3-slide-next";
+    step = next;
+    render(slide);
+  }
+  // Carrusel circular (‹ › y flechas del teclado).
+  const shift = (d) => {
+    const n = STEPS.length, i = STEPS.indexOf(step);
+    const next = STEPS[(i + d + n) % n];
+    step = next;
+    render(d < 0 ? "t3-slide-prev" : "t3-slide-next");
+  };
+
+  function setTable(open) {
+    table.classList.toggle("is-open", open);
+    $("top3-toggle").setAttribute("aria-expanded", String(open));
+    $("top3-toggle-text").textContent = open
+      ? "OCULTAR TABLA DE POSICIONES" : "VER TABLA DE POSICIONES COMPLETA";
+    $("top3-toggle-arrow").textContent = open ? "↑" : "↓";
+    if (open) table.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
+  const isOpen = () => overlay.classList.contains("is-open");
   function open() { overlay.classList.add("is-open"); load(); }
-  function close() { overlay.classList.remove("is-open"); }
+  function close() { overlay.classList.remove("is-open"); setTable(false); }
 
   $("top3-tabs").addEventListener("click", (e) => {
-    const b = e.target.closest(".seg__btn");
-    if (b) setStep(b.dataset.step);
+    const b = e.target.closest(".t3-pill");
+    if (b) goTo(b.dataset.step);
   });
+  $("top3-prev").addEventListener("click", () => shift(-1));
+  $("top3-next").addEventListener("click", () => shift(1));
+  $("top3-toggle").addEventListener("click", () =>
+    setTable(!table.classList.contains("is-open")));
   $("top3-close").addEventListener("click", close);
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
-  // "ver detalle" (tarjeta o fila): cierra el Top 3 y abre la card de detalle del sitio.
-  content.addEventListener("click", (e) => {
+  // Click en el scrim (fuera de la consola) cierra; "ver detalle" (tarjeta o fila)
+  // cierra el Top 3 y abre el skyline del sitio sobre el mapa.
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) return close();
     const b = e.target.closest("[data-lat]");
     if (!b) return;
     close();
     onDetail?.(Number(b.dataset.lat), Number(b.dataset.lon), b.dataset.name);
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && overlay.classList.contains("is-open")) close();
+    if (!isOpen()) return;
+    if (e.key === "Escape") close();
+    else if (e.key === "ArrowLeft") shift(-1);
+    else if (e.key === "ArrowRight") shift(1);
   });
 
-  return { open, close, onDetail };   // onDetail se usa en el paso 4 (tarjetas/filas)
+  return { open, close };
 }

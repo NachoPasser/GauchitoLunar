@@ -7,6 +7,7 @@ import { getSites, getSite, mapUrl, getMapMeta } from "./api.js";
 import { createProjection } from "./proj.js";
 import { createDetailModal } from "./detailModal.js";
 import { createTop3 } from "./top3.js";
+import { siteIcon } from "./icons.js";
 import { windowDays, startDate, addSitio, removeSitio, setSitioActivo, getState }
   from "./state.js";
 
@@ -50,7 +51,10 @@ const modal = createDetailModal({
     }
   },
 });
-const top3 = createTop3({ onDetail: (lat, lon, name) => modal.open(lat, lon, name) });
+// "Ver detalle" desde el Top 3: misma selección que clickear el marcador en el mapa
+// (resalta el marcador, ancla cuña/flechas y abre el skyline).
+const top3 = createTop3({ onDetail: (lat, lon, name) => selectSite(lat, lon, name) });
+$("top3-btn").addEventListener("click", () => top3.open());
 
 function setStatus(msg) { $("map-status").textContent = msg || ""; }
 
@@ -374,20 +378,19 @@ function drawCone(lat, lon, win) {
   $("map-chrome").appendChild(g);
 }
 
-// Marcadores SVG (no emoji): estrella = predefinido, chincheta = del usuario.
-function markerSVG(kind) {
-  if (kind === "pin") {
-    return `<svg width="22" height="28" viewBox="0 0 22 28">` +
-      `<path d="M11 27C11 27 20 16 20 10a9 9 0 10-18 0c0 6 9 17 9 17z" ` +
-      `fill="#E03C31" stroke="#fff" stroke-width="2"/>` +
-      `<circle cx="11" cy="10" r="3.2" fill="#fff"/></svg>`;
-  }
-  return `<svg width="24" height="24" viewBox="0 0 24 24">` +
-    `<path d="M12 2l2.6 6.3 6.8.5-5.2 4.4 1.7 6.6L12 16.9 6.1 20.3l1.7-6.6L2.6 9.3l6.8-.5z" ` +
-    `fill="#0032a0" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
-}
-
 let activeEl = null;
+const markers = new Map();     // "lat,lon" → elemento del marcador (lookup desde el Top 3)
+const markerKey = (lat, lon) => `${Number(lat).toFixed(4)},${Number(lon).toFixed(4)}`;
+
+// Selecciona un sitio: marcador activo + sitio activo (cuña/flechas) + abre el detalle.
+// Si no se pasa el marcador, se busca por lat/lon (caso Top 3).
+function selectSite(lat, lon, name, m = markers.get(markerKey(lat, lon))) {
+  setActive(m || null);
+  activeSite = { lat, lon };
+  setSitioActivo({ lat, lon, name });
+  const isPin = m?.dataset.kind === "pin";
+  modal.open(lat, lon, name, isPin ? { onDelete: () => deletePin(lat, lon, m) } : {});
+}
 
 // Resalta el marcador activo (el nombre del sitio ya lo muestra la card de detalle).
 function setActive(el) {
@@ -402,8 +405,9 @@ function addMarker(lon, lat, name, kind) {
   m.className = "marker";
   m.style.left = `${u * 100}%`;
   m.style.top = `${v * 100}%`;
-  m.innerHTML = `<span class="marker__ring"></span>${markerSVG(kind)}`;
+  m.innerHTML = `<span class="marker__ring"></span>${siteIcon(kind, kind === "pin" ? 28 : 24)}`;
   m.title = `${name} · ${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
+  m.dataset.kind = kind;
   m.addEventListener("click", (e) => {
     e.stopPropagation();
     if (isDragging || justDragged || modal.isLoading()) return;
@@ -414,12 +418,9 @@ function addMarker(lon, lat, name, kind) {
       setActive(null);
       return;
     }
-    setActive(m);
-    activeSite = { lat, lon };
-    setSitioActivo({ lat, lon, name });
-    modal.open(lat, lon, name,
-      kind === "pin" ? { onDelete: () => deletePin(lat, lon, m) } : {});
+    selectSite(lat, lon, name, m);
   });
+  markers.set(markerKey(lat, lon), m);
   layer.appendChild(m);
   return m;
 }
@@ -427,6 +428,7 @@ function addMarker(lon, lat, name, kind) {
 // Borra una chincheta propia: del estado, del mapa, y cierra el detalle.
 function deletePin(lat, lon, m) {
   removeSitio(lat, lon);
+  markers.delete(markerKey(lat, lon));
   if (m) m.remove();
   if (activeEl === m) setActive(null);
   activeSite = null;
@@ -445,11 +447,7 @@ function onFreeClick(e) {
   const [lon, lat] = proj.normToLonlat(u, v);
   const name = `${Math.abs(lat).toFixed(1)}°S ${Math.round(((lon % 360) + 360) % 360)}°E`;
   addSitio({ name, lat, lon, kind: "pin" });
-  const m = addMarker(lon, lat, name, "pin");
-  setActive(m);
-  activeSite = { lat, lon };
-  setSitioActivo({ lat, lon, name });
-  modal.open(lat, lon, name, { onDelete: () => deletePin(lat, lon, m) });
+  selectSite(lat, lon, name, addMarker(lon, lat, name, "pin"));
   setStatus("");
 }
 
