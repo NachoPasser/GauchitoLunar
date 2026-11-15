@@ -253,7 +253,7 @@ function markerSVG(kind) {
   if (kind === "pin") {
     return `<svg width="22" height="28" viewBox="0 0 22 28">` +
       `<path d="M11 27C11 27 20 16 20 10a9 9 0 10-18 0c0 6 9 17 9 17z" ` +
-      `fill="#fc3d21" stroke="#fff" stroke-width="2"/>` +
+      `fill="#E03C31" stroke="#fff" stroke-width="2"/>` +
       `<circle cx="11" cy="10" r="3.2" fill="#fff"/></svg>`;
   }
   return `<svg width="24" height="24" viewBox="0 0 24 24">` +

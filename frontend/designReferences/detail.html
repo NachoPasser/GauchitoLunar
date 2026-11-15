@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telemetría de Sitio // Marco NASA #0032A0</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="detail.css" />
+</head>
+<body class="flex items-center justify-center p-4 sm:p-10 bg-black">
+
+  <!-- BLOQUE PRINCIPAL CON BORDE NASA #0032A0 -->
+  <div id="nasa-framed-block" class="relative w-full max-w-3xl bg-[#0032A0] p-[18px] sm:p-[24px] rounded-2xl shadow-[0_18px_45px_rgba(0,50,160,0.28)] overflow-visible">
+    
+    <!-- CAPA SVG DEL MARCO: puntitos blancos, vector orbital rojo #FC3D21 y estrellas sobresalientes -->
+    <svg
+      id="nasa-border-stars"
+      class="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-20"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    ></svg>
+
+    <!-- INTERIOR BLANCO PURO (#FFFFFF) -->
+    <div class="relative z-10 w-full bg-white rounded-xl p-5 sm:p-7 flex flex-col gap-4 overflow-hidden">
+
+      <!-- =========================================================
+           1. ENCABEZADO DE IDENTIFICACIÓN Y VEREDICTO
+           ========================================================= -->
+      <header class="border-b border-slate-200 pb-3.5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <!-- Selector rápido de puntos de ejemplo -->
+          <div class="flex items-center gap-1.5" role="group" aria-label="Puntos candidatos de ejemplo">
+            <span class="font-['JetBrains_Mono'] text-[10px] font-semibold uppercase text-slate-400 mr-1">Sitio:</span>
+            <button type="button" data-site="shackleton" class="site-pill cursor-pointer px-2.5 py-1 rounded font-['JetBrains_Mono'] text-[10px] font-semibold transition-colors bg-[#0032A0] text-white">
+              A-04 SHACKLETON
+            </button>
+            <button type="button" data-site="malapert" class="site-pill cursor-pointer px-2.5 py-1 rounded font-['JetBrains_Mono'] text-[10px] font-semibold transition-colors bg-slate-100 text-slate-600 hover:text-[#0032A0]">
+              B-11 MALAPERT
+            </button>
+            <button type="button" data-site="cabeus" class="site-pill cursor-pointer px-2.5 py-1 rounded font-['JetBrains_Mono'] text-[10px] font-semibold transition-colors bg-slate-100 text-slate-600 hover:text-[#0032A0]">
+              C-02 CABEUS
+            </button>
+          </div>
+
+          <!-- Semáforo Global de Misión -->
+          <div id="mission-verdict-badge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider">
+            <span id="verdict-dot" class="w-2 h-2 rounded-full"></span>
+            <span id="verdict-text">VIABLE // ÓPTIMO</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mt-1">
+          <div>
+            <h1 id="site-title" class="text-xl sm:text-2xl font-bold text-slate-950 tracking-tight">
+              Borde Cráter Shackleton
+            </h1>
+            <p id="site-coords" class="font-['JetBrains_Mono'] text-[11px] text-slate-500 mt-0.5">
+              89.54° S, 129.78° E &nbsp;//&nbsp; ALT: +1,840 m &nbsp;//&nbsp; SECTOR POLAR SUR
+            </p>
+          </div>
+
+          <!-- Timestamp activo -->
+          <div class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-left sm:text-right shrink-0">
+            <span class="block font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+              Instante evaluado
+            </span>
+            <span id="current-timestamp" class="font-['JetBrains_Mono'] text-xs font-bold text-[#0032A0]">
+              20 NOV 2026 — 12:00 UTC
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <!-- =========================================================
+           2. LOS 2 PILARES DE LA MISIÓN (ENERGÍA Y COMUNICACIÓN)
+           ========================================================= -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        
+        <!-- MÓDULO 01: ENERGÍA SOLAR -->
+        <section class="rounded-xl border border-[#0032A0]/25 bg-[#0032A0]/[0.02] p-4 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-['JetBrains_Mono'] text-[10px] font-bold text-[#0032A0] uppercase tracking-wider">
+                01 // ENERGÍA SOLAR
+              </span>
+              <span id="solar-status-tag" class="font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                SOL DIRECTO
+              </span>
+            </div>
+
+            <!-- Valor principal + barra -->
+            <div class="mt-3 flex items-baseline justify-between">
+              <div>
+                <span id="solar-watts" class="font-['JetBrains_Mono'] text-2xl font-bold text-slate-950">1,180</span>
+                <span class="font-['JetBrains_Mono'] text-xs text-slate-500">W/m²</span>
+              </div>
+              <span id="solar-efficiency" class="font-['JetBrains_Mono'] text-xs font-semibold text-[#0032A0]">
+                86% CAP.
+              </span>
+            </div>
+
+            <div class="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1.5">
+              <div id="solar-bar" class="h-full bg-[#0032A0] transition-all duration-300" style="width: 86%"></div>
+            </div>
+          </div>
+
+          <!-- Detalles técnicos solares -->
+          <dl class="mt-3.5 pt-2.5 border-t border-slate-200/80 grid grid-cols-2 gap-2 font-['JetBrains_Mono'] text-[11px]">
+            <div>
+              <dt class="text-[9px] uppercase text-slate-400">Elevación / Azimut</dt>
+              <dd id="solar-angles" class="font-semibold text-slate-800 mt-0.5">+0.9° / 142° SE</dd>
+            </div>
+            <div>
+              <dt class="text-[9px] uppercase text-slate-400">Próximo cambio</dt>
+              <dd id="solar-next-change" class="font-semibold text-slate-800 mt-0.5">Sombra en 4d 11h</dd>
+            </div>
+          </dl>
+        </section>
+
+        <!-- MÓDULO 02: VISIBILIDAD DE LA TIERRA -->
+        <section class="rounded-xl border border-[#0032A0]/25 bg-[#0032A0]/[0.02] p-4 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-['JetBrains_Mono'] text-[10px] font-bold text-[#0032A0] uppercase tracking-wider">
+                02 // ENLACE TIERRA
+              </span>
+              <span id="earth-status-tag" class="font-['JetBrains_Mono'] text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                ENLACE DIRECTO
+              </span>
+            </div>
+
+            <!-- Valor principal + barra -->
+            <div class="mt-3 flex items-baseline justify-between">
+              <div>
+                <span id="earth-elevation" class="font-['JetBrains_Mono'] text-2xl font-bold text-slate-950">+4.2°</span>
+                <span class="font-['JetBrains_Mono'] text-xs text-slate-500">horizonte</span>
+              </div>
+              <span id="earth-signal" class="font-['JetBrains_Mono'] text-xs font-semibold text-[#0032A0]">
+                LOS ACTIVO
+              </span>
+            </div>
+
+            <div class="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1.5">
+              <div id="earth-bar" class="h-full bg-[#0032A0] transition-all duration-300" style="width: 78%"></div>
+            </div>
+          </div>
+
+          <!-- Detalles técnicos de comunicación -->
+          <dl class="mt-3.5 pt-2.5 border-t border-slate-200/80 grid grid-cols-2 gap-2 font-['JetBrains_Mono'] text-[11px]">
+            <div>
+              <dt class="text-[9px] uppercase text-slate-400">Azimut / Latencia</dt>
+              <dd id="earth-angles" class="font-semibold text-slate-800 mt-0.5">014° NNE / 1.28s</dd>
+            </div>
+            <div>
+              <dt class="text-[9px] uppercase text-slate-400">Ventana restante</dt>
+              <dd id="earth-next-change" class="font-semibold text-slate-800 mt-0.5">6d 18h activos</dd>
+            </div>
+          </dl>
+        </section>
+
+      </div>
+
+      <!-- =========================================================
+           3. CONDICIONES FÍSICAS DEL TERRENO (3 MINI-MÉTRICAS)
+           ========================================================= -->
+      <section class="grid grid-cols-3 gap-2.5" aria-label="Condiciones físicas del terreno">
+        <div class="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
+          <span class="block font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+            Pendiente (Slope)
+          </span>
+          <div class="mt-0.5 flex items-baseline justify-between gap-1">
+            <span id="terrain-slope" class="font-['JetBrains_Mono'] text-sm sm:text-base font-bold text-slate-900">6.4°</span>
+            <span id="terrain-slope-note" class="font-['JetBrains_Mono'] text-[9px] text-emerald-700 font-semibold">SEGURA</span>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
+          <span class="block font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+            Temp. Superficie
+          </span>
+          <div class="mt-0.5 flex items-baseline justify-between gap-1">
+            <span id="terrain-temp" class="font-['JetBrains_Mono'] text-sm sm:text-base font-bold text-slate-900">-42 °C</span>
+            <span id="terrain-temp-note" class="font-['JetBrains_Mono'] text-[9px] text-slate-500">NOMINAL</span>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
+          <span class="block font-['JetBrains_Mono'] text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+            Dist. a Hielo (PSR)
+          </span>
+          <div class="mt-0.5 flex items-baseline justify-between gap-1">
+            <span id="terrain-psr" class="font-['JetBrains_Mono'] text-sm sm:text-base font-bold text-slate-900">380 m</span>
+            <span class="font-['JetBrains_Mono'] text-[9px] text-[#0032A0] font-semibold">ACCESIBLE</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- =========================================================
+           4. LÍNEA DE TIEMPO DE 30 DÍAS + CONTROL TEMPORAL
+           ========================================================= -->
+      <section class="rounded-xl border border-slate-200 p-3.5 bg-white">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <span class="font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider text-[#0032A0]">
+            Simulación de ciclo (30 días // 20 Nov – 20 Dic 2026)
+          </span>
+
+          <!-- Botones paso a paso + Slider -->
+          <div class="flex items-center gap-1.5">
+            <button type="button" id="step-back-btn" class="cursor-pointer font-['JetBrains_Mono'] text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-300 hover:border-[#0032A0] text-slate-700 hover:text-[#0032A0] transition-colors">
+              -6h
+            </button>
+            <span id="day-counter-label" class="font-['JetBrains_Mono'] text-[10px] font-bold text-slate-900 px-1.5">
+              DÍA 05 / 30
+            </span>
+            <button type="button" id="step-fwd-btn" class="cursor-pointer font-['JetBrains_Mono'] text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-300 hover:border-[#0032A0] text-slate-700 hover:text-[#0032A0] transition-colors">
+              +6h
+            </button>
+          </div>
+        </div>
+
+        <!-- Gráfico de Pistas Paralelas + Aguja Roja -->
+        <div class="relative select-none py-1">
+          <!-- Aguja vertical roja #FC3D21 -->
+          <div id="timeline-needle" class="absolute top-0 bottom-0 w-[2px] bg-[#FC3D21] z-10 pointer-events-none transition-all duration-75" style="left: 16.6%;">
+            <div class="w-2.5 h-2.5 rounded-full bg-[#FC3D21] border-2 border-white shadow -translate-x-[4px] -translate-y-1"></div>
+          </div>
+
+          <!-- Pista 1: Luz Solar -->
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-12 font-['JetBrains_Mono'] text-[9px] font-bold uppercase text-slate-500 shrink-0">SOL</span>
+            <div id="solar-timeline-track" class="flex-1 h-3 bg-slate-100 rounded overflow-hidden flex gap-[1px]"></div>
+          </div>
+
+          <!-- Pista 2: Visibilidad Tierra -->
+          <div class="flex items-center gap-2">
+            <span class="w-12 font-['JetBrains_Mono'] text-[9px] font-bold uppercase text-slate-500 shrink-0">TIERRA</span>
+            <div id="earth-timeline-track" class="flex-1 h-3 bg-slate-100 rounded overflow-hidden flex gap-[1px]"></div>
+          </div>
+
+          <!-- Slider invisible superpuesto para arrastrar cómodamente -->
+          <input
+            id="mission-time-slider"
+            type="range"
+            min="0"
+            max="720"
+            step="6"
+            value="120"
+            aria-label="Desplazar hora de la misión"
+            class="nasa-range-slider w-full mt-2 cursor-pointer"
+          />
+        </div>
+
+        <div class="flex items-center justify-between font-['JetBrains_Mono'] text-[9px] text-slate-400 mt-0.5">
+          <span>20 NOV (0h)</span>
+          <span class="flex items-center gap-3">
+            <span class="inline-flex items-center gap-1"><i class="w-2 h-2 rounded-xs bg-amber-400 inline-block"></i> Luz solar</span>
+            <span class="inline-flex items-center gap-1"><i class="w-2 h-2 rounded-xs bg-[#0032A0] inline-block"></i> Enlace Tierra</span>
+          </span>
+          <span>20 DIC (720h)</span>
+        </div>
+      </section>
+
+      <!-- =========================================================
+           PIE DE ACCIONES
+           ========================================================= -->
+      <footer class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          id="back-to-map-btn"
+          class="font-['JetBrains_Mono'] text-xs font-semibold text-slate-500 hover:text-[#0032A0] px-2 py-2 transition-colors cursor-pointer"
+        >
+          ← VOLVER AL MAPA
+        </button>
+
+        <div class="flex items-center gap-2">
+          <span id="save-toast" class="hidden font-['JetBrains_Mono'] text-[10px] font-semibold text-emerald-700">
+            ✓ GUARDADO EN COMPARATIVA
+          </span>
+          <button
+            type="button"
+            id="save-site-btn"
+            class="group bg-[#0032A0] hover:bg-[#FC3D21] text-white font-['JetBrains_Mono'] text-xs font-semibold tracking-wider uppercase px-4 py-2.5 rounded-lg transition-colors duration-150 flex items-center gap-2 cursor-pointer"
+          >
+            <span>+ GUARDAR EN COMPARATIVA</span>
+          </button>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
+  <script src="detail.js"></script>
+</body>
+</html>

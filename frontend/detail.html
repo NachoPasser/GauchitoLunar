@@ -20,44 +20,61 @@
 
   <!-- COLUMNA DE DETALLE (reusable por el mapa, mismos ids) -->
   <div id="detail-overlay" class="detail-col">
-    <aside id="detail-panel" class="detail-col__inner panel" role="region"
+    <aside id="detail-panel" class="detail-col__inner artemis-chassis relative rounded-[22px] p-3 sm:p-[15px] overflow-visible transition-transform duration-300" role="region"
            aria-labelledby="site-name">
+      <!-- CAPA SVG DEL LANDER: Antena, panel solar, toberas RCS y patas articuladas -->
+      <svg id="nasa-lander-frame" class="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-20"
+           xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
 
-      <!-- Encabezado -->
-      <div class="panel__head">
-        <div>
-          <h2 id="site-name" class="panel__title text-lg">—</h2>
-          <p id="site-coords" class="mono text-xs" style="color:var(--ink-3)"></p>
-        </div>
-        <button id="close-btn" class="btn btn--ghost btn--sm" aria-label="Cerrar"
-                style="font-size:1.1rem;padding:.3rem .55rem">×</button>
-      </div>
-
-      <div class="panel__body space-y-4">
-
-        <!-- Controles -->
-        <div class="flex flex-wrap items-center gap-3">
-          <label class="text-xs flex items-center gap-2" style="color:var(--ink-2)">Sitio
-            <select id="site-select" class="field"></select>
-          </label>
-          <button id="fullsky-btn" class="btn btn--sm" aria-pressed="false">Cielo completo (0–90°)</button>
-          <span id="status" class="text-xs" style="color:var(--ink-3)"></span>
-        </div>
-
-        <!-- Skyline -->
-        <div>
-          <svg id="skyline" class="w-full" role="img"
-               aria-label="Skyline: elevación del Sol y la Tierra sobre el horizonte"></svg>
-          <div class="mt-2">
-            <input id="time-slider" type="range" min="0" max="0" value="0"
-                   class="field-range" aria-label="Instante dentro de la ventana" />
-            <p id="time-label" class="mono text-xs mt-1" style="color:var(--ink-2)"></p>
+      <!-- INTERIOR BLANCO (estilo z14) -->
+      <div class="panel detail-panel__card relative z-10 w-full flex flex-col overflow-hidden">
+        <!-- Encabezado: nombre + coords | Escala real + cerrar -->
+        <header class="panel__head detail-head">
+          <div class="min-w-0">
+            <h2 id="site-name" class="detail-head__title">—</h2>
+            <p id="site-coords" class="mono detail-head__coords"></p>
           </div>
-        </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button id="fullsky-btn" type="button" class="toggle-pill" aria-pressed="false"
+                    title="Normalmente agrandamos las montañas para que se vean bien. Activalo para verlas en su tamaño real, con el cielo completo.">
+              <span class="toggle-pill__switch" aria-hidden="true"></span>Escala real
+            </button>
+            <button id="close-btn" type="button" class="icon-btn" aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </header>
 
-        <!-- Métricas (panel.js) y cartuchos (panel.js) -->
-        <div id="metrics"></div>
-        <div id="cartuchos"></div>
+        <div class="panel__body space-y-4">
+          <!-- Controles del harness -->
+          <div class="flex flex-wrap items-center gap-3">
+            <label class="text-xs flex items-center gap-2" style="color:var(--ink-2)">Sitio
+              <select id="site-select" class="field"></select>
+            </label>
+            <span id="status" class="text-xs" style="color:var(--ink-3)"></span>
+          </div>
+
+          <!-- Skyline -->
+          <div>
+            <svg id="skyline" class="w-full" role="img"
+                 aria-label="Skyline: elevación del Sol y la Tierra sobre el horizonte"></svg>
+            <div class="mt-2">
+              <input id="time-slider" type="range" min="0" max="0" value="0"
+                     class="field-range" aria-label="Instante dentro de la ventana" />
+              <div class="time-row mono">
+                <span id="time-label" class="time-row__stamp"></span>
+                <span id="day-badge" class="time-row__day"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Métricas (panel.js) y cartuchos (panel.js) -->
+          <div id="metrics"></div>
+          <div id="cartuchos"></div>
+        </div>
       </div>
     </aside>
   </div>

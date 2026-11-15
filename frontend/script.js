@@ -91,8 +91,8 @@ function showFeedback(title, detailHTML, isError = false) {
   feedbackBox.classList.remove('hidden');
 
   if (isError) {
-    feedbackBox.className = 'mt-3 rounded-lg border border-[#FC3D21]/50 bg-[#FC3D21]/[0.06] px-3 py-2 text-xs';
-    feedbackTitle.className = 'font-["JetBrains_Mono"] font-semibold text-[#FC3D21] uppercase tracking-wide text-[10px]';
+    feedbackBox.className = 'mt-3 rounded-lg border border-[#E03C31]/50 bg-[#E03C31]/[0.06] px-3 py-2 text-xs';
+    feedbackTitle.className = 'font-["JetBrains_Mono"] font-semibold text-[#E03C31] uppercase tracking-wide text-[10px]';
   } else {
     feedbackBox.className = 'mt-3 rounded-lg border border-[#0032A0]/30 bg-[#0032A0]/[0.04] px-3 py-2 text-xs';
     feedbackTitle.className = 'font-["JetBrains_Mono"] font-semibold text-[#0032A0] uppercase tracking-wide text-[10px]';
@@ -149,7 +149,7 @@ function updateDurationDisplay() {
 
   if (diffDays < 0 || diffDays > MAX_MISSION_DAYS) {
     durationBadge.textContent = `EXCEDE LÍMITE (${diffDays} DÍAS)`;
-    durationBadge.className = 'font-["JetBrains_Mono"] text-[10px] font-bold uppercase tracking-wider text-[#FC3D21] bg-[#FC3D21]/10 px-2 py-0.5 rounded';
+    durationBadge.className = 'font-["JetBrains_Mono"] text-[10px] font-bold uppercase tracking-wider text-[#E03C31] bg-[#E03C31]/10 px-2 py-0.5 rounded';
   } else {
     durationBadge.textContent = `DURACIÓN: ${diffDays} / ${MAX_MISSION_DAYS} DÍAS`;
     durationBadge.className = 'font-["JetBrains_Mono"] text-[10px] font-bold uppercase tracking-wider text-[#0032A0] bg-[#0032A0]/10 px-2 py-0.5 rounded';
@@ -349,7 +349,7 @@ function renderNasaBorderDetails() {
   const redOrbitLine = document.createElementNS(ns, 'path');
   redOrbitLine.setAttribute('d', `M ${vStartX} ${vStartY} Q 18 ${h - 16}, ${vEndX} ${vEndY}`);
   redOrbitLine.setAttribute('fill', 'none');
-  redOrbitLine.setAttribute('stroke', '#FC3D21');
+  redOrbitLine.setAttribute('stroke', '#E03C31');
   redOrbitLine.setAttribute('stroke-width', '2.75');
   redOrbitLine.setAttribute('stroke-linecap', 'round');
   vectorGroup.appendChild(redOrbitLine);
@@ -359,7 +359,7 @@ function renderNasaBorderDetails() {
     'points',
     `${vStartX - 4},${vStartY - 3} ${vStartX + 11},${vStartY + 2} ${vStartX + 4},${vStartY + 5} ${vStartX + 3},${vStartY + 12}`
   );
-  chevron.setAttribute('fill', '#FC3D21');
+  chevron.setAttribute('fill', '#E03C31');
   chevron.setAttribute('stroke', '#FFFFFF');
   chevron.setAttribute('stroke-width', '0.8');
   chevron.setAttribute('stroke-linejoin', 'miter');
