@@ -136,7 +136,10 @@ Regla: primero que el **skyline se entienda solo**; no agregar features si la ba
   §2.3): hecho.** El skyline tiene una ventana de azimut (fucsia) arrastrable con agarradera de
   ojo + flechitas; el mapa dibuja una cuña tipo linterna (degradé radial) en el sitio activo que
   refleja esa ventana en vivo, con marco local Norte/Este derivado de la proyección (validado:
-  N⊥E, N radial afuera, E horario). Falta: resto de H6 (Monte Carlo, eclipses, modo guiado, export).
+  N⊥E, N radial afuera, E horario). Las **flechas Sol/Tierra** del mapa se sincronizan con el slider
+  de tiempo y salen del **sitio activo** (mismo vértice que el cono, no el polo): el astro se renderiza
+  donde el rayo del azimut cruza un anillo fijo del margen. Falta: resto de H6 (Monte Carlo, eclipses,
+  modo guiado, export).
 - Lo que contradiga la arquitectura del SPEC se adapta o se descarta.
 
 ## Honestidad (para no prometer de más)

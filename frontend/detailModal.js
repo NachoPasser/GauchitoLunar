@@ -7,7 +7,7 @@ import { createSkyline } from "./skyline.js";
 import { renderMetrics, renderCartuchos, instantLine } from "./panel.js";
 
 export function createDetailModal({ windowDays = 30, date = null,
-                                    onAzimuthWindow = null } = {}) {
+                                    onAzimuthWindow = null, onInstant = null } = {}) {
   const $ = (id) => document.getElementById(id);
   const sky = createSkyline($("skyline"), { onWindowChange: onAzimuthWindow });
   let fullSky = false;
@@ -27,6 +27,10 @@ export function createDetailModal({ windowDays = 30, date = null,
     sky.draw();
     if (updateMetrics) updateMetrics(i);
     $("time-label").innerHTML = instantLine(data, i);
+    if (onInstant) {
+      const s = data.sun_track[i], e = data.earth_track[i];
+      onInstant(s.az, e.az, s.t.slice(0, 16).replace("T", " "));
+    }
     const needle = $("cartucho-needle");
     if (needle) {
       const max = Number($("time-slider").max) || 1;

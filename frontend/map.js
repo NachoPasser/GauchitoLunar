@@ -20,6 +20,12 @@ const modal = createDetailModal({
   windowDays: windowDays(), date: startDate(),
   // Sincronización por azimut: la ventana del skyline mueve la cuña del mapa en vivo.
   onAzimuthWindow: (win) => { if (activeSite) drawCone(activeSite.lat, activeSite.lon, win); },
+  // El slider mueve las flechas Sol/Tierra al azimut del instante (mismo marco local).
+  onInstant: (sunAz, earthAz, tLabel) => {
+    if (activeSite) {
+      drawDirArrows(sunAz, earthAz, tLabel, localFrame(activeSite.lat, activeSite.lon));
+    }
+  },
 });
 const top3 = createTop3({ onDetail: (lat, lon, name) => modal.open(lat, lon, name) });
 
@@ -126,35 +132,65 @@ function drawScaleBar() {
 // del disco de luna (radio 400). Una bearing A (azimut 0=N horario) mapea a dirección
 // de pantalla (sinA, -cosA) desde el polo. Son la dirección en UN instante (inicio de
 // ventana), rotulado para honestidad. Dibuja en la capa exterior (sobre fondo claro).
-function drawDirArrows(sunAz, earthAz, tLabel) {
-  const g = $("map-chrome-outer"), C = 500, rIn = 414, rOut = 464;
+function drawDirArrows(sunAz, earthAz, tLabel, frame) {
+  const g = $("map-chrome-outer"), C = 500, R = 450;   // órbita fija, centrada en el polo
+  const old = $("map-arrows");
+  if (old) old.remove();                     // redibujo por tick: reemplaza el grupo
+  const grp = svg("g", { id: "map-arrows" });
+  const { nx, ny, ex, ey } = frame;
+  // Sitio activo en coordenadas de stage (el disco ocupa el 80% central → inset 10%).
+  const ox = 100 + frame.P[0] * 800, oy = 100 + frame.P[1] * 800;
+  const fx = ox - C, fy = oy - C;            // sitio relativo al polo
+  const START = 26;
   const arrow = (azDeg, color, label) => {
-    const a = azDeg * Math.PI / 180, dx = Math.sin(a), dy = -Math.cos(a);
-    const x1 = C + dx * rIn, y1 = C + dy * rIn;
-    const x2 = C + dx * rOut, y2 = C + dy * rOut;
-    g.appendChild(svg("line", { x1, y1, x2, y2, stroke: color,
-      "stroke-width": 7, "stroke-linecap": "round" }));
+    const a = (azDeg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
+    const dx = c * nx + s * ex, dy = c * ny + s * ey;   // azimut DESDE EL SITIO → dir unitaria
+    // Astro = donde el rayo desde el sitio cruza el anillo fijo (raíz hacia adelante).
+    const fd = fx * dx + fy * dy, disc = fd * fd - (fx * fx + fy * fy - R * R);
+    const t = disc >= 0 ? -fd + Math.sqrt(disc) : R;
+    const bx = ox + dx * START, by = oy + dy * START;   // arranca despegado del marcador
+    const tx = ox + dx * t, ty = oy + dy * t;           // punta = astro sobre la órbita
+    const line = (w, col, op) => svg("line", { x1: bx, y1: by, x2: tx, y2: ty,
+      stroke: col, "stroke-width": w, "stroke-linecap": "round", "stroke-opacity": op });
+    grp.appendChild(line(9, "#0b1124", 0.5));           // halo oscuro (legible sobre terreno)
+    grp.appendChild(line(6, color, 1));
     // Punta: dos trazos hacia atrás.
-    const px = -dx, py = -dy, qx = -dy, qy = dx, s = 13;
-    g.appendChild(svg("path", { stroke: color, "stroke-width": 7, fill: "none",
-      "stroke-linecap": "round",
-      d: `M${x2 + (px + qx) * s} ${y2 + (py + qy) * s}L${x2} ${y2}` +
-         `L${x2 + (px - qx) * s} ${y2 + (py - qy) * s}` }));
-    // Etiqueta: disco de color (borde blanco) en la base + texto en tinta oscura.
-    const lx = C + dx * (rIn + 10), ly = C + dy * (rIn + 10);
-    g.appendChild(svg("circle", { cx: lx, cy: ly, r: 8, fill: color,
-      stroke: "#0d1426", "stroke-width": 2 }));
-    const t = svg("text", { x: lx, y: ly - 14, fill: "#f3f6fb", "fill-opacity": 0.96,
-      "font-size": 19, "text-anchor": "middle", "font-family": "Inter", "font-weight": 600 });
-    t.textContent = label;
-    g.appendChild(t);
+    const px = -dx, py = -dy, qx = -dy, qy = dx, sz = 12;
+    grp.appendChild(svg("path", { stroke: color, "stroke-width": 6, fill: "none",
+      "stroke-linecap": "round", "stroke-linejoin": "round",
+      d: `M${tx + (px + qx) * sz} ${ty + (py + qy) * sz}L${tx} ${ty}` +
+         `L${tx + (px - qx) * sz} ${ty + (py - qy) * sz}` }));
+    // Astro: disco de color + rótulo con halo (se lee sobre margen o terreno).
+    grp.appendChild(svg("circle", { cx: tx, cy: ty, r: 7, fill: color,
+      stroke: "#0b1124", "stroke-width": 2 }));
+    const lbl = svg("text", { x: tx, y: ty - 13, fill: "#f3f6fb", "text-anchor": "middle",
+      "font-size": 18, "font-family": "Inter", "font-weight": 600,
+      stroke: "#0b1124", "stroke-width": 3, "paint-order": "stroke" });
+    lbl.textContent = label;
+    grp.appendChild(lbl);
   };
   arrow(sunAz, "#f59e0b", "Sol");
   arrow(earthAz, "#60a5fa", "Tierra");
-  const t = svg("text", { x: 20, y: 986, fill: "#8a97b2", "fill-opacity": 0.95,
+  const cap = svg("text", { x: 20, y: 986, fill: "#8a97b2", "fill-opacity": 0.95,
     "font-size": 16, "font-family": "JetBrains Mono" });
-  t.textContent = `dirección al ${tLabel} UTC`;
-  g.appendChild(t);
+  cap.textContent = `dirección al ${tLabel} UTC`;
+  grp.appendChild(cap);
+  g.appendChild(grp);
+}
+
+// Marco local del sitio (Norte/Este como vectores de pantalla) derivado de la
+// proyección: lonlatToNorm en lat±ε / lon±ε. La estereográfica es conforme ⇒ N⊥E
+// unitarios. Lo comparten la cuña y las flechas para que apunten igual.
+function localFrame(lat, lon) {
+  const EPS = 0.1;
+  const P = proj.lonlatToNorm(lon, lat);
+  const unit = (a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], m = Math.hypot(dx, dy);
+    return m > 1e-9 ? [dx / m, dy / m] : [0, 0];
+  };
+  const [nx, ny] = unit(P, proj.lonlatToNorm(lon, lat + EPS));
+  const [ex, ey] = unit(P, proj.lonlatToNorm(lon + EPS, lat));
+  return { P, nx, ny, ex, ey };
 }
 
 // Cuña de visión (§2.3) en el sitio activo: refleja la ventana de azimut del skyline.
@@ -166,16 +202,7 @@ function drawCone(lat, lon, win) {
   const old = $("map-cone");
   if (old) old.remove();
   if (!proj || !win) return;
-  const EPS = 0.1;
-  const P = proj.lonlatToNorm(lon, lat);
-  const Pn = proj.lonlatToNorm(lon, lat + EPS);
-  const Pe = proj.lonlatToNorm(lon + EPS, lat);
-  const unit = (a, b) => {
-    const dx = b[0] - a[0], dy = b[1] - a[1], m = Math.hypot(dx, dy);
-    return m > 1e-9 ? [dx / m, dy / m] : [0, 0];
-  };
-  const [nx, ny] = unit(P, Pn);           // Norte local en pantalla
-  const [ex, ey] = unit(P, Pe);           // Este local en pantalla
+  const { P, nx, ny, ex, ey } = localFrame(lat, lon);
   const cx = P[0] * 1000, cy = P[1] * 1000, R = 200;
   const sweep = ((win.hasta - win.desde + 360) % 360) || 360;
   const dir = (azDeg, rad = R) => {
@@ -295,7 +322,8 @@ async function init() {
     const ref = sites[0] || { lat: -89.9, lon: 0 };
     const rs = await getSite(ref.lat, ref.lon, { windowDays: 1, date: startDate() });
     const s0 = rs.sun_track[0], e0 = rs.earth_track[0];
-    drawDirArrows(s0.az, e0.az, s0.t.slice(0, 16).replace("T", " "));
+    drawDirArrows(s0.az, e0.az, s0.t.slice(0, 16).replace("T", " "),
+      localFrame(ref.lat, ref.lon));
   } catch (e) {
     setStatus(`No se pudo cargar el mapa (¿backend activo?): ${e.message}`);
   }
