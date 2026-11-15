@@ -9,9 +9,13 @@ import { renderLanderFrame } from "./landerFrame.js";
 
 export function createDetailModal({ windowDays = 30, date = null,
                                     onAzimuthWindow = null, onInstant = null } = {}) {
+  // windowDays / date pueden ser valores fijos o funciones () → valor.
+  // Usar resolve() para leer siempre el estado actual en el momento de abrir.
+  const resolve = (v) => (typeof v === "function" ? v() : v);
   const $ = (id) => document.getElementById(id);
   const sky = createSkyline($("skyline"), { onWindowChange: onAzimuthWindow });
   let fullSky = false;
+  let loading = false;       // true mientras showSite espera la respuesta del backend
   let data = null;          // respuesta /api/site del sitio activo (para el slider)
   let updateMetrics = null; // updater(i) de las métricas por instante (ver panel.js)
 
@@ -106,11 +110,12 @@ export function createDetailModal({ windowDays = 30, date = null,
       void panel.offsetWidth;
       panel.classList.add("lander-touchdown-anim");
     }
+    loading = true;
     showLoading();
     try {
       const [mask, site] = await Promise.all([
         getMask(lat, lon),
-        getSite(lat, lon, { windowDays, date }),
+        getSite(lat, lon, { windowDays: resolve(windowDays), date: resolve(date) }),
       ]);
       $("site-name").textContent = name || site.site.name;
       data = site;
@@ -129,6 +134,8 @@ export function createDetailModal({ windowDays = 30, date = null,
     } catch (e) {
       hideLoading();
       setStatus(`No se pudo cargar (¿backend activo?): ${e.message}`, true);
+    } finally {
+      loading = false;
     }
   }
 
@@ -180,5 +187,6 @@ export function createDetailModal({ windowDays = 30, date = null,
     show: showSite,
     openEmpty,
     close,
+    isLoading: () => loading,
   };
 }

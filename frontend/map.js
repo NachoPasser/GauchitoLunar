@@ -40,7 +40,7 @@ let origPanX = 0, origPanY = 0;
 let pointerId = null;
 let lastArrowParams = null;
 const modal = createDetailModal({
-  windowDays: windowDays(), date: startDate(),
+  windowDays, date: startDate,
   // Sincronización por azimut: la ventana del skyline mueve la cuña del mapa en vivo.
   onAzimuthWindow: (win) => { if (activeSite) drawCone(activeSite.lat, activeSite.lon, win); },
   // El slider mueve las flechas Sol/Tierra al azimut del instante (mismo marco local).
@@ -406,7 +406,7 @@ function addMarker(lon, lat, name, kind) {
   m.title = `${name} · ${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
   m.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (isDragging || justDragged) return;
+    if (isDragging || justDragged || modal.isLoading()) return;
     // Toggle: click en el sitio ya seleccionado (con el detalle abierto) lo cierra.
     const open = $("detail-overlay").classList.contains("is-open");
     if (activeEl === m && open) {
@@ -436,7 +436,7 @@ function deletePin(lat, lon, m) {
 // Click en zona libre (dentro del disco): agrega una chincheta 📍 y abre su detalle.
 // Sin paso intermedio: el detalle carga en vivo (ver loader en detailModal).
 function onFreeClick(e) {
-  if (!proj || isDragging || justDragged) return;
+  if (!proj || isDragging || justDragged || modal.isLoading()) return;
   const r = disk.getBoundingClientRect();
   const u = (e.clientX - r.left) / r.width;
   const v = (e.clientY - r.top) / r.height;
