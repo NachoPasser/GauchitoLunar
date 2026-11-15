@@ -12,12 +12,33 @@ import { windowDays, startDate, addSitio, removeSitio, setSitioActivo, getState 
 
 const $ = (id) => document.getElementById(id);
 const stage = $("map-stage");
+const world = $("map-world");
+const zoomSlider = $("zoom-slider");
+const zoomLabel = $("zoom-label");
+const zoomInBtn = $("zoom-in-btn");
+const zoomOutBtn = $("zoom-out-btn");
+const zoomResetBtn = $("zoom-reset-btn");
+
 // Capa interactiva: misma caja que el disco (inset 14%) pero sin recorte. De acá salen
 // los clicks/hover y la lectura de coordenadas (bounding box idéntico al disco).
 const disk = $("map-overlay");
 const layer = $("map-markers");
 let proj = null;
 let activeSite = null;         // {lat, lon} del sitio activo (apoyo de la cuña, §2.3)
+
+// Estado del zoom y arrastre: 1.0 = zoom out máximo (estado inicial por defecto).
+let zoom = 1.0;
+let panX = 0;
+let panY = 0;
+const MIN_ZOOM = 1.0;
+const MAX_ZOOM = 5.0;
+let isPointerDown = false;
+let isDragging = false;
+let justDragged = false;
+let startX = 0, startY = 0;
+let origPanX = 0, origPanY = 0;
+let pointerId = null;
+let lastArrowParams = null;
 const modal = createDetailModal({
   windowDays: windowDays(), date: startDate(),
   // Sincronización por azimut: la ventana del skyline mueve la cuña del mapa en vivo.
@@ -96,9 +117,11 @@ function drawChrome() {
   const ring = (lat) => {
     const r = proj.latRingRadius(lat) * 1000;
     g.appendChild(svg("circle", { cx: C, cy: C, r, fill: "none",
-      stroke: "white", "stroke-opacity": 0.5, "stroke-dasharray": "5 7" }));
+      stroke: "white", "stroke-opacity": 0.5, "stroke-dasharray": "5 7",
+      "vector-effect": "non-scaling-stroke" }));
     const t = svg("text", { x: C, y: C - r + 14, fill: "white", "fill-opacity": 0.85,
-      "font-size": 20, "text-anchor": "middle", "font-family": "JetBrains Mono" });
+      "font-size": 20, "text-anchor": "middle", "font-family": "JetBrains Mono",
+      "data-base-size": 20 });
     t.textContent = `${Math.abs(lat)}°S`;
     g.appendChild(t);
   };
@@ -106,14 +129,26 @@ function drawChrome() {
   ring(-88);
   // Polo sur (90°S): cruz + etiqueta (interior).
   g.appendChild(svg("path", { d: `M${C - 9} ${C}H${C + 9}M${C} ${C - 9}V${C + 9}`,
-    stroke: "white", "stroke-opacity": 0.7, "stroke-width": 2 }));
+    stroke: "white", "stroke-opacity": 0.7, "stroke-width": 2,
+    "vector-effect": "non-scaling-stroke" }));
   const pt = svg("text", { x: C + 12, y: C + 6, fill: "white", "fill-opacity": 0.75,
-    "font-size": 18, "font-family": "JetBrains Mono" });
+    "font-size": 18, "font-family": "JetBrains Mono", "data-base-size": 18 });
   pt.textContent = "polo S";
   g.appendChild(pt);
+  updateChromeTextSizes();
   // Chrome del margen (sobre el lienzo claro): globo + barra de escala.
   drawGlobe();
-  drawScaleBar();
+  drawScaleBar(zoom);
+}
+
+function updateChromeTextSizes() {
+  const g = $("map-chrome");
+  if (!g) return;
+  const texts = g.querySelectorAll("text[data-base-size]");
+  for (const t of texts) {
+    const base = parseFloat(t.getAttribute("data-base-size"));
+    t.setAttribute("font-size", (base / zoom).toFixed(1));
+  }
 }
 
 // Globo-localizador (abajo-derecha): esfera ortográfica SVG "esqueleto/transparente"
@@ -192,16 +227,25 @@ function drawGlobe() {
 
 // Barra de escala en el margen inferior. 100 km = (100/303.48) del ancho del DISCO,
 // que mide DISK_SPAN unidades de stage. Colores claros: va sobre oscuro.
-function drawScaleBar() {
+function drawScaleBar(z = 1) {
   const go = $("map-chrome-fg");
-  const len = (100000 / 303480) * DISK_SPAN, x0 = 500 - len / 2, y = 960;
-  go.appendChild(svg("path", {
+  const old = $("map-scale-bar");
+  if (old) old.remove();
+  const grp = svg("g", { id: "map-scale-bar" });
+  let km = 100;
+  if (z >= 4.0) km = 20;
+  else if (z >= 2.8) km = 30;
+  else if (z >= 1.7) km = 50;
+  const len = ((km * 1000) / 303480) * DISK_SPAN * z;
+  const x0 = 500 - len / 2, y = 960;
+  grp.appendChild(svg("path", {
     d: `M${x0} ${y}h${len}M${x0} ${y - 7}v14M${x0 + len} ${y - 7}v14`,
     stroke: "#cbd5e1", "stroke-opacity": 0.95, "stroke-width": 2.5 }));
   const st = svg("text", { x: 500, y: y - 12, fill: "#cbd5e1",
     "font-size": 18, "text-anchor": "middle", "font-family": "JetBrains Mono" });
-  st.textContent = "100 km";
-  go.appendChild(st);
+  st.textContent = `${km} km`;
+  grp.appendChild(st);
+  go.appendChild(grp);
 }
 
 // Flechas de DIRECCIÓN (no visibilidad) de Sol y Tierra, EN EL MARGEN claro, fuera
@@ -209,21 +253,28 @@ function drawScaleBar() {
 // de pantalla (sinA, -cosA) desde el polo. Son la dirección en UN instante (inicio de
 // ventana), rotulado para honestidad. Dibuja en la capa exterior (sobre fondo claro).
 function drawDirArrows(sunAz, earthAz, tLabel, frame) {
+  lastArrowParams = { sunAz, earthAz, tLabel, frame };
   const g = $("map-chrome-fg"), C = 500, R = DISK_R + 50;  // órbita fija en el polo
   const old = $("map-arrows");
   if (old) old.remove();                     // redibujo por tick: reemplaza el grupo
   const grp = svg("g", { id: "map-arrows" });
   const { nx, ny, ex, ey } = frame;
-  // Sitio activo en coordenadas de stage (el disco ocupa el centro, ver DISK_*).
-  const ox = DISK_MARGIN + frame.P[0] * DISK_SPAN, oy = DISK_MARGIN + frame.P[1] * DISK_SPAN;
-  const fx = ox - C, fy = oy - C;            // sitio relativo al polo
+  // Posición del sitio en stage considerando zoom y arrastre:
+  const stageW = stage.clientWidth || 680;
+  const baseOx = DISK_MARGIN + frame.P[0] * DISK_SPAN;
+  const baseOy = DISK_MARGIN + frame.P[1] * DISK_SPAN;
+  const ox = baseOx * zoom + (panX / stageW) * 1000;
+  const oy = baseOy * zoom + (panY / stageW) * 1000;
+  const fx = ox - C, fy = oy - C;            // sitio relativo al centro
   const START = 26;
   const arrow = (azDeg, color, label) => {
     const a = (azDeg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
     const dx = c * nx + s * ex, dy = c * ny + s * ey;   // azimut DESDE EL SITIO → dir unitaria
-    // Astro = donde el rayo desde el sitio cruza el anillo fijo (raíz hacia adelante).
-    const fd = fx * dx + fy * dy, disc = fd * fd - (fx * fx + fy * fy - R * R);
-    const t = disc >= 0 ? -fd + Math.sqrt(disc) : R;
+    // Astro = donde el rayo desde el sitio cruza el anillo fijo (o margen si hay zoom)
+    const targetR = zoom > 1 ? Math.max(R, Math.hypot(fx, fy) + 90) : R;
+    const fd = fx * dx + fy * dy;
+    const disc = fd * fd - (fx * fx + fy * fy - targetR * targetR);
+    const t = disc >= 0 ? -fd + Math.sqrt(disc) : targetR;
     const bx = ox + dx * START, by = oy + dy * START;   // arranca despegado del marcador
     const tx = ox + dx * t, ty = oy + dy * t;           // punta = astro sobre la órbita
     const line = (w, col, op) => svg("line", { x1: bx, y1: by, x2: tx, y2: ty,
@@ -312,11 +363,14 @@ function drawCone(lat, lon, win) {
   g.appendChild(defs);
   g.appendChild(svg("path", { d: `${d}Z`, fill: "url(#cone-grad)", stroke: "none" }));
   g.appendChild(svg("line", { x1: cx, y1: cy, x2: eA[0], y2: eA[1],
-    stroke: "url(#cone-edge-a)", "stroke-width": 2.5, "stroke-linecap": "round" }));
+    stroke: "url(#cone-edge-a)", "stroke-width": 2.5, "stroke-linecap": "round",
+    "vector-effect": "non-scaling-stroke" }));
   g.appendChild(svg("line", { x1: cx, y1: cy, x2: eB[0], y2: eB[1],
-    stroke: "url(#cone-edge-b)", "stroke-width": 2.5, "stroke-linecap": "round" }));
+    stroke: "url(#cone-edge-b)", "stroke-width": 2.5, "stroke-linecap": "round",
+    "vector-effect": "non-scaling-stroke" }));
   g.appendChild(svg("circle", { cx, cy, r: 4, fill: CONE_EDGE,
-    stroke: "#0b1124", "stroke-width": 1.5 }));
+    stroke: "#0b1124", "stroke-width": 1.5,
+    "vector-effect": "non-scaling-stroke" }));
   $("map-chrome").appendChild(g);
 }
 
@@ -352,6 +406,7 @@ function addMarker(lon, lat, name, kind) {
   m.title = `${name} · ${lat.toFixed(2)}°, ${lon.toFixed(2)}°E`;
   m.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (isDragging || justDragged) return;
     // Toggle: click en el sitio ya seleccionado (con el detalle abierto) lo cierra.
     const open = $("detail-overlay").classList.contains("is-open");
     if (activeEl === m && open) {
@@ -381,14 +436,14 @@ function deletePin(lat, lon, m) {
 // Click en zona libre (dentro del disco): agrega una chincheta 📍 y abre su detalle.
 // Sin paso intermedio: el detalle carga en vivo (ver loader en detailModal).
 function onFreeClick(e) {
-  if (!proj) return;
+  if (!proj || isDragging || justDragged) return;
   const r = disk.getBoundingClientRect();
   const u = (e.clientX - r.left) / r.width;
   const v = (e.clientY - r.top) / r.height;
   // Solo dentro del disco circular (como el tooltip): afuera no hay terreno mapeado.
   if (Math.hypot(u - 0.5, v - 0.5) > 0.5) return;
   const [lon, lat] = proj.normToLonlat(u, v);
-  const name = freeName({ lat, lon });
+  const name = `${Math.abs(lat).toFixed(1)}°S ${Math.round(((lon % 360) + 360) % 360)}°E`;
   addSitio({ name, lat, lon, kind: "pin" });
   const m = addMarker(lon, lat, name, "pin");
   setActive(m);
@@ -447,7 +502,7 @@ disk.addEventListener("click", onFreeClick);
 // afuera la proyección no mapea terreno real. Latitud siempre sur (Math.abs + "°S").
 function onHover(e) {
   const cur = $("map-cursor");
-  if (!proj) return;
+  if (!proj || isDragging) { cur.classList.add("hidden"); return; }
   const r = disk.getBoundingClientRect();
   const u = (e.clientX - r.left) / r.width, v = (e.clientY - r.top) / r.height;
   if (Math.hypot(u - 0.5, v - 0.5) > 0.5) { cur.classList.add("hidden"); return; }
@@ -460,10 +515,270 @@ function onHover(e) {
 disk.addEventListener("mousemove", onHover);
 disk.addEventListener("mouseleave", () => $("map-cursor").classList.add("hidden"));
 
-function freeName(p) {
-  return `Sitio ${p.lat.toFixed(1)}°, ${p.lon.toFixed(1)}°E`;
+// Limita el desplazamiento según el zoom para no perder de vista el casquete polar.
+function clampPan(px, py, z) {
+  if (z <= 1.0) return [0, 0];
+  const w = stage.clientWidth || 680;
+  const h = stage.clientHeight || 680;
+  const centerX = (w / 2) * (1 - z);
+  const centerY = (h / 2) * (1 - z);
+  const maxSlack = 0.5 * w * (z - 1);
+  const cx = Math.max(centerX - maxSlack, Math.min(centerX + maxSlack, px));
+  const cy = Math.max(centerY - maxSlack, Math.min(centerY + maxSlack, py));
+  return [cx, cy];
 }
 
-$("top3-btn").addEventListener("click", top3.open);
+// will-change dinámico: puesto solo mientras el usuario interactúa (drag/wheel/zoom).
+// Al soltar lo quitamos para que el navegador rerasterice la capa a la resolución
+// final del zoom (si queda pegado, cachea la textura a 1x y se ve todo borroso).
+let interactTimer = null;
+function setInteracting(on) {
+  if (!world) return;
+  if (on) {
+    if (interactTimer) { clearTimeout(interactTimer); interactTimer = null; }
+    world.style.willChange = "transform";
+  } else if (!interactTimer) {
+    // Pequeño respiro tras la última transformación antes de soltar la capa.
+    interactTimer = setTimeout(() => {
+      world.style.willChange = "auto";
+      interactTimer = null;
+    }, 260);
+  }
+}
+
+// Aplica el transform CSS al mundo del mapa y sincroniza la UI del zoom.
+// smooth=true activa la transición CSS (botones/slider); false la desactiva (drag/wheel RAF).
+function applyTransform(smooth = false) {
+  if (world) {
+    if (smooth) {
+      world.classList.remove("no-transition");
+    } else {
+      world.classList.add("no-transition");
+    }
+    world.style.transform =
+      `translate(${panX.toFixed(2)}px, ${panY.toFixed(2)}px) scale(${zoom})`;
+  }
+  stage.style.setProperty("--map-zoom", zoom);
+  if (zoom > 1.0) {
+    stage.classList.add("is-grabbable");
+  } else {
+    stage.classList.remove("is-grabbable");
+  }
+  if (zoomSlider) zoomSlider.value = zoom;
+  if (zoomLabel) zoomLabel.textContent = `${zoom.toFixed(1)}×`;
+  drawScaleBar(zoom);
+  updateChromeTextSizes();
+  if (lastArrowParams) {
+    drawDirArrows(lastArrowParams.sunAz, lastArrowParams.earthAz,
+      lastArrowParams.tLabel, lastArrowParams.frame);
+  }
+}
+
+// Ajusta el zoom pivotando sobre (focalX, focalY) o sobre el centro del stage.
+// smooth=true activa la transición CSS (para botones y slider de la barra).
+function setZoom(targetZoomVal, focalX, focalY, smooth = true) {
+  setInteracting(true);
+  setInteracting(false);   // programa la liberación de la capa tras la transición
+  const oldZoom = zoom;
+  const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetZoomVal));
+  if (focalX === undefined || focalY === undefined) {
+    const rect = stage.getBoundingClientRect();
+    focalX = rect.width / 2;
+    focalY = rect.height / 2;
+  }
+  if (nextZoom === MIN_ZOOM) {
+    panX = 0;
+    panY = 0;
+  } else {
+    const factor = nextZoom / oldZoom;
+    panX = focalX - (focalX - panX) * factor;
+    panY = focalY - (focalY - panY) * factor;
+    [panX, panY] = clampPan(panX, panY, nextZoom);
+  }
+  zoom = nextZoom;
+  applyTransform(smooth);
+}
+
+// Arrastre con clic izquierdo: inicia captura y seguimiento de coordenadas.
+function onPointerDown(e) {
+  if (e.button !== 0) return;
+  if (e.target.closest("#map-zoom-bar")) return;
+  isPointerDown = true;
+  isDragging = false;
+  startX = e.clientX;
+  startY = e.clientY;
+  origPanX = panX;
+  origPanY = panY;
+  pointerId = e.pointerId;
+  // Captura diferida: capturar acá se traga el `click` de los marcadores hijos
+  // (el evento se redirige al stage). Capturamos recién al iniciar el drag real.
+}
+
+function onPointerMove(e) {
+  if (!isPointerDown) return;
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  if (!isDragging) {
+    if (Math.hypot(dx, dy) > 4 && zoom > 1.0) {
+      isDragging = true;
+      setInteracting(true);
+      stage.classList.add("is-dragging");
+      $("map-cursor").classList.add("hidden");
+      try { stage.setPointerCapture(pointerId); } catch (_) {}
+    }
+  }
+  if (isDragging) {
+    const [nx, ny] = clampPan(origPanX + dx, origPanY + dy, zoom);
+    panX = nx;
+    panY = ny;
+    applyTransform(false);    // sin transición durante drag: sigue al dedo sin lag
+  }
+}
+
+function onPointerUp(e) {
+  if (!isPointerDown) return;
+  isPointerDown = false;
+  if (isDragging) {
+    try { stage.releasePointerCapture(e.pointerId); } catch (_) {}
+    isDragging = false;
+    setInteracting(false);
+    stage.classList.remove("is-dragging");
+    justDragged = true;
+    setTimeout(() => { justDragged = false; }, 50);
+  }
+}
+
+// Zoom con ruedita: acumula el delta en targetZoom/targetPan y hace un loop RAF
+// que interpola suavemente hacia el target. Sin CSS transition (ningún delay) pero
+// con lerp visible para que se vea fluido.
+let wheelRafId = null;
+let wTargetZoom = zoom;
+let wTargetPanX = panX;
+let wTargetPanY = panY;
+let wFocalX = null;
+let wFocalY = null;
+
+function wheelStep() {
+  const EPS = 0.0005;
+  const LERP = 0.18;    // fracción que avanza por frame (~60 fps → 0.18 ≈ 160 ms efectivo)
+  zoom   += (wTargetZoom - zoom)   * LERP;
+  panX   += (wTargetPanX - panX)   * LERP;
+  panY   += (wTargetPanY - panY)   * LERP;
+  applyTransform(false);
+  const doneZ = Math.abs(wTargetZoom - zoom)   < EPS;
+  const doneP = Math.hypot(wTargetPanX - panX, wTargetPanY - panY) < 0.5;
+  if (doneZ && doneP) {
+    zoom = wTargetZoom;
+    panX = wTargetPanX;
+    panY = wTargetPanY;
+    applyTransform(false);
+    wheelRafId = null;
+    setInteracting(false);   // libera la capa ⇒ rerasteriza nítido al nivel final
+  } else {
+    wheelRafId = requestAnimationFrame(wheelStep);
+  }
+}
+
+function onWheel(e) {
+  e.preventDefault();
+  setInteracting(true);
+  // Si no hay RAF en curso, el usuario acaba de empezar a hacer zoom (puede venir
+  // de un arrastre): sincronizamos los targets con el estado real antes de acumular.
+  if (!wheelRafId) {
+    wTargetZoom = zoom;
+    wTargetPanX = panX;
+    wTargetPanY = panY;
+  }
+  const rect = stage.getBoundingClientRect();
+  wFocalX = e.clientX - rect.left;
+  wFocalY = e.clientY - rect.top;
+  // Acumula el factor sobre el TARGET (no sobre zoom actual) para que scrolls
+  // seguidos no "reseteen" la velocidad a cero.
+  const factor = Math.exp(-e.deltaY * 0.0022);
+  const oldTarget = wTargetZoom;
+  wTargetZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldTarget * factor));
+  if (wTargetZoom === MIN_ZOOM) {
+    wTargetPanX = 0;
+    wTargetPanY = 0;
+  } else {
+    const f2 = wTargetZoom / oldTarget;
+    wTargetPanX = wFocalX - (wFocalX - wTargetPanX) * f2;
+    wTargetPanY = wFocalY - (wFocalY - wTargetPanY) * f2;
+    [wTargetPanX, wTargetPanY] = clampPan(wTargetPanX, wTargetPanY, wTargetZoom);
+  }
+  if (!wheelRafId) wheelRafId = requestAnimationFrame(wheelStep);
+}
+
+stage.addEventListener("pointerdown", onPointerDown);
+stage.addEventListener("pointermove", onPointerMove);
+window.addEventListener("pointerup", onPointerUp);
+window.addEventListener("pointercancel", onPointerUp);
+stage.addEventListener("wheel", onWheel, { passive: false });
+stage.addEventListener("click", (e) => {
+  if (justDragged) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+}, true);
+
+// Controles de la barra de zoom: smooth=true activa la transición CSS.
+if (zoomInBtn) {
+  zoomInBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    // Sincroniza target con estado actual para no pelear con un RAF en curso.
+    if (wheelRafId) { cancelAnimationFrame(wheelRafId); wheelRafId = null; }
+    wTargetZoom = Math.min(MAX_ZOOM, zoom + 0.5);
+    wTargetPanX = panX;
+    wTargetPanY = panY;
+    setZoom(wTargetZoom, undefined, undefined, true);
+  });
+}
+if (zoomOutBtn) {
+  zoomOutBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (wheelRafId) { cancelAnimationFrame(wheelRafId); wheelRafId = null; }
+    wTargetZoom = Math.max(MIN_ZOOM, zoom - 0.5);
+    wTargetPanX = panX;
+    wTargetPanY = panY;
+    setZoom(wTargetZoom, undefined, undefined, true);
+  });
+}
+if (zoomResetBtn) {
+  zoomResetBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (wheelRafId) { cancelAnimationFrame(wheelRafId); wheelRafId = null; }
+    wTargetZoom = MIN_ZOOM;
+    wTargetPanX = 0;
+    wTargetPanY = 0;
+    setZoom(MIN_ZOOM, undefined, undefined, true);
+  });
+}
+if (zoomSlider) {
+  zoomSlider.addEventListener("input", (e) => {
+    e.stopPropagation();
+    if (wheelRafId) { cancelAnimationFrame(wheelRafId); wheelRafId = null; }
+    const v = parseFloat(e.target.value);
+    wTargetZoom = v;
+    setZoom(v, undefined, undefined, false); // slider ya es continuo, sin transition extra
+  });
+}
+if (zoomOutBtn) {
+  zoomOutBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setZoom(zoom - 0.5);
+  });
+}
+if (zoomResetBtn) {
+  zoomResetBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setZoom(MIN_ZOOM);
+  });
+}
+if (zoomSlider) {
+  zoomSlider.addEventListener("input", (e) => {
+    e.stopPropagation();
+    setZoom(parseFloat(e.target.value));
+  });
+}
 
 init();

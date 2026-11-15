@@ -37,61 +37,100 @@
       <!-- Lienzo del mapa: stage cuadrado (cielo estrellado) + disco circular de luna.
            La textura vive en el disco; las estrellas y las flechas Sol/Tierra, en el margen. -->
       <div class="panel__body" style="padding:0;background:#0a0f22">
-        <div id="map-stage" class="relative aspect-square mx-auto overflow-hidden"
+        <div id="map-stage" class="relative aspect-square mx-auto overflow-hidden select-none"
              style="width:min(74vmin,680px);background:radial-gradient(circle at 50% 44%,#16203f 0%,#0b1124 62%,#070a16 100%)">
           <!-- Capa de fondo: estrellas del cielo (detrás de la luna) -->
           <svg id="map-chrome-outer" class="absolute inset-0 w-full h-full pointer-events-none"
                viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
 
-          <!-- Luna de fondo (hillshade del DEM, hasta ~80°S): rodea el casquete para que
-               se lea como la tapa de una esfera. Sobre las estrellas, bajo el casquete y el
-               chrome de frente. Posición/escala se calculan en map.js (placeMoonBg). -->
-          <!-- max-w-none: el preflight de Tailwind capa los <img> a max-width:100% y
-               rompería el 144% que setea placeMoonBg (quedaría cielo sin tapar). -->
-          <img id="map-moon-bg" alt="" class="absolute max-w-none pointer-events-none select-none"
-               draggable="false" />
-          <!-- Velo sobre la luna de fondo: la apaga para que el casquete clickable (sin velo,
-               más brillante) se distinga de la luna decorativa. Opaco abajo, sin estrellas
-               sangrando a través del terreno. -->
-          <div class="absolute inset-0 pointer-events-none"
-               style="background:rgba(10,15,34,.70)"></div>
-
-          <!-- Disco de luna (circular, recorta la textura cuadrada). SOLO textura + velo:
-               su overflow:hidden no toca los overlays (que viven en #map-overlay). -->
-          <!-- La máscara circular (difuminado del borde) vive en theme.css: #map-disk,
-               knob único --disk-fade. -->
-          <div id="map-disk" class="absolute" style="inset:14%;background:#0d1426">
-            <img id="map-bg" alt="Mapa de luz promedio del polo sur lunar"
-                 class="absolute inset-0 w-full h-full object-cover select-none"
-                 draggable="false"
-                 style="filter:contrast(.68) brightness(1.12) saturate(.85)" />
-            <!-- Velo sutil (sin anillo oscuro: el casquete se funde en la luna de fondo). -->
+          <!-- Capa de mundo transformable (zoom y arrastre con clic izquierdo) -->
+          <div id="map-world" class="absolute inset-0 w-full h-full" style="transform-origin:0 0">
+            <!-- Luna de fondo (hillshade del DEM, hasta ~80°S): rodea el casquete para que
+                 se lea como la tapa de una esfera. Sobre las estrellas, bajo el casquete y el
+                 chrome de frente. Posición/escala se calculan en map.js (placeMoonBg). -->
+            <!-- max-w-none: el preflight de Tailwind capa los <img> a max-width:100% y
+                 rompería el 144% que setea placeMoonBg (quedaría cielo sin tapar). -->
+            <img id="map-moon-bg" alt="" class="absolute max-w-none pointer-events-none select-none"
+                 draggable="false" />
+            <!-- Velo sobre la luna de fondo: la apaga para que el casquete clickable (sin velo,
+                 más brillante) se distinga de la luna decorativa. Opaco abajo, sin estrellas
+                 sangrando a través del terreno. -->
             <div class="absolute inset-0 pointer-events-none"
-                 style="background:radial-gradient(circle at 50% 46%,rgba(13,20,38,0) 64%,rgba(13,20,38,.16) 100%)"></div>
-          </div>
+                 style="background:rgba(10,15,34,.70)"></div>
 
-          <!-- Overlays sobre el disco: MISMA caja (inset 14%) pero SIN recorte, así
-               cuña/pines/popup/tooltip no se esconden pasando el borde del disco. -->
-          <div id="map-overlay" class="absolute" style="inset:14%">
-            <svg id="map-chrome" class="absolute inset-0 w-full h-full pointer-events-none"
-                 viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
-            <div id="map-markers" class="absolute inset-0"></div>
+            <!-- Disco de luna (circular, recorta la textura cuadrada). SOLO textura + velo:
+                 su overflow:hidden no toca los overlays (que viven en #map-overlay). -->
+            <!-- La máscara circular (difuminado del borde) vive en theme.css: #map-disk,
+                 knob único --disk-fade. -->
+            <div id="map-disk" class="absolute" style="inset:14%;background:#0d1426">
+              <img id="map-bg" alt="Mapa de luz promedio del polo sur lunar"
+                   class="absolute inset-0 w-full h-full object-cover select-none"
+                   draggable="false"
+                   style="filter:contrast(.68) brightness(1.12) saturate(.85)" />
+              <!-- Velo sutil (sin anillo oscuro: el casquete se funde en la luna de fondo). -->
+              <div class="absolute inset-0 pointer-events-none"
+                   style="background:radial-gradient(circle at 50% 46%,rgba(13,20,38,0) 64%,rgba(13,20,38,.16) 100%)"></div>
+            </div>
 
-            <p id="map-status" class="mono absolute left-3 bottom-3 text-[11px]"
-               style="color:rgba(255,255,255,.8)"></p>
+            <!-- Overlays sobre el disco: MISMA caja (inset 14%) pero SIN recorte, así
+                 cuña/pines/popup/tooltip no se esconden pasando el borde del disco. -->
+            <div id="map-overlay" class="absolute" style="inset:14%">
+              <svg id="map-chrome" class="absolute inset-0 w-full h-full pointer-events-none"
+                   viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
+              <div id="map-markers" class="absolute inset-0"></div>
 
-            <!-- Lectura lat/lon viva: sigue al cursor sobre el disco (honesta a la
-                 proyección polar; la grilla cartesiana sería engañosa acá). -->
-            <div id="map-cursor" class="mono absolute z-20 hidden pointer-events-none"
-                 style="background:rgba(11,17,36,.82);border:1px solid rgba(255,255,255,.18);
-                        color:#e8eefc;padding:2px 7px;border-radius:6px;font-size:11px;
-                        white-space:nowrap;transform:translate(12px,-130%)"></div>
+              <!-- Lectura lat/lon viva: sigue al cursor sobre el disco (honesta a la
+                   proyección polar; la grilla cartesiana sería engañosa acá). -->
+              <div id="map-cursor" class="mono absolute z-20 hidden pointer-events-none"
+                   style="background:rgba(11,17,36,.82);border:1px solid rgba(255,255,255,.18);
+                          color:#e8eefc;padding:2px 7px;border-radius:6px;font-size:11px;
+                          white-space:nowrap;transform:translate(12px,-130%)"></div>
+            </div>
           </div>
 
           <!-- Chrome de FRENTE (sobre la luna): globo-localizador, barra de escala y
                flechas Sol/Tierra. Deben quedar por encima del anillo lunar. -->
           <svg id="map-chrome-fg" class="absolute inset-0 w-full h-full pointer-events-none"
                viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
+
+          <!-- Estado / error en esquina inferior izquierda -->
+          <p id="map-status"
+             class="mono absolute left-3 bottom-3 text-[11px] pointer-events-none z-20"
+             style="color:rgba(255,255,255,.8)"></p>
+
+          <!-- Barra simple de zoom abajo a la derecha de la card -->
+          <div id="map-zoom-bar"
+               class="absolute right-3 bottom-3 z-30 flex items-center gap-1.5 px-2 py-1"
+               style="background:rgba(11,17,36,.85);border:1px solid rgba(255,255,255,.18);
+                      border-radius:9999px;box-shadow:0 4px 16px rgba(0,0,0,.4);
+                      backdrop-filter:blur(6px);user-select:none">
+            <button id="zoom-out-btn" type="button"
+                    class="w-6 h-6 flex items-center justify-center rounded-full text-white/80
+                           hover:text-white hover:bg-white/10 transition-colors"
+                    title="Alejar (−)" aria-label="Alejar">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+            <input id="zoom-slider" type="range" min="1" max="5" step="0.05" value="1"
+                   class="zoom-range w-16 sm:w-20 cursor-pointer" aria-label="Nivel de zoom" />
+            <button id="zoom-in-btn" type="button"
+                    class="w-6 h-6 flex items-center justify-center rounded-full text-white/80
+                           hover:text-white hover:bg-white/10 transition-colors"
+                    title="Acercar (+)" aria-label="Acercar">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+            <button id="zoom-reset-btn" type="button"
+                    class="mono text-[11px] px-1 text-white/70 hover:text-white transition-colors"
+                    title="Restablecer zoom (1.0×)" aria-label="Restablecer zoom">
+              <span id="zoom-label">1.0×</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
