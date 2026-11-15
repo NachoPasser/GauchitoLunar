@@ -168,6 +168,32 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     }));
   }
 
+  // Rim-light solar (estilizado, no ray-marching): el borde del terreno brilla donde
+  // está el azimut del Sol del instante (cursor del slider), con intensidad según su
+  // elevación. De noche (Sol bajo el horizonte) no ilumina. Un linearGradient horizontal
+  // con una banda ámbar centrada en x(az_Sol) hace el degradé a lo largo del azimut.
+  function drawSunRim(y) {
+    if (st.cursor == null || !st.mask.length) return;
+    const p = st.sun[st.cursor];
+    if (!p) return;
+    const intensity = Math.max(0, Math.min(1, (p.el + 0.25) / 1.2));
+    if (intensity <= 0.02) return;                 // noche: terreno sin luz de borde
+    const f = normAz(p.az) / 360;                  // azimut del Sol → fracción del eje x
+    const bw = 0.14;                               // semiancho del resplandor (~50° az)
+    const pts = st.mask.map((m) => `${x(m.az)},${y(m.h_deg)}`);
+    pts.push(`${x(360)},${y(st.mask[0].h_deg)}`);
+    const defs = el("defs");
+    const g = el("linearGradient", { id: "sun-rim", x1: 0, y1: 0, x2: 1, y2: 0 });
+    const stop = (o, a) => g.appendChild(el("stop",
+      { offset: Math.max(0, Math.min(1, o)), "stop-color": "#fde68a", "stop-opacity": a }));
+    stop(f - bw, 0); stop(f, 0.9 * intensity); stop(f + bw, 0);
+    defs.appendChild(g);
+    svg.appendChild(defs);
+    svg.appendChild(el("polyline", { points: pts.join(" "), fill: "none",
+      stroke: "url(#sun-rim)", "stroke-width": 6, "stroke-linecap": "round",
+      "stroke-linejoin": "round" }));
+  }
+
   // Recuadro translúcido de la ventana de azimut (§2.3). Si envuelve el Norte
   // (desde > hasta) se dibuja en dos tramos. Bordes marcados = agarradera visual.
   function drawAzWindow() {
@@ -310,6 +336,7 @@ export function createSkyline(svg, { onWindowChange } = {}) {
     drawAzWindow();
     drawGrid(y, r);
     drawTerrain(y, r);
+    drawSunRim(y);
     drawCommsMargin(y);
     drawTrack(y, st.earth, EARTH);
     drawTrack(y, st.sun, SUN);
