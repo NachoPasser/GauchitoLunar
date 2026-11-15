@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-i18n="map.title">Mapa polar sur · Lunar Landing Site Navigator</title>
+  <!-- El mapa arranca oculto: entre el primer render y la ejecución de map.js se vería el HTML
+       crudo (óvalo borroso, imágenes sin cargar). welcome.js quita la clase al tomar el control;
+       el timeout es una red de seguridad por si el JS no llegara a cargar. Va ANTES de Tailwind,
+       que bloquea el render. -->
+  <style>html.booting main { visibility: hidden; }</style>
+  <script>
+    document.documentElement.classList.add("booting");
+    setTimeout(function () { document.documentElement.classList.remove("booting"); }, 8000);
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="theme.css" />

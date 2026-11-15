@@ -71,6 +71,14 @@ export function initWelcome(root, { onSubmit } = {}) {
   const feedbackDetail = $('feedback-detail');
   const clearBtn = $('clear-feedback');
 
+  // Espera del mapa (la dirige welcome.js): loader y error reemplazan al aviso mientras dura.
+  const loaderBox = $('welcome-loader'), loaderN = $('welcome-loader-n');
+  const loaderBar = $('welcome-loader-bar'), errorBox = $('welcome-error');
+  const errorText = $('welcome-error-text'), retryBtn = $('welcome-retry');
+  const submitBtn = dateForm.querySelector('button[type="submit"]');
+  let onRetry = null;
+  retryBtn.addEventListener('click', () => onRetry?.());
+
   // Muestra mensaje en la caja de telemetría (normal o error)
   function showFeedback(title, detailHTML, isError = false) {
     feedbackBox.classList.remove('hidden');
@@ -242,7 +250,7 @@ export function initWelcome(root, { onSubmit } = {}) {
     // H4: fija el rango global en la única fuente de verdad (state.js) y avisa a quien
     // montó la bienvenida (mapa: quita la capa y sigue con el rango elegido).
     setRango(startVal, endVal);
-    setTimeout(() => onSubmit?.({ desde: startVal, hasta: endVal }), 650);
+    onSubmit?.({ desde: startVal, hasta: endVal });   // quien monta decide cuándo cerrar
   });
 
   clearBtn.addEventListener('click', () => {
@@ -426,6 +434,27 @@ export function initWelcome(root, { onSubmit } = {}) {
   if (container && observer) observer.observe(container);
 
   return {
+    // Loader: reemplaza al aviso de "ventana cargada" y bloquea el botón mientras se espera.
+    setLoading(on) {
+      loaderBox.classList.toggle('hidden', !on);
+      if (on) { feedbackBox.classList.add('hidden'); errorBox.classList.add('hidden'); }
+      submitBtn.disabled = on;
+      submitBtn.classList.toggle('opacity-60', on);
+    },
+    setProgress(done, total) {
+      loaderN.textContent = total ? `${done} / ${total}` : '';
+      loaderBar.style.width = `${total ? Math.max(6, Math.round((done / total) * 100)) : 6}%`;
+    },
+    showError(msg, retry) {
+      loaderBox.classList.add('hidden');
+      feedbackBox.classList.add('hidden');
+      errorText.textContent = msg;
+      onRetry = retry;
+      errorBox.classList.remove('hidden');
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('opacity-60');
+    },
+    clearError() { errorBox.classList.add('hidden'); },
     destroy() {
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('i18n:change', onLang);

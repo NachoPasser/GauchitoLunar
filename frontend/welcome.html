@@ -252,6 +252,27 @@
                 </button>
               </div>
             </div>
+            <!-- Espera del mapa (la maneja welcome.js): solo aparece si la carga tarda; reemplaza al
+               aviso de arriba. Si falla o se pasa del tiempo máximo, muestra el error. -->
+            <div id="welcome-loader" class="hidden mt-3 rounded-lg border border-[#0032A0]/30 bg-[#0032A0]/[0.04] px-3 py-2"
+                 role="status" aria-live="polite">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-[#0032A0] telemetry-pulse shrink-0"></span>
+                <span class="font-['JetBrains_Mono'] font-semibold text-[#0032A0] uppercase tracking-wide text-[10px]"
+                      data-i18n="w.loading.text">CARGANDO EL MAPA</span>
+                <span id="welcome-loader-n" class="ml-auto font-['JetBrains_Mono'] text-[10px] font-bold text-[#0032A0]"></span>
+              </div>
+              <div class="mt-2 h-[4px] rounded-full bg-[#0032A0]/15 overflow-hidden">
+                <span id="welcome-loader-bar" class="block h-full w-[6%] rounded-full bg-[#0032A0] transition-all duration-500"></span>
+              </div>
+            </div>
+            <div id="welcome-error" class="hidden mt-3 rounded-lg border border-[#E03C31]/50 bg-[#E03C31]/[0.06] px-3 py-2 flex items-center justify-between gap-3"
+                 role="alert">
+              <p id="welcome-error-text" class="text-[11.5px] text-slate-700 leading-snug"></p>
+              <button type="button" id="welcome-retry"
+                      class="shrink-0 font-['JetBrains_Mono'] text-[10px] font-bold uppercase tracking-wider text-white bg-[#0032A0] hover:bg-[#E03C31] px-3 py-1.5 rounded-md transition-colors cursor-pointer"
+                      data-i18n="w.loading.retry">REINTENTAR</button>
+            </div>
           </form>
         </div>
 

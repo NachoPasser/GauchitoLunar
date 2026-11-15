@@ -437,30 +437,88 @@ const dateRange = createDateRange($("date-range"), {
   },
 });
 
-async function init() {
-  // Bienvenida frente a la luna: el mapa carga detrás y, al fijar las fechas, se quita.
-  const welcome = showWelcome();
-  initLayout();                               // alto común mapa/detalle (antes del marco)
-  mountMoonFrame($("moon-frame"));            // hardware del borde (no depende del backend)
-  try {
+// ── Carga inicial por pasos ────────────────────────────────────────────────────────────────
+// Cada paso se cachea como promesa; si falla se descarta, así un reintento solo repite lo que
+// falló. Tres pasos no dependen de las fechas y arrancan al abrir la página (cargan mientras
+// el usuario lee el tutorial); "arrows" sí necesita el rango y corre al fijarlo. La bienvenida
+// espera a `loadForWelcome` antes de cerrarse: si ya está todo listo, no hay espera.
+const BASE_STEPS = ["meta", "image", "sites", "moon"];
+const ALL_STEPS = [...BASE_STEPS, "arrows"];
+const stepCache = new Map();          // nombre → promesa en curso o resuelta
+const stepDone = new Set();
+let moonReady = Promise.resolve();    // luna de fondo (hillshade): asigna el src de la imagen
+let onLoadProgress = null;
+
+const STEPS_FN = {
+  meta: async () => {
     const meta = await getMapMeta("illumination");
     proj = createProjection(meta);
-    $("map-bg").src = mapUrl("illumination");
-    placeMoonBg(meta);                       // luna de fondo (hillshade) alineada al casquete
     drawChrome();
+    moonReady = placeMoonBg(meta).catch(() => {});   // luna de fondo alineada al casquete
+  },
+  image: async () => {
+    const img = $("map-bg");
+    img.src = mapUrl("illumination");
+    await img.decode();               // rechaza si la imagen no carga
+  },
+  sites: async () => {
+    await runStep("meta");            // los marcadores se ubican con la proyección
     const { sites } = await getSites();
     sites.forEach((s) => addMarker(s.lon, s.lat, s.name, "seed"));
-    // Chinchetas 📍 del usuario persistidas en el estado compartido.
-    const pins = getState().sitios;
-    pins.forEach((s) => addMarker(s.lon, s.lat, s.name, "pin"));
-    // Flechas de dirección: sitio de referencia cerca del polo, al inicio del rango.
+    getState().sitios.forEach((s) => addMarker(s.lon, s.lat, s.name, "pin"));
     refSite = sites[0] || refSite;
-    await welcome;                           // necesita el rango elegido en la bienvenida
-    dateRange.refresh();
-    await refreshRefArrows();
-  } catch (e) {
-    setStatus(T("map.loadError", { msg: e.message }));
+  },
+  // Luna de fondo (relieve): pesa ~2.7 MB y se baja en cada carga. Se espera completa (y
+  // decodificada) para no entrar a un mapa a medias; si falla NO bloquea (es un adorno).
+  moon: async () => {
+    await runStep("meta");
+    await moonReady;                  // placeMoonBg ya asignó el src
+    const img = $("map-moon-bg");
+    await settled(img);
+    try { await img.decode(); } catch { /* sin imagen: se entra igual */ }
+  },
+  arrows: async () => {
+    await runStep("sites");
+    await refreshRefArrows();         // depende del rango elegido
+  },
+};
+
+function runStep(name) {
+  if (!stepCache.has(name)) {
+    stepCache.set(name, STEPS_FN[name]().then(
+      () => { stepDone.add(name); onLoadProgress?.(stepDone.size, ALL_STEPS.length); },
+      (e) => { stepCache.delete(name); throw e; }));
   }
+  return stepCache.get(name);
+}
+
+// Espera a que una imagen termine de cargar o falle; nunca rechaza (el tope lo pone la
+// bienvenida, que corta a los 10 s con el error y el botón de reintento).
+function settled(img) {
+  return new Promise((res) => {
+    // complete = ya cargó, ya falló o no tiene src: en esos casos no hay nada que esperar.
+    if (img.complete) return res();
+    img.addEventListener("load", res, { once: true });
+    img.addEventListener("error", res, { once: true });
+  });
+}
+
+// Lo que la bienvenida espera antes de cerrarse. Rechaza si algún paso falla.
+function loadForWelcome(onProgress) {
+  onLoadProgress = onProgress;
+  onProgress?.(stepDone.size, ALL_STEPS.length);
+  return Promise.all(ALL_STEPS.map(runStep));
+}
+
+async function init() {
+  // Bienvenida frente a la luna: el mapa carga detrás y, al fijar las fechas, se quita.
+  const welcome = showWelcome({ ready: loadForWelcome });
+  initLayout();                               // alto común mapa/detalle (antes del marco)
+  mountMoonFrame($("moon-frame"));            // hardware del borde (no depende del backend)
+  // Pasos sin fechas: arrancan ya. Si alguno falla se reintenta al enviar la bienvenida.
+  BASE_STEPS.forEach((n) => runStep(n).catch(() => {}));
+  await welcome;
+  dateRange.refresh();
 }
 
 disk.addEventListener("click", onFreeClick);

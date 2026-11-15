@@ -1,9 +1,24 @@
 // welcome.js — bienvenida (welcome.html + lógica de script.js) frente a la luna en
-// map.html, que es la página de entrada. showWelcome() la muestra sobre un velo que tapa
-// la luna y devuelve una promesa que se resuelve cuando el usuario fija las fechas y la
-// capa se quita. Mismo documento que el mapa: el rango queda directo en state.js.
+// map.html, que es la página de entrada. showWelcome({ ready }) la muestra sobre una capa que
+// tapa la luna y devuelve una promesa que se resuelve cuando el usuario fija las fechas, el
+// mapa terminó de cargar y la capa se quita. Mismo documento que el mapa: el rango queda
+// directo en state.js.
+//
+// Espera del mapa: `ready(onProgress)` es una promesa con las cargas REALES del mapa (map.js).
+// Al enviar las fechas:
+//  · si ya cargó (lo normal: carga mientras se lee el tutorial) se pasa de inmediato;
+//  · si falta algo, el loader aparece recién a los LOADER_DELAY_MS (así no parpadea) y se va
+//    cuando termina la última carga: la espera dura lo que realmente tarde;
+//  · si algo falla o pasan TIMEOUT_MS, se muestra el error con "Reintentar" (no queda colgado).
 
 import { initWelcome } from "./script.js";
+
+const LOADER_DELAY_MS = 200;    // cuánto esperar antes de mostrar el loader
+const TIMEOUT_MS = 10000;       // tope: red de seguridad, no una espera
+const MIN_FEEDBACK_MS = 650;    // el aviso "ventana cargada" se deja leer este mínimo
+
+const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
+const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
 let fragment = null;   // markup cacheado: se pide una sola vez
 
@@ -14,10 +29,10 @@ async function mountWelcome(root, { onSubmit } = {}) {
   return initWelcome(root, { onSubmit });
 }
 
-export async function showWelcome() {
+export async function showWelcome({ ready } = {}) {
   // Capa sin velo ni backdrop-filter (re-desenfocar el mapa en cada frame era lento): deja
-  // ver el cielo de la página. Mientras está visible el mapa no se pinta (visibility:hidden mantiene el layout; map.js sigue
-  // cargando detrás).
+  // ver el cielo de la página. Mientras está visible el mapa no se pinta (visibility:hidden
+  // mantiene el layout; map.js sigue cargando detrás).
   const scrim = document.createElement("div");
   scrim.id = "welcome-layer";
   scrim.style.cssText = "position:fixed;inset:0;z-index:60;overflow:auto;display:flex;" +
@@ -26,20 +41,62 @@ export async function showWelcome() {
   const covered = document.querySelectorAll("body > header, body > main");
   covered.forEach((el) => { el.style.visibility = "hidden"; });
   document.body.appendChild(scrim);
+  document.documentElement.classList.remove("booting");   // ya lo oculta esta capa (inline)
 
   return new Promise((resolve) => {
     let handle = null;
+    let busy = false;                       // evita envíos dobles mientras se espera
     const root = document.createElement("div");
     root.className = "w-full flex justify-center";
     scrim.appendChild(root);
-    mountWelcome(root, {
-      onSubmit: () => {
-        // El mapa vuelve a pintarse y el velo se desvanece sobre él.
-        covered.forEach((el) => { el.style.visibility = ""; });
-        scrim.style.opacity = "0";
-        scrim.style.pointerEvents = "none";
-        setTimeout(() => { handle?.destroy(); scrim.remove(); resolve(); }, 350);
-      },
-    }).then((h) => { handle = h; });
+
+    // El mapa vuelve a pintarse y la capa se desvanece sobre él.
+    function close() {
+      covered.forEach((el) => { el.style.visibility = ""; });
+      scrim.style.opacity = "0";
+      scrim.style.pointerEvents = "none";
+      setTimeout(() => { handle?.destroy(); scrim.remove(); resolve(); }, 350);
+    }
+
+    async function attempt() {
+      const t0 = performance.now();
+      handle.clearError();
+      const gate = Promise.resolve(ready?.((done, total) => handle.setProgress(done, total)));
+      const settledFast = await Promise.race([
+        gate.then(() => true, () => true),          // terminó (bien o mal) antes del umbral
+        wait(LOADER_DELAY_MS).then(() => false),
+      ]);
+      if (!settledFast) handle.setLoading(true);    // recién ahora se ve el loader
+
+      let timer;
+      try {
+        await Promise.race([
+          gate,
+          new Promise((_, rej) => {
+            timer = setTimeout(() => rej(new Error("timeout")), TIMEOUT_MS);
+          }),
+        ]);
+      } catch (e) {
+        handle.setLoading(false);
+        handle.showError(e.message === "timeout" ? T("w.loading.timeout")
+          : T("map.loadError", { msg: e.message }), start);
+        busy = false;
+        return;
+      } finally {
+        clearTimeout(timer);
+      }
+      const rest = MIN_FEEDBACK_MS - (performance.now() - t0);
+      if (rest > 0) await wait(rest);
+      close();
+    }
+
+    // Inicia (o reintenta) la espera; ignora clics mientras hay una en curso.
+    function start() {
+      if (busy) return;
+      busy = true;
+      attempt();
+    }
+
+    mountWelcome(root, { onSubmit: start }).then((h) => { handle = h; });
   });
 }
