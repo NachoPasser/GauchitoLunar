@@ -8,7 +8,7 @@
 
 | URL | Status |
 |-----|--------|
-| **https://newspapers-surely-working-bridges.trycloudflare.com** | Primary (live now) |
+| **https://code-foster-prize-yours.trycloudflare.com** | Primary (live now) |
 | https://gauchitolunar-production.up.railway.app | Backup (cloud) |
 
 ---
