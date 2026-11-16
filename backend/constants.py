@@ -27,7 +27,7 @@ AZIMUTH_CLOCKWISE = True           # N→E→S→O
 # --- Marco espacial y tiempo (SPEC §3.0) ---
 SPATIAL_FRAME = "ENU"              # East-North-Up local, derivado de MOON_ME
 BODY_FRAME = "MOON_ME"
-EPHEMERIS = "DE421"
+EPHEMERIS = "DE441"                # la que Horizons declara en su respuesta ({source: DE441})
 TIME_SCALE = "UTC"                 # un único reloj en backend y UI
 
 # --- CRS del mapa/DEM (SPEC §3.0, §4) ---

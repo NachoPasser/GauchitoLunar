@@ -33,7 +33,8 @@ Reto: https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navi
 ## Decisión (equipo, H0)
 
 - **DEM: queda en 80 m (`LDEM_80S_80MPP_ADJ`).** El de 20 m solo si hace falta precisión.
-- **Efeméride: queda DE421** (default de Horizons). Diferencia despreciable para esta app.
+- **Efeméride: DE441.** Es la que Horizons declara en su respuesta real (`{source: DE441}`,
+  ver `tests/fixtures/horizons_earth_sample.txt`); `constants.EPHEMERIS` coincide y hay test.
 
 ## Acción pendiente
 

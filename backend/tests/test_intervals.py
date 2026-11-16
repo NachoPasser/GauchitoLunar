@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from intervals import earth_intervals, sun_intervals, to_intervals
-from metrics import longest_gap_h
+from metrics import compute_metrics
 
 STEP_MIN = 20
 
@@ -48,11 +48,13 @@ def test_earth_uses_visible_hidden_labels():
     assert {x["state"] for x in iv} == {"hidden", "visible"}
 
 
-def test_longest_dark_interval_matches_longest_gap_metric():
-    """Consistencia: el mayor tramo 'dark' coincide con longest_night_h (±1 paso)."""
-    flags = [True, False, False, False, True, False, True, True]
-    track = _track(flags)
-    darks = [x["duration_h"] for x in sun_intervals(track) if x["state"] == "dark"]
-    longest_interval = max(darks)
-    metric = longest_gap_h(track, STEP_MIN)
-    assert abs(longest_interval - metric) <= STEP_MIN / 60.0 + 1e-6
+def test_longest_dark_interval_matches_longest_night_metric_exactly():
+    """Consistencia: longest_night_h ES el mayor tramo 'dark' (misma fuente, sin ±1 paso)."""
+    for flags in ([True, False, False, False, True, False, True, True],
+                  [True, True, False, False, False]):       # corte pegado al final
+        track = _track(flags)
+        for p in track:
+            p.update(az=0.0, el=10.0)
+        darks = [x["duration_h"] for x in sun_intervals(track) if x["state"] == "dark"]
+        metric = compute_metrics(track, track, STEP_MIN)["longest_night_h"]
+        assert metric == max(darks)

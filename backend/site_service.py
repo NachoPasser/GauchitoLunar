@@ -47,12 +47,14 @@ def get_site(
     sun_track, earth_track = build_tracks(
         {"lat": lat, "lon": lon}, h, start, window_days, comms_margin_deg, step_min)
 
+    sun_ivs = sun_intervals(sun_track)                # cartuchos lit/dark (§3.1)
+    earth_ivs = earth_intervals(earth_track)          # cartuchos visible/hidden
     return {
         "site": mask["site"],
         "sun_track": sun_track,
         "earth_track": earth_track,
-        "sun_intervals": sun_intervals(sun_track),       # cartuchos lit/dark (§3.1)
-        "earth_intervals": earth_intervals(earth_track),  # cartuchos visible/hidden
-        "metrics": compute_metrics(sun_track, earth_track, step_min),
+        "sun_intervals": sun_ivs,
+        "earth_intervals": earth_ivs,
+        "metrics": compute_metrics(sun_track, earth_track, step_min, sun_ivs, earth_ivs, h),
         "params": {"comms_margin_deg": comms_margin_deg, "window_days": window_days},
     }

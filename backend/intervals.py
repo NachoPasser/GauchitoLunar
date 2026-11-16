@@ -46,6 +46,15 @@ def to_intervals(track: list[dict], state_true: str, state_false: str) -> list[d
     return out
 
 
+def longest_state_h(intervals: list[dict], state: str) -> float:
+    """Mayor duración (h) de un tramo continuo con ese estado; 0.0 si no hay.
+
+    Fuente única del "corte más largo": sale de los mismos tramos que se dibujan como
+    cartuchos, así métrica y UI no pueden diferir.
+    """
+    return max((x["duration_h"] for x in intervals if x["state"] == state), default=0.0)
+
+
 def sun_intervals(sun_track: list[dict]) -> list[dict]:
     return to_intervals(sun_track, "lit", "dark")
 
