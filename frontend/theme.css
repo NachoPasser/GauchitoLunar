@@ -603,3 +603,23 @@ input[type="range"].zoom-range::-moz-range-thumb {
 .dr__btn--ok { background: #0032a0; color: #fff; }
 .dr__btn--ok:hover:not(:disabled) { background: #e92637; }
 .dr__btn--ok:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Error del detalle (reemplaza al contenido; nunca queda el del sitio anterior) + aviso de
+   demora del loader + indicador "ocupado" del chip de fechas. */
+.detail-error { display: flex; flex-direction: column; align-items: center; gap: .5rem;
+  text-align: center; padding: 2.4rem 1.2rem; border-radius: var(--r-md);
+  border: 1px solid rgba(224, 60, 49, .35); background: rgba(224, 60, 49, .05); }
+.detail-error__title { margin: 0; font-weight: 700; font-size: .95rem; color: var(--ink); }
+.detail-error__msg { margin: 0; max-width: 34ch; font-size: .8rem; color: var(--ink-2); }
+.detail-error__retry { margin-top: .5rem; cursor: pointer; padding: .5rem 1rem;
+  border-radius: 8px; border: 1px solid transparent; background: #0032a0; color: #fff;
+  font: 700 .7rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  transition: background .15s; }
+.detail-error__retry:hover { background: #e92637; }
+.load-slow { margin: .15rem 0 0; font-size: .74rem; color: var(--ink-2); }
+.load-slow[hidden] { display: none; }
+@keyframes dr-spin { to { transform: rotate(360deg); } }
+.dr__chip.is-busy::after { content: ""; width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid currentColor; border-right-color: transparent;
+  animation: dr-spin .7s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .dr__chip.is-busy::after { animation-duration: 2s; } }

@@ -3,6 +3,9 @@
 // una sola fuente del límite de 30 días (1 ciclo sinódico, ver CLAUDE.md) y del formato.
 
 export const MAX_DAYS = 30;
+// Rango por defecto de la bienvenida: 20 nov 2026 + 14 días (cae dentro de lo precalculado).
+export const DEFAULT_START = "2026-11-20";
+export const DEFAULT_SPAN_DAYS = 14;
 const MS_PER_DAY = 86400000;
 
 // "YYYY-MM-DD" → Date en UTC (evita desfases por zona horaria).

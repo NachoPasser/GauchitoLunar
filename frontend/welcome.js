@@ -12,6 +12,10 @@
 //  · si algo falla o pasan TIMEOUT_MS, se muestra el error con "Reintentar" (no queda colgado).
 
 import { initWelcome } from "./script.js";
+import { ApiError } from "./api.js";
+import { errorMessage } from "./errors.js";
+import { setRango } from "./state.js";
+import { DEFAULT_START, DEFAULT_SPAN_DAYS, addDays } from "./dates.js";
 
 const LOADER_DELAY_MS = 200;    // cuánto esperar antes de mostrar el loader
 const TIMEOUT_MS = 10000;       // tope: red de seguridad, no una espera
@@ -23,7 +27,13 @@ const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 let fragment = null;   // markup cacheado: se pide una sola vez
 
 async function mountWelcome(root, { onSubmit } = {}) {
-  fragment ??= await (await fetch("welcome.html")).text();
+  if (fragment == null) {
+    let r;
+    try { r = await fetch("welcome.html"); }
+    catch (e) { throw new ApiError("network", e.message, { cause: e }); }
+    if (!r.ok) throw new ApiError("server", `welcome.html: HTTP ${r.status}`, { status: r.status });
+    fragment = await r.text();
+  }
   root.innerHTML = fragment;
   window.i18n?.apply(root);                 // traduce el fragmento recién insertado
   return initWelcome(root, { onSubmit });
@@ -79,7 +89,7 @@ export async function showWelcome({ ready } = {}) {
       } catch (e) {
         handle.setLoading(false);
         handle.showError(e.message === "timeout" ? T("w.loading.timeout")
-          : T("map.loadError", { msg: e.message }), start);
+          : errorMessage(e), start);
         busy = false;
         return;
       } finally {
@@ -97,6 +107,42 @@ export async function showWelcome({ ready } = {}) {
       attempt();
     }
 
-    mountWelcome(root, { onSubmit: start }).then((h) => { handle = h; });
+    // Si el fragmento de la bienvenida no se puede cargar NO se deja la pantalla en blanco:
+    // se ofrece reintentar o entrar igual con las fechas por defecto.
+    function mount() {
+      mountWelcome(root, { onSubmit: start }).then(
+        (h) => { handle = h; }, (e) => fallback(e, T("w.fallback.reason")));
+    }
+
+    function fallback(err, note = "") {
+      root.innerHTML = `
+        <div class="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl" role="alert">
+          <p class="text-lg font-bold text-slate-900">${T("w.fallback.title")}</p>
+          <p class="mt-2 text-sm text-slate-600"></p>
+          <div class="mt-5 flex justify-center gap-3">
+            <button type="button" data-a="retry" class="px-4 py-2 rounded-lg bg-[#0032A0]
+              hover:bg-[#E03C31] text-white text-xs font-bold uppercase tracking-wider
+              cursor-pointer">${T("w.fallback.retry")}</button>
+            <button type="button" data-a="enter" class="px-4 py-2 rounded-lg border
+              border-slate-300 text-slate-700 text-xs font-bold uppercase tracking-wider
+              cursor-pointer hover:border-[#0032A0]">${T("w.fallback.enter")}</button>
+          </div>
+        </div>`;
+      root.querySelector("p.text-sm").textContent = note || errorMessage(err);
+      root.querySelector('[data-a="retry"]').onclick = () => { root.innerHTML = ""; mount(); };
+      root.querySelector('[data-a="enter"]').onclick = async () => {
+        root.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+        setRango(DEFAULT_START, addDays(DEFAULT_START, DEFAULT_SPAN_DAYS));
+        const tooLong = wait(TIMEOUT_MS).then(() => { throw new Error("timeout"); });
+        try { await Promise.race([ready?.(), tooLong]); }
+        catch (e) {
+          fallback(e, e.message === "timeout" ? T("w.loading.timeout") : errorMessage(e));
+          return;
+        }
+        close();
+      };
+    }
+
+    mount();
   });
 }

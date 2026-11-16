@@ -120,6 +120,12 @@ export function createDateRange(root, { getRange, onApply }) {
   // Al cambiar de idioma: el texto estático lo re-aplica i18n.apply; acá, lo que arma el JS.
   document.addEventListener("i18n:change", () => { refresh(); if (isOpen()) validate(); });
 
+  // Mientras se actualiza lo que depende del rango, el chip muestra un indicador.
+  function setBusy(on) {
+    chip.classList.toggle("is-busy", on);
+    chip.setAttribute("aria-busy", String(on));
+  }
+
   refresh();
-  return { refresh, close };
+  return { refresh, close, setBusy };
 }

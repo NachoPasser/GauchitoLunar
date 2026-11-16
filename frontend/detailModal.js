@@ -6,6 +6,7 @@ import { getMask, getSite } from "./api.js";
 import { createSkyline } from "./skyline.js";
 import { renderMetrics, renderCartuchos, instantStamp } from "./panel.js";
 import { renderLanderFrame } from "./landerFrame.js";
+import { errorMessage, isAbort } from "./errors.js";
 
 const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
 
@@ -23,6 +24,9 @@ export function createDetailModal({ windowDays = 30, date = null,
   let data = null;          // respuesta /api/site del sitio activo (para el slider)
   let horizonMask = null;   // máscara h(az) del sitio activo (para re-render i18n)
   let updateMetrics = null; // updater(i) de las métricas por instante (ver panel.js)
+  // Pedido en curso: un pedido nuevo cancela al anterior y las respuestas viejas se descartan
+  // (reqSeq) para que una respuesta tardía no pise a la más nueva.
+  let reqSeq = 0, ctrl = null;
 
   function setStatus(msg, isError = false) {
     const s = $("status");
@@ -47,7 +51,7 @@ export function createDetailModal({ windowDays = 30, date = null,
     T("detail.load.ephem"),
     T("detail.load.integrate"),
   ];
-  let loadingEl = null, stepTimer = null;
+  let loadingEl = null, stepTimer = null, slowTimer = null;
   const contentEls = () => [$("skyline").parentElement, $("metrics"), $("cartuchos")];
 
   function showLoading() {
@@ -59,6 +63,7 @@ export function createDetailModal({ windowDays = 30, date = null,
         '<div class="sk sk--sky"></div>' +
         '<div class="load-bar"><span></span></div>' +
         '<p class="load-step mono"></p>' +
+        '<p class="load-slow" hidden></p>' +
         '<div class="sk-metrics"><div class="sk sk--card"></div>' +
         '<div class="sk sk--card"></div><div class="sk sk--card"></div></div>';
       wrap.parentElement.insertBefore(loadingEl, wrap);
@@ -76,11 +81,47 @@ export function createDetailModal({ windowDays = 30, date = null,
     };
     tick();
     stepTimer = setInterval(tick, 1100);
+    // Si tarda (p. ej. un sitio nuevo baja efemérides de Horizons en vivo), se avisa.
+    const slow = loadingEl.querySelector(".load-slow");
+    slow.hidden = true;
+    slowTimer = setTimeout(() => { slow.textContent = T("detail.slow"); slow.hidden = false; },
+      8000);
   }
   function hideLoading() {
     if (stepTimer) { clearInterval(stepTimer); stepTimer = null; }
+    if (slowTimer) { clearTimeout(slowTimer); slowTimer = null; }
     if (loadingEl) loadingEl.style.display = "none";
     for (const el of contentEls()) el.style.display = "";
+  }
+
+  // Error de carga: reemplaza al contenido (NUNCA se deja el del sitio anterior bajo el nombre
+  // del nuevo) con el motivo en lenguaje llano y un botón para reintentar.
+  let errorEl = null, lastError = null;
+  function renderError() {
+    if (!errorEl || !lastError) return;
+    errorEl.querySelector(".detail-error__title").textContent = T("detail.errorTitle");
+    errorEl.querySelector(".detail-error__msg").textContent = errorMessage(lastError);
+    errorEl.querySelector("button").textContent = T("common.retry");
+  }
+  function showError(e, retry) {
+    if (!errorEl) {
+      const wrap = $("skyline").parentElement;
+      errorEl = document.createElement("div");
+      errorEl.className = "detail-error";
+      errorEl.setAttribute("role", "alert");
+      errorEl.innerHTML = '<p class="detail-error__title"></p><p class="detail-error__msg"></p>' +
+        '<button type="button" class="detail-error__retry"></button>';
+      wrap.parentElement.insertBefore(errorEl, wrap);
+    }
+    lastError = e;
+    renderError();
+    errorEl.querySelector("button").onclick = retry;
+    errorEl.style.display = "";
+    for (const el of contentEls()) el.style.display = "none";
+  }
+  function hideError() {
+    lastError = null;
+    if (errorEl) errorEl.style.display = "none";
   }
 
   function updateCursor(i) {
@@ -117,13 +158,18 @@ export function createDetailModal({ windowDays = 30, date = null,
       void panel.offsetWidth;
       panel.classList.add("lander-touchdown-anim");
     }
+    ctrl?.abort();                       // un pedido nuevo cancela el anterior si seguía en vuelo
+    ctrl = new AbortController();
+    const my = ++reqSeq, signal = ctrl.signal;
+    hideError();
     loading = true;
     showLoading();
     try {
       const [mask, site] = await Promise.all([
-        getMask(lat, lon),
-        getSite(lat, lon, { windowDays: resolve(windowDays), date: resolve(date) }),
+        getMask(lat, lon, { signal }),
+        getSite(lat, lon, { windowDays: resolve(windowDays), date: resolve(date), signal }),
       ]);
+      if (my !== reqSeq) return;         // llegó tarde: ya hay un pedido más nuevo
       $("site-name").textContent = name || site.site.name;
       data = site;
       horizonMask = mask.horizon_mask;
@@ -140,18 +186,26 @@ export function createDetailModal({ windowDays = 30, date = null,
       hideLoading();                           // revelar antes del cursor (necesita layout)
       updateCursor(0);
     } catch (e) {
+      if (my !== reqSeq || isAbort(e)) return;   // reemplazado o cancelado: no es un error
+      data = null; horizonMask = null; updateMetrics = null;   // sin restos del sitio anterior
       hideLoading();
-      const msg = e.status === 503
-        ? T("detail.noEphem")
-        : T("detail.loadError", { msg: e.message });
-      setStatus(msg, true);
+      showError(e, () => showSite(lat, lon, name));
+      setStatus("");
     } finally {
-      loading = false;
+      if (my === reqSeq) loading = false;
     }
   }
 
+  // Cancela lo que esté en vuelo (al cerrar): su respuesta ya no debe tocar la pantalla.
+  function cancelPending() {
+    ctrl?.abort();
+    reqSeq++;
+    loading = false;
+    hideLoading();
+  }
+
   const overlay = () => $("detail-overlay");
-  function close() { stopPlay(); overlay().classList.remove("is-open"); }
+  function close() { stopPlay(); cancelPending(); overlay().classList.remove("is-open"); }
   function openEmpty() {
     overlay().classList.add("is-open");
     // Un frame después el panel ya tiene layout; cambios de tamaño posteriores
@@ -271,6 +325,7 @@ export function createDetailModal({ windowDays = 30, date = null,
   // Cambio de idioma: re-renderiza métricas/cartuchos/skyline del sitio cargado
   // (su texto se genera por JS, no lo alcanza i18n.apply).
   document.addEventListener("i18n:change", () => {
+    renderError();                           // el mensaje de error también se traduce
     if (!data || loading || !horizonMask) return;
     const i = Number($("time-slider")?.value) || 0;
     updateMetrics = renderMetrics($("metrics"), data, horizonMask);

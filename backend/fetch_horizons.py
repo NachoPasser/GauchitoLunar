@@ -77,17 +77,21 @@ def _parse(result: str) -> list[dict]:
     return points
 
 
-def fetch_site(lat: float, lon: float, start: str, stop: str, step: str) -> None:
+def fetch_site(lat: float, lon: float, start: str, stop: str, step: str,
+               tag: str = "") -> None:
+    """Baja y cachea sun+earth. tag ("" = rango base) sufija el archivo (rangos extra)."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     for target, cmd in TARGETS.items():
         result = _query(cmd, lat, lon, start, stop, step)
         points = _parse(result)
-        out = CACHE_DIR / f"{lat:+.4f}_{lon:+.4f}_{target}.json"
-        out.write_text(json.dumps(
+        out = CACHE_DIR / f"{lat:+.4f}_{lon:+.4f}_{target}{tag}.json"
+        tmp = out.with_suffix(".tmp")           # escritura atómica: nadie lee un JSON a medias
+        tmp.write_text(json.dumps(
             {"site": {"lat": lat, "lon": lon}, "target": target,
              "start": start, "stop": stop, "step": step, "points": points},
             indent=1,
         ))
+        tmp.replace(out)
         print(f"  {target}: {len(points)} puntos → {out.name}")
 
 

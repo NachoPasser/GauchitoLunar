@@ -4,7 +4,8 @@
 // { destroy } para quitar los listeners globales al cerrarla.
 
 import { setRango } from "./state.js";
-import { MAX_DAYS, parseISO, addDays, daysBetween, formatReadable } from "./dates.js";
+import { MAX_DAYS, DEFAULT_START, DEFAULT_SPAN_DAYS, parseISO, addDays, daysBetween,
+  formatReadable } from "./dates.js";
 import { drawGlobe, GLOBE_LIGHT } from "./globe.js";
 
 export function initWelcome(root, { onSubmit } = {}) {
@@ -152,9 +153,9 @@ export function initWelcome(root, { onSubmit } = {}) {
   }
 
   // Inicializar valores por defecto (ej. 20 Nov 2026 + 14 días)
-  startDateInput.value = '2026-11-20';
+  startDateInput.value = DEFAULT_START;
   syncDateConstraints(false);
-  endDateInput.value = addDaysISO('2026-11-20', 14);
+  endDateInput.value = addDaysISO(DEFAULT_START, DEFAULT_SPAN_DAYS);
   updateDurationDisplay();
 
   // El badge de duración se setea por JS: al cambiar de idioma hay que regenerarlo (el texto
@@ -193,7 +194,7 @@ export function initWelcome(root, { onSubmit } = {}) {
     btn.addEventListener('click', () => {
       const days = Number(btn.dataset.days);
       if (!startDateInput.value) {
-        startDateInput.value = '2026-11-20';
+        startDateInput.value = DEFAULT_START;
       }
       syncDateConstraints(false);
       endDateInput.value = addDaysISO(startDateInput.value, days);

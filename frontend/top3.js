@@ -4,6 +4,7 @@
 // de 3 pasos con podio + tabla de posiciones desplegable).
 
 import { getSites, getSite } from "./api.js";
+import { errorMessage, isAbort } from "./errors.js";
 import { getState, windowDays, startDate } from "./state.js";
 import { rankBy } from "./rank.js";
 import { fmtPct, fmtEnergy, fmtHours } from "./format.js";
@@ -19,12 +20,13 @@ const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
 const cache = new Map();
 const keyOf = (lat, lon, win, date) => `${lat},${lon},${win},${date || ""}`;
 
-async function fetchEntry(site, kind, win, date) {
+async function fetchEntry(site, kind, win, date, signal) {
   const k = keyOf(site.lat, site.lon, win, date);
   if (cache.has(k)) return cache.get(k);
   const base = { name: site.name, lat: site.lat, lon: site.lon, kind };
   try {
-    const r = await getSite(site.lat, site.lon, { windowDays: win, date });
+    const r = await getSite(site.lat, site.lon,
+      { windowDays: win, date, signal, timeout: SITE_TIMEOUT_MS });
     const m = r.metrics;
     const entry = { ...base, ok: true,
       vis: m.earth_vis_fraction,            // 0..1, mayor mejor
@@ -34,29 +36,40 @@ async function fetchEntry(site, kind, win, date) {
     cache.set(k, entry);
     return entry;
   } catch (e) {
-    return { ...base, ok: false, error: e.message, vis: 0, gap: Infinity, energy: 0 };
+    return { ...base, ok: false, err: e, vis: 0, gap: Infinity, energy: 0 };
   }
 }
 
-// Carga en paralelo las métricas de semilla + chinchetas con la ventana/fecha global.
-// Tolera fallos por sitio (ok:false). Devuelve el array `entries` para rank.js.
+// Carga las métricas de semilla + chinchetas con la ventana/fecha global, de a CONCURRENCY
+// sitios a la vez (cada sitio nuevo puede bajar efemérides en vivo: pedirlos todos juntos
+// satura al backend y a Horizons). Tolera fallos por sitio (ok:false). Devuelve el array
+// `entries` para rank.js, en el orden de los sitios.
+const CONCURRENCY = 3;
+const SITE_TIMEOUT_MS = 30000;   // tope por sitio (si el backend cuelga, no esperar 60 s por lote)
+
 export async function loadEntries(
-  { win = windowDays(), date = startDate(), onProgress } = {},
+  { win = windowDays(), date = startDate(), onProgress, signal } = {},
 ) {
-  const { sites } = await getSites();
+  const { sites } = await getSites({ signal });
   const pins = getState().sitios || [];
   const all = [
     ...sites.map((s) => [s, "seed"]),
     ...pins.map((s) => [s, "pin"]),
   ];
-  let done = 0;
+  const out = new Array(all.length);
+  let next = 0, done = 0;
   onProgress?.(0, all.length);
-  return Promise.all(all.map(([s, kind]) => fetchEntry(s, kind, win, date).then((r) => {
-    onProgress?.(++done, all.length);       // cada sitio calculado hace avanzar la barra
-    return r;
-  })));
+  async function worker() {
+    while (next < all.length) {
+      const i = next++;
+      const [site, kind] = all[i];
+      out[i] = await fetchEntry(site, kind, win, date, signal);
+      onProgress?.(++done, all.length);     // cada sitio calculado hace avanzar la barra
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, all.length) }, worker));
+  return out;
 }
-
 
 // ── UI: consola rack con carrusel de 3 pasos (comms / energía / mixto). Cada paso:
 // podio de 3 tarjetas + tabla de posiciones desplegable; "ver detalle" en ambas.
@@ -195,9 +208,14 @@ export function createTop3({ onDetail } = {}) {
   const table = $("top3-table");
   let step = STEPS[0], entries = null, loading = false, error = null, win = windowDays();
   let prog = { done: 0, total: 0 };
+  let ctrl = null, loadSeq = 0;      // carga en curso: se cancela/descarta al cerrar o reabrir
 
-  const msg = (text, isErr = false) =>
-    `<p class="t3-msg ${isErr ? "t3-msg--err" : ""}">${text}</p>`;
+  const retryBtn = (cls = "") =>
+    `<button type="button" class="t3-retry ${cls}" data-act="retry">${
+      T("common.retry")}</button>`;
+  const msg = (text, isErr = false, retry = false) =>
+    `<div class="t3-msg ${isErr ? "t3-msg--err" : ""}"><p>${text}</p>${
+      retry ? retryBtn() : ""}</div>`;
 
   // Encabezado, pills, barra de progreso y columna activa del paso actual.
   function renderChrome(slide) {
@@ -229,11 +247,20 @@ export function createTop3({ onDetail } = {}) {
       showToggle(false); setTable(false);
     };
     if (loading) { empty(loadingHTML()); return setProgress(prog.done, prog.total); }
-    if (error) return empty(msg(T("t3.error", { msg: enc(error) }), true));
+    if (error) return empty(msg(enc(errorMessage(error)), true, true));
     if (!entries) return empty("");
     const { ranked, noData } = rankBy(entries, step, { wComms: W_COMMS });
-    if (!ranked.length) return empty(msg(T("t3.empty")));
-    cards.innerHTML = ranked.slice(0, 3).map((e) => card(step, e, win, slide)).join("");
+    if (!entries.length) return empty(msg(T("t3.empty")));
+    if (!ranked.length) {                    // fallaron TODOS: se dice por qué + reintentar
+      const why = enc(errorMessage(noData[0]?.err));
+      return empty(msg(`${T("t3.allFailed")} ${why}`, true, true));
+    }
+    // Si fallaron ALGUNOS, el podio es de los que sí respondieron: se avisa que es parcial
+    // (antes parecía un ranking completo) y se ofrece reintentar solo esos sitios.
+    const warn = noData.length ? `<div class="t3-warn" role="status"><span>${
+      T("t3.partial", { bad: noData.length, total: entries.length })}</span>${
+      retryBtn("t3-retry--sm")}</div>` : "";
+    cards.innerHTML = warn + ranked.slice(0, 3).map((e) => card(step, e, win, slide)).join("");
     tbody.innerHTML = ranked.map((e) => row(step, e, win)).join("") +
       noData.map(noDataRow).join("");
     $("top3-count").textContent = T("t3.count", { n: entries.length });
@@ -252,13 +279,25 @@ export function createTop3({ onDetail } = {}) {
       `${total ? Math.max(6, Math.round((done / total) * 100)) : 6}%`;
   }
 
+  // Reintentar vuelve a llamar a load(): lo ya calculado sale del caché, solo se re-piden
+  // los sitios que habían fallado (los errores no se cachean).
   async function load() {
+    ctrl?.abort();                            // una carga nueva cancela la anterior
+    ctrl = new AbortController();
+    const my = ++loadSeq, signal = ctrl.signal;
     win = windowDays();
     prog = { done: 0, total: 0 };
     loading = true; error = null; render();
-    try { entries = await loadEntries({ win, onProgress: setProgress }); }
-    catch (e) { error = e.message; }
-    finally { loading = false; render(); }
+    try {
+      const res = await loadEntries({
+        win, signal, onProgress: (d, t) => { if (my === loadSeq) setProgress(d, t); } });
+      if (my !== loadSeq) return;             // cerrado o reabierto mientras cargaba
+      entries = res;
+    } catch (e) {
+      if (my !== loadSeq || isAbort(e)) return;
+      error = e; entries = null;
+    }
+    loading = false; render();
   }
 
   function goTo(next) {
@@ -291,7 +330,10 @@ export function createTop3({ onDetail } = {}) {
 
   const isOpen = () => overlay.classList.contains("is-open");
   function open() { overlay.classList.add("is-open"); load(); }
-  function close() { overlay.classList.remove("is-open"); setTable(false); }
+  function close() {
+    ctrl?.abort(); loadSeq++; loading = false;   // lo que esté en vuelo ya no se muestra
+    overlay.classList.remove("is-open"); setTable(false);
+  }
 
   $("top3-tabs").addEventListener("click", (e) => {
     const b = e.target.closest(".t3-pill");
@@ -306,6 +348,7 @@ export function createTop3({ onDetail } = {}) {
   // cierra el Top 3 y abre el skyline del sitio sobre el mapa.
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) return close();
+    if (e.target.closest("[data-act='retry']")) return load();
     const b = e.target.closest("[data-lat]");
     if (!b) return;
     close();

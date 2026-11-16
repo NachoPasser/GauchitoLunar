@@ -13,11 +13,18 @@ import { showWelcome } from "./welcome.js";
 import { mountMoonFrame } from "./moonFrame.js";
 import { initLayout, getScale } from "./layout.js";
 import { createDateRange } from "./dateRange.js";
+import { ApiError, getHealth } from "./api.js";
+import { errorMessage } from "./errors.js";
 import { windowDays, startDate, addSitio, removeSitio, setSitioActivo, getState,
   renameSitio, setRango } from "./state.js";
 
 const $ = (id) => document.getElementById(id);
 const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
+
+// El módulo evaluó todos sus imports: la app arrancó. Lo sabe el vigía de map.html, que si no
+// llega a verlo muestra un aviso (y si el aviso ya salió por lentitud, lo retira).
+window.__appBooted = true;
+document.getElementById("boot-fatal")?.remove();
 const stage = $("map-stage");
 const world = $("map-world");
 const zoomSlider = $("zoom-slider");
@@ -406,6 +413,13 @@ async function placeMoonBg(capMeta) {
   img.src = `${mapUrl("hillshade")}&_=${Date.now()}`;
 }
 
+// Quita todos los marcadores (semillas y pines) del mapa.
+function clearMarkers() {
+  layer.replaceChildren();
+  markers.clear();
+  setActive(null);
+}
+
 // Sitio de referencia de las flechas Sol/Tierra cuando no hay un sitio activo.
 let refSite = { lat: -89.9, lon: 0 };
 
@@ -422,17 +436,26 @@ async function refreshRefArrows() {
 const dateRange = createDateRange($("date-range"), {
   getRange: () => getState().rangoFechas,
   onApply: async ({ desde, hasta }) => {
+    const prev = { ...getState().rangoFechas };
     setRango(desde, hasta);
     dateRange.refresh();
+    dateRange.setBusy(true);
     const detailOpen = $("detail-overlay").classList.contains("is-open");
     const cur = getState().sitioActivo;
     try {
-      // Con el detalle abierto se recarga (sus flechas siguen al slider); si no, las de referencia.
+      // Con el detalle abierto se recarga (sus flechas siguen al slider; si falla, él mismo
+      // muestra su error con "Reintentar"); si no, se redibujan las de referencia.
       if (detailOpen && cur) await modal.show(cur.lat, cur.lon, cur.name);
       else await refreshRefArrows();
       setStatus("");
     } catch (e) {
-      setStatus(T("dr.statusError", { msg: e.message }));
+      // Las flechas no se pudieron actualizar: se vuelve al rango anterior para no dejar el
+      // chip (y lo guardado) en desacuerdo con lo que muestra el mapa.
+      if (prev.desde && prev.hasta) setRango(prev.desde, prev.hasta);
+      dateRange.refresh();
+      setStatus(T("dr.statusError", { msg: errorMessage(e) }));
+    } finally {
+      dateRange.setBusy(false);
     }
   },
 });
@@ -442,7 +465,7 @@ const dateRange = createDateRange($("date-range"), {
 // falló. Tres pasos no dependen de las fechas y arrancan al abrir la página (cargan mientras
 // el usuario lee el tutorial); "arrows" sí necesita el rango y corre al fijarlo. La bienvenida
 // espera a `loadForWelcome` antes de cerrarse: si ya está todo listo, no hay espera.
-const BASE_STEPS = ["meta", "image", "sites", "moon"];
+const BASE_STEPS = ["health", "meta", "image", "sites", "moon"];
 const ALL_STEPS = [...BASE_STEPS, "arrows"];
 const stepCache = new Map();          // nombre → promesa en curso o resuelta
 const stepDone = new Set();
@@ -450,6 +473,14 @@ let moonReady = Promise.resolve();    // luna de fondo (hillshade): asigna el sr
 let onLoadProgress = null;
 
 const STEPS_FN = {
+  // ¿Tiene el servidor sus datos (DEM, rasters)? Si no, se avisa de entrada en lugar de que
+  // falle cada pedido por separado.
+  health: async () => {
+    const h = await getHealth();
+    if (!h.ready) {
+      throw new ApiError("data", T("err.dataMissing", { missing: h.missing.join(", ") }));
+    }
+  },
   meta: async () => {
     const meta = await getMapMeta("illumination");
     proj = createProjection(meta);
@@ -464,6 +495,7 @@ const STEPS_FN = {
   sites: async () => {
     await runStep("meta");            // los marcadores se ubican con la proyección
     const { sites } = await getSites();
+    clearMarkers();                   // un reintento no debe duplicar marcadores
     sites.forEach((s) => addMarker(s.lon, s.lat, s.name, "seed"));
     getState().sitios.forEach((s) => addMarker(s.lon, s.lat, s.name, "pin"));
     refSite = sites[0] || refSite;

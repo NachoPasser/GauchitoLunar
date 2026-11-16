@@ -5,13 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-i18n="map.title">Mapa polar sur · Lunar Landing Site Navigator</title>
   <!-- El mapa arranca oculto: entre el primer render y la ejecución de map.js se vería el HTML
-       crudo (óvalo borroso, imágenes sin cargar). welcome.js quita la clase al tomar el control;
-       el timeout es una red de seguridad por si el JS no llegara a cargar. Va ANTES de Tailwind,
-       que bloquea el render. -->
+       crudo (óvalo borroso, imágenes sin cargar). welcome.js quita la clase al tomar el control.
+       Va ANTES de Tailwind, que bloquea el render.
+       VIGÍA: si a los 10 s la app no arrancó (map.js o uno de sus módulos no cargó, falta
+       i18n.js...) no se deja una pantalla en blanco ni se revela el mapa crudo: se muestra un
+       aviso con "Recargar". Si la app arranca más tarde (red lenta), map.js retira el aviso.
+       Es inline y no usa i18n/CSS externos a propósito: tiene que andar cuando todo lo demás
+       falla. -->
   <style>html.booting main { visibility: hidden; }</style>
   <script>
     document.documentElement.classList.add("booting");
-    setTimeout(function () { document.documentElement.classList.remove("booting"); }, 8000);
+    setTimeout(function () {
+      if (window.__appBooted && window.i18n) {            // todo bien: red de seguridad
+        document.documentElement.classList.remove("booting");
+        return;
+      }
+      var es = /^es/i.test(navigator.language || "");
+      var box = document.createElement("div");
+      box.id = "boot-fatal";
+      box.setAttribute("role", "alert");
+      box.style.cssText = "position:fixed;inset:0;z-index:99999;display:flex;flex-direction:" +
+        "column;align-items:center;justify-content:center;gap:14px;padding:24px;" +
+        "background:#070a16;color:#e8eefc;font:15px/1.5 system-ui,sans-serif;text-align:center";
+      var h = document.createElement("strong");
+      h.style.fontSize = "18px";
+      h.textContent = es ? "No se pudo iniciar la aplicación" : "The app couldn't start";
+      var p = document.createElement("p");
+      p.style.cssText = "margin:0;max-width:420px;color:#a8b3cf";
+      p.textContent = es
+        ? "Falta cargar un archivo o la conexión es muy lenta. Probá recargar la página."
+        : "A file failed to load or the connection is too slow. Try reloading the page.";
+      var btn = document.createElement("button");
+      btn.textContent = es ? "Recargar" : "Reload";
+      btn.style.cssText = "cursor:pointer;padding:10px 20px;border-radius:8px;border:0;" +
+        "background:#0032A0;color:#fff;font-weight:700;letter-spacing:.05em";
+      btn.onclick = function () { location.reload(); };
+      box.append(h, p, btn);
+      document.body.appendChild(box);
+    }, 10000);
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
