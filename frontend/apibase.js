@@ -16,5 +16,9 @@
   }
   var stored = null;
   try { stored = localStorage.getItem("lln.api"); } catch (e) { /* modo privado */ }
-  window.API_BASE = clean || stored || "http://127.0.0.1:8000";
+  // En producción (no localhost) usa el mismo origen; en dev apunta al backend local.
+  var isLocal = location.hostname === "127.0.0.1" || location.hostname === "localhost";
+  var devDefault = "http://127.0.0.1:8000";
+  var prodDefault = location.origin;
+  window.API_BASE = clean || stored || (isLocal ? devDefault : prodDefault);
 })();

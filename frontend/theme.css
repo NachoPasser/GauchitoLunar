@@ -603,3 +603,20 @@ input[type="range"].zoom-range::-moz-range-thumb {
 .dr__btn--ok { background: #0032a0; color: #fff; }
 .dr__btn--ok:hover:not(:disabled) { background: #e92637; }
 .dr__btn--ok:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Botón y card de fundamento físico (bottom-left fijo) */
+#phys-card {
+  transition: transform 0.18s ease, opacity 0.18s ease;
+  transform: translateY(10px);
+  opacity: 0;
+  pointer-events: none;
+}
+#phys-card.phys-open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.phys-link {
+  color: #0032a0; text-decoration: underline; text-underline-offset: 2px;
+}
+.phys-link:hover { color: #e03c31; }

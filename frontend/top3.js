@@ -21,7 +21,7 @@ const keyOf = (lat, lon, win, date) => `${lat},${lon},${win},${date || ""}`;
 
 async function fetchEntry(site, kind, win, date) {
   const k = keyOf(site.lat, site.lon, win, date);
-  if (cache.has(k)) return cache.get(k);
+  if (cache.has(k)) return { ...cache.get(k), name: site.name };
   const base = { name: site.name, lat: site.lat, lon: site.lon, kind };
   try {
     const r = await getSite(site.lat, site.lon, { windowDays: win, date });

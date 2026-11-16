@@ -9,16 +9,18 @@ Docs:    http://127.0.0.1:8000/docs
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from constants import COMMS_MARGIN_DEFAULT_DEG, WINDOW_DAYS_DEFAULT
 from sites import SEED_SITES
 
 app = FastAPI(title="Lunar Landing Site Navigator", version="0.1-h1")
 
-# El frontend vanilla corre desde file:// o un server estático aparte.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,7 +29,12 @@ app.add_middleware(
 )
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    return RedirectResponse(url="/map.html")
+
+
+@app.get("/api/health")
 def health() -> dict:
     return {"status": "ok", "service": "lunar-nav", "stage": "h1"}
 
@@ -86,3 +93,10 @@ def map_meta(metric: str = Query("illumination")) -> JSONResponse:
     except KeyError:
         raise HTTPException(status_code=400,
                             detail="metric debe ser illumination|earth|psr")
+
+
+# Sirve el frontend como archivos estáticos — debe ir al FINAL para no
+# interceptar las rutas /api/*.
+_FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
+if _FRONTEND.exists():
+    app.mount("/", StaticFiles(directory=str(_FRONTEND)), name="static")
