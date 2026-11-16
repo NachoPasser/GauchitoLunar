@@ -58,8 +58,11 @@ cd GauchitoLunar/backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# 2. Start backend + frontend together
+# 2. Download NASA datasets (~272 MB, sourced from NASA PGDA)
 cd ..
+bash backend/fetch_data.sh
+
+# 3. Start backend + frontend together
 ./dev.sh
 ```
 
@@ -67,7 +70,7 @@ This opens:
 - Backend API → http://127.0.0.1:8000/docs
 - Frontend → http://127.0.0.1:5600/map.html
 
-> The `data/` folder (272 MB) contains the LOLA DEM, PGDA rasters, and the JPL Horizons cache. Without it the backend starts but `/api/mask` and `/api/site` will not work. Contact the team if you need the dataset.
+> The Horizons ephemeris cache (`data/horizons/`) is pre-generated for the seed sites. For custom sites the backend fetches live from JPL Horizons on first request and caches the result.
 
 ---
 
