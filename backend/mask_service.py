@@ -14,6 +14,9 @@ from mask import compute_mask, mask_to_contract
 from sites import find_seed_site
 
 CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "mask_cache"
+# Subir al cambiar el algoritmo de la máscara: invalida el cache en disco viejo.
+# v1 = alcance fijo 50 km (sin prefijo); v2 = alcance adaptativo √(2R·Δz).
+CACHE_VERSION = "v2"
 _MEM: dict[tuple, dict] = {}
 
 
@@ -23,10 +26,10 @@ def _site_name(lat: float, lon: float) -> str:
 
 
 def _cache_path(lat: float, lon: float) -> Path:
-    return CACHE_DIR / f"{lat:+.4f}_{lon:+.4f}.json"
+    return CACHE_DIR / f"{CACHE_VERSION}_{lat:+.4f}_{lon:+.4f}.json"
 
 
-def get_mask(lat: float, lon: float, max_km: float = 50.0) -> dict:
+def get_mask(lat: float, lon: float, max_km: float | None = None) -> dict:
     """Contrato §5 de /api/mask. Usa cache en memoria → disco → cómputo."""
     key = (round(lat, 4), round(lon, 4))
     if key in _MEM:

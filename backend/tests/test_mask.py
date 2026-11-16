@@ -5,7 +5,7 @@ import math
 import numpy as np
 import pytest
 
-from mask import compute_mask, mask_to_contract
+from mask import compute_mask, mask_to_contract, max_elevation_bound_deg
 
 # Base ortonormal de prueba en píxeles: Norte = fila que decrece (arriba),
 # Este = columna que crece. az=0 → norte, az=90 → este.
@@ -60,6 +60,42 @@ def test_curvature_lowers_far_horizon():
                           moon_radius_m=1e15)     # R enorme ≈ sin curvatura
     i90 = _az_index(360, 90.0)
     assert h_curv[i90] < h_flat[i90]
+
+
+def test_bound_is_decreasing_and_matches_range_formula():
+    """La cota baja con s y cruza 0 en d = √(2R·Δz) (1000 m → ~58.9 km)."""
+    d = math.sqrt(2 * R * 1000.0)
+    assert max_elevation_bound_deg(1000.0, 0.0, d, R) == pytest.approx(0.0, abs=1e-9)
+    assert (max_elevation_bound_deg(1000.0, 0.0, 10e3, R)
+            > max_elevation_bound_deg(1000.0, 0.0, 20e3, R))
+
+
+def test_adaptive_matches_long_fixed_range_and_short_range_differs():
+    """Adaptativo == alcance fijo muy largo; con alcance corto se pierde el muro."""
+    z = np.zeros((401, 401))
+    z[:, 330:] = 100.0                     # muro a 130 px (10.4 km), 100 m sobre el sitio
+    a = [z, 200, 200, NORTH, EAST, MPP]
+    h_auto = compute_mask(*a, n_az=90, max_km=None)
+    h_long = compute_mask(*a, n_az=90, max_km=300.0)
+    h_short = compute_mask(*a, n_az=90, max_km=5.0)
+    assert np.allclose(h_auto, h_long, atol=1e-9)
+    assert h_short[_az_index(90, 90.0)] < h_auto[_az_index(90, 90.0)] - 0.1
+
+
+def test_adaptive_site_on_peak_with_negative_horizon_still_converges():
+    """Regresión: sitio en cima (horizonte negativo) con una cresta lejana igual de alta.
+
+    Con la fórmula √(2R·(zmax−z₀)) el alcance era 0 (zmax==z₀) y se perdía la cresta.
+    """
+    z = np.zeros((401, 401))
+    z[200, 200] = 100.0                    # cima de 1 px y 100 m; alrededor, suelo a 0 m
+    z[:, 330:] = 100.0                     # cresta lejana (10.4 km) a la misma altura
+    a = [z, 200, 200, NORTH, EAST, MPP]
+    h_auto = compute_mask(*a, n_az=90, max_km=None)
+    h_long = compute_mask(*a, n_az=90, max_km=300.0)
+    assert np.allclose(h_auto, h_long, atol=1e-9)
+    # la cresta a 10.4 km a su misma altura se ve a −s/(2R) ≈ −0.17°, no a −90°
+    assert h_auto[_az_index(90, 90.0)] == pytest.approx(-0.17, abs=0.03)
 
 
 def test_mask_to_contract_shape():
