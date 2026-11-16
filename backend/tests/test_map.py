@@ -9,7 +9,7 @@ from PIL import Image
 
 import map_service
 
-_HAS = all((map_service.DATA / f).exists() for f in map_service.RASTERS.values())
+_HAS = all(map_service._resolve_data_path(f).exists() for f in map_service.RASTERS.values())
 needs_rasters = pytest.mark.skipif(not _HAS, reason="rasters no descargados (fetch_data.sh)")
 
 
@@ -41,13 +41,15 @@ def test_map_meta_shape_and_proj():
 @needs_rasters
 def test_seed_sites_project_inside_bounds():
     """Cada sitio semilla cae dentro de los bounds del raster de fondo (sanity H3)."""
-    from pyproj import Transformer
+    from pyproj import CRS, Transformer
 
     from sites import SEED_SITES
     m = map_service.get_map_meta("illumination")
     b = m["bounds"]
-    with rasterio.open(map_service.DATA / map_service.RASTERS["illumination"]) as ds:
-        tf = Transformer.from_crs(ds.crs.geodetic_crs, ds.crs, always_xy=True)
+    path = map_service._resolve_data_path(map_service.RASTERS["illumination"])
+    with rasterio.open(path) as ds:
+        crs = CRS.from_wkt(ds.crs.to_wkt())          # rasterio.CRS no trae geodetic_crs
+    tf = Transformer.from_crs(crs.geodetic_crs, crs, always_xy=True)
     for s in SEED_SITES:
         lon = s["lon"] - 360.0 if s["lon"] > 180.0 else s["lon"]
         x, y = tf.transform(lon, s["lat"])
