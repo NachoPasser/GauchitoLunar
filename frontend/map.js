@@ -527,8 +527,8 @@ function runStep(name) {
   return stepCache.get(name);
 }
 
-// Espera a que una imagen termine de cargar o falle; nunca rechaza (el tope lo pone la
-// bienvenida, que corta a los 10 s con el error y el botón de reintento).
+// Espera a que una imagen termine de cargar o falle; nunca rechaza. La bienvenida no
+// pone tope de tiempo: espera con el loader hasta que la imagen cargue.
 function settled(img) {
   return new Promise((res) => {
     // complete = ya cargó, ya falló o no tiene src: en esos casos no hay nada que esperar.

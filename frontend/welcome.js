@@ -9,7 +9,8 @@
 //  · si ya cargó (lo normal: carga mientras se lee el tutorial) se pasa de inmediato;
 //  · si falta algo, el loader aparece recién a los LOADER_DELAY_MS (así no parpadea) y se va
 //    cuando termina la última carga: la espera dura lo que realmente tarde;
-//  · si algo falla o pasan TIMEOUT_MS, se muestra el error con "Reintentar" (no queda colgado).
+//  · si algo FALLA (API caída, imagen que no carga) se muestra el error con "Reintentar".
+//    Que tarde no es un fallo: no hay tope de tiempo, se espera con el loader a que cargue.
 
 import { initWelcome } from "./script.js";
 import { ApiError } from "./api.js";
@@ -18,7 +19,7 @@ import { setRango } from "./state.js";
 import { DEFAULT_START, DEFAULT_SPAN_DAYS, addDays } from "./dates.js";
 
 const LOADER_DELAY_MS = 200;    // cuánto esperar antes de mostrar el loader
-const TIMEOUT_MS = 10000;       // tope: red de seguridad, no una espera
+const SLOW_NOTICE_MS = 10000;   // desde cuándo se avisa que la carga tarda (solo informa)
 const MIN_FEEDBACK_MS = 650;    // el aviso "ventana cargada" se deja leer este mínimo
 
 const T = (key, vars) => (window.i18n ? window.i18n.t(key, vars) : key);
@@ -78,22 +79,21 @@ export async function showWelcome({ ready } = {}) {
       ]);
       if (!settledFast) handle.setLoading(true);    // recién ahora se ve el loader
 
-      let timer;
+      // Sin tope de tiempo: las imágenes del mapa pueden tardar en una conexión lenta y
+      // reintentar no las acelera, así que se espera con el loader hasta que carguen. Solo se
+      // corta con un fallo real: los pedidos a la API traen su propio timeout y la imagen
+      // rechaza si da error de carga.
+      // Si se alarga, un aviso informativo (no es un error ni ofrece reintentar).
+      const slowTimer = setTimeout(() => handle.setSlow(true), SLOW_NOTICE_MS);
       try {
-        await Promise.race([
-          gate,
-          new Promise((_, rej) => {
-            timer = setTimeout(() => rej(new Error("timeout")), TIMEOUT_MS);
-          }),
-        ]);
+        await gate;
       } catch (e) {
         handle.setLoading(false);
-        handle.showError(e.message === "timeout" ? T("w.loading.timeout")
-          : errorMessage(e), start);
+        handle.showError(errorMessage(e), start);
         busy = false;
         return;
       } finally {
-        clearTimeout(timer);
+        clearTimeout(slowTimer);
       }
       const rest = MIN_FEEDBACK_MS - (performance.now() - t0);
       if (rest > 0) await wait(rest);
@@ -132,13 +132,15 @@ export async function showWelcome({ ready } = {}) {
       root.querySelector('[data-a="retry"]').onclick = () => { root.innerHTML = ""; mount(); };
       root.querySelector('[data-a="enter"]').onclick = async () => {
         root.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+        root.querySelector("p.text-sm").textContent = T("w.loading.text");  // se espera, sin tope
         setRango(DEFAULT_START, addDays(DEFAULT_START, DEFAULT_SPAN_DAYS));
-        const tooLong = wait(TIMEOUT_MS).then(() => { throw new Error("timeout"); });
-        try { await Promise.race([ready?.(), tooLong]); }
-        catch (e) {
-          fallback(e, e.message === "timeout" ? T("w.loading.timeout") : errorMessage(e));
-          return;
-        }
+        const slowTimer = setTimeout(() => {
+          const p = root.querySelector("p.text-sm");
+          if (p) p.textContent = T("w.loading.slow");
+        }, SLOW_NOTICE_MS);
+        try { await ready?.(); }
+        catch (e) { clearTimeout(slowTimer); fallback(e, errorMessage(e)); return; }
+        clearTimeout(slowTimer);
         close();
       };
     }

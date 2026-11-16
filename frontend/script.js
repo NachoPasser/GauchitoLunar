@@ -76,6 +76,7 @@ export function initWelcome(root, { onSubmit } = {}) {
   const loaderBox = $('welcome-loader'), loaderN = $('welcome-loader-n');
   const loaderBar = $('welcome-loader-bar'), errorBox = $('welcome-error');
   const errorText = $('welcome-error-text'), retryBtn = $('welcome-retry');
+  const slowNote = $('welcome-loader-slow');   // aviso informativo si la carga se alarga
   const submitBtn = dateForm.querySelector('button[type="submit"]');
   let onRetry = null;
   retryBtn.addEventListener('click', () => onRetry?.());
@@ -438,10 +439,12 @@ export function initWelcome(root, { onSubmit } = {}) {
     // Loader: reemplaza al aviso de "ventana cargada" y bloquea el botón mientras se espera.
     setLoading(on) {
       loaderBox.classList.toggle('hidden', !on);
+      if (!on) slowNote.classList.add('hidden');     // el aviso vive solo dentro del loader
       if (on) { feedbackBox.classList.add('hidden'); errorBox.classList.add('hidden'); }
       submitBtn.disabled = on;
       submitBtn.classList.toggle('opacity-60', on);
     },
+    setSlow(on) { slowNote.classList.toggle('hidden', !on); },
     setProgress(done, total) {
       loaderN.textContent = total ? `${done} / ${total}` : '';
       loaderBar.style.width = `${total ? Math.max(6, Math.round((done / total) * 100)) : 6}%`;
