@@ -50,3 +50,7 @@ The physics engine uses real NASA DEM data (LOLA 80 m/px), JPL Horizons ephemeri
 ## Team
 
 Built in 48 h at NASA Space Apps Challenge 2026.
+
+- [Ignacio Ucedo](https://www.linkedin.com/in/ignacio-ucedo-187a96361/)
+- [Ignacio Passerini](https://www.linkedin.com/in/ignacio-passerini/?locale=en-US)
+- [Jeremías Souto](https://www.linkedin.com/in/jeremias-souto-6b07752a5/)
