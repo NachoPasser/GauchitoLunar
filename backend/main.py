@@ -12,10 +12,12 @@ from __future__ import annotations
 import logging
 import math
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from constants import (COMMS_MARGIN_DEFAULT_DEG, COMMS_MARGIN_MAX_DEG,
@@ -57,7 +59,6 @@ def _check_site(lat: float, lon: float) -> None:
 
 app.add_middleware(BaseHTTPMiddleware, dispatch=_catch_all)
 
-# El frontend vanilla corre desde file:// o un server estático aparte.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -66,9 +67,9 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-def health() -> dict:
-    return {"status": "ok", "service": "lunar-nav", "stage": "h1"}
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    return RedirectResponse(url="/map.html")
 
 
 # Datos IMPRESCINDIBLES para que la interfaz funcione: el DEM (máscara y relieve de fondo) y el
@@ -95,7 +96,9 @@ def api_health() -> dict:
     warnings += [f"horizons:{s['name']}" for s in SEED_SITES
                  if not ephem.has_cache(s["lat"], s["lon"], "sun")
                  or not ephem.has_cache(s["lat"], s["lon"], "earth")]
-    return {"ready": not missing, "missing": missing, "warnings": warnings}
+    # status/service/stage: liveness (lo usan el deploy/Docker); ready/missing/warnings: datos.
+    return {"status": "ok", "service": "lunar-nav", "stage": "h1",
+            "ready": not missing, "missing": missing, "warnings": warnings}
 
 
 @app.get("/api/sites")
@@ -161,3 +164,10 @@ def map_meta(metric: str = Query("illumination")) -> JSONResponse:
     except KeyError:
         raise HTTPException(status_code=400,
                             detail="metric debe ser illumination|earth|psr")
+
+
+# Sirve el frontend como archivos estáticos — debe ir al FINAL para no
+# interceptar las rutas /api/*.
+_FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
+if _FRONTEND.exists():
+    app.mount("/", StaticFiles(directory=str(_FRONTEND)), name="static")

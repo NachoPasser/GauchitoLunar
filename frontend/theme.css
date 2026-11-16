@@ -623,3 +623,20 @@ input[type="range"].zoom-range::-moz-range-thumb {
   border: 2px solid currentColor; border-right-color: transparent;
   animation: dr-spin .7s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .dr__chip.is-busy::after { animation-duration: 2s; } }
+
+/* Botón y card de fundamento físico (bottom-left fijo) */
+#phys-card {
+  transition: transform 0.18s ease, opacity 0.18s ease;
+  transform: translateY(10px);
+  opacity: 0;
+  pointer-events: none;
+}
+#phys-card.phys-open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.phys-link {
+  color: #0032a0; text-decoration: underline; text-underline-offset: 2px;
+}
+.phys-link:hover { color: #e03c31; }

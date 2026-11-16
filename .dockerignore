@@ -1,0 +1,12 @@
+**/__pycache__
+**/*.py[cod]
+**/.venv
+**/venv
+**/env
+**/*.egg-info
+.git
+.gitignore
+*.md
+frontend/designReferences
+frontend/tests
+backend/mocks

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title data-i18n="map.title">Mapa polar sur · Lunar Landing Site Navigator</title>
+  <title data-i18n="map.title">Selene Horizon · Mapa polar sur</title>
   <!-- El mapa arranca oculto: entre el primer render y la ejecución de map.js se vería el HTML
        crudo (óvalo borroso, imágenes sin cargar). welcome.js quita la clase al tomar el control.
        Va ANTES de Tailwind, que bloquea el render.
@@ -49,6 +49,7 @@
   <link rel="stylesheet" href="theme.css" />
   <link rel="stylesheet" href="top3.css" />
   <link rel="stylesheet" href="welcome.css" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
 </head>
 <body class="app-bg page-space min-h-screen">
 
@@ -60,7 +61,7 @@
     <div class="flex flex-col shrink-0">
     <div class="brand">
       <h1 class="m-0">
-        <img src="assets/logo.png" alt="Selene Horizon — Solar &amp; Earth Lunar Ephemeris Navigation Engine"
+        <img src="assets/Logo.png" alt="Selene Horizon — Solar &amp; Earth Lunar Ephemeris Navigation Engine"
              class="block h-14 w-auto select-none" draggable="false" />
       </h1>
       <!-- Selector de fechas (dateRange.js): cambiar el rango sin volver a la bienvenida -->
@@ -396,6 +397,67 @@
         </section>
       </div>
     </div>
+  </div>
+
+  <!-- Botón de fundamento físico: fijo bottom-left, aparece después de la bienvenida -->
+  <div id="phys-wrap" class="fixed bottom-5 left-5 z-50 flex flex-col items-start gap-2"
+       style="display:none">
+    <div id="phys-card"
+         class="w-72 bg-white border border-[#0032A0]/20 rounded-xl shadow-xl overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+        <span data-i18n="phys.title"
+              class="font-['JetBrains_Mono'] text-[11px] font-semibold uppercase
+                     tracking-wider text-[#0032A0]">Física y datos reales</span>
+        <button id="phys-close" type="button"
+                class="font-['JetBrains_Mono'] text-[12px] text-slate-400
+                       hover:text-slate-700 cursor-pointer leading-none">[×]</button>
+      </div>
+      <div class="p-4 space-y-3">
+        <div>
+          <p data-i18n="phys.s1.title"
+             class="font-['JetBrains_Mono'] text-[9px] font-semibold uppercase
+                    tracking-wider text-[#0032A0] mb-0.5">
+            Posiciones del Sol y la Tierra</p>
+          <p data-i18n-html="phys.s1.body" class="text-[12px] text-slate-600 leading-snug">
+            JPL Horizons (NASA): el mismo motor de efemérides que usa la NASA.
+          </p>
+        </div>
+        <div>
+          <p data-i18n="phys.s2.title"
+             class="font-['JetBrains_Mono'] text-[9px] font-semibold uppercase
+                    tracking-wider text-[#0032A0] mb-0.5">Horizonte local</p>
+          <p data-i18n-html="phys.s2.body" class="text-[12px] text-slate-600 leading-snug">
+            Ray casting sobre el DEM LOLA a 80 m. El relieve real del Polo Sur
+            determina si el Sol o la Tierra están a la vista.
+          </p>
+        </div>
+        <div>
+          <p data-i18n="phys.s3.title"
+             class="font-['JetBrains_Mono'] text-[9px] font-semibold uppercase
+                    tracking-wider text-[#0032A0] mb-0.5">Energía solar</p>
+          <p data-i18n="phys.s3.body" class="text-[12px] text-slate-600 leading-snug">
+            Integral real: ∫ S · max(0, sin e) · V(t) dt (kWh/m²). No es un
+            porcentaje de tiempo — es energía útil acumulada.
+          </p>
+        </div>
+        <div>
+          <p data-i18n="phys.s4.title"
+             class="font-['JetBrains_Mono'] text-[9px] font-semibold uppercase
+                    tracking-wider text-[#0032A0] mb-0.5">Comunicación directa</p>
+          <p data-i18n="phys.s4.body" class="text-[12px] text-slate-600 leading-snug">
+            Condición geométrica pura: la Tierra debe estar por encima del perfil
+            del horizonte en su azimut.
+          </p>
+        </div>
+      </div>
+    </div>
+    <button id="phys-btn" type="button"
+            class="font-['JetBrains_Mono'] text-[12px] uppercase tracking-wider
+                   text-white/90 hover:text-white transition-colors cursor-pointer
+                   px-1 py-1
+                   [text-shadow:0_0_10px_rgba(0,0,0,1),0_0_4px_rgba(0,0,0,1),0_1px_4px_rgba(0,0,0,1)]">
+      <span data-i18n="phys.btn">¿Cómo lo calculamos?</span>
+    </button>
   </div>
 
   <script src="apibase.js"></script>

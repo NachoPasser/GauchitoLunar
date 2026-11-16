@@ -122,7 +122,9 @@ def test_health_reports_readiness(client, monkeypatch):
     r = client.get("/api/health")
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"ready", "missing", "warnings"}
+    # datos (ready/missing/warnings) + liveness (status/service/stage, lo que usa el deploy)
+    assert set(body) == {"status", "service", "stage", "ready", "missing", "warnings"}
+    assert body["status"] == "ok"
     assert isinstance(body["ready"], bool) and isinstance(body["missing"], list)
     # sin DEM → no listo y lo dice
     import geo
@@ -162,3 +164,9 @@ def test_interp_with_precomputed_times_matches_and_wraps_azimuth():
         assert ephem._interp(track, epoch, times) == ephem._interp(track, epoch)
     az, el = ephem._interp(track, 50.0, times)
     assert az == pytest.approx(0.0, abs=1e-9) and el == pytest.approx(2.0)   # 350 -> 10 por el camino corto
+
+
+def test_root_redirects_to_the_app(client):
+    """El deploy sirve el frontend desde el backend: / lleva al mapa (no hay health acá)."""
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code in (302, 307) and r.headers["location"] == "/map.html"

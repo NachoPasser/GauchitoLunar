@@ -383,11 +383,14 @@ function deletePin(lat, lon, m) {
 
 // Click en zona libre (dentro del disco): agrega una chincheta 📍 y abre su detalle.
 // Sin paso intermedio: el detalle carga en vivo (ver loader en detailModal).
+const siteExistsAt = (lat, lon) => markers.has(markerKey(lat, lon));
+
 function onFreeClick(e) {
   if (!proj || isDragging || justDragged || modal.isLoading()) return;
   const [u, v] = screenToNorm(e.clientX, e.clientY);
   if (Math.hypot(u - 0.5, v - 0.5) > 0.5) return;
   const [lon, lat] = proj.normToLonlat(u, v);
+  if (siteExistsAt(lat, lon)) return;
   const name = `${Math.abs(lat).toFixed(1)}°S ${Math.round(((lon % 360) + 360) % 360)}°E`;
   addSitio({ name, lat, lon, kind: "pin" });
   selectSite(lat, lon, name, addMarker(lon, lat, name, "pin"));
@@ -550,6 +553,8 @@ async function init() {
   // Pasos sin fechas: arrancan ya. Si alguno falla se reintenta al enviar la bienvenida.
   BASE_STEPS.forEach((n) => runStep(n).catch(() => {}));
   await welcome;
+  const pw = $("phys-wrap");
+  if (pw) pw.style.display = "";          // el botón de física aparece solo tras salir del tuto
   dateRange.refresh();
 }
 
@@ -880,12 +885,13 @@ function updateCoordsDisplay() {
 
 // Agrega una chincheta desde los sliders de coordenadas.
 function addCoordsPin() {
-  if (!proj) return;
+  if (!proj || modal.isLoading()) return;
   const lat = parseFloat($("coords-lat")?.value);
   const lon = parseFloat($("coords-lon")?.value);
   if (!isFinite(lat) || !isFinite(lon)) return;
   const [u, v] = proj.lonlatToNorm(lon, lat);
   if (Math.hypot(u - 0.5, v - 0.5) > 0.5) return;
+  if (siteExistsAt(lat, lon)) return;
   const name = `${Math.abs(lat).toFixed(1)}°S ${Math.round(lon)}°E`;
   addSitio({ name, lat, lon, kind: "pin" });
   selectSite(lat, lon, name, addMarker(lon, lat, name, "pin"));
@@ -913,5 +919,24 @@ document.addEventListener("i18n:change", () => {
       lastArrowParams.tLabel, lastArrowParams.frame);
   }
 });
+
+// Card de fundamento físico: toggle bottom-left
+const physBtn = $("phys-btn");
+const physCard = $("phys-card");
+const physClose = $("phys-close");
+if (physBtn && physCard) {
+  physBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    physCard.classList.toggle("phys-open");
+  });
+  if (physClose) {
+    physClose.addEventListener("click", (e) => {
+      e.stopPropagation();
+      physCard.classList.remove("phys-open");
+    });
+  }
+  document.addEventListener("click", () => physCard.classList.remove("phys-open"));
+  physCard.addEventListener("click", (e) => e.stopPropagation());
+}
 
 init();
