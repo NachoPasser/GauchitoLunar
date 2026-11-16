@@ -47,6 +47,30 @@ The physics engine uses real NASA DEM data (LOLA 80 m/px), JPL Horizons ephemeri
 
 ---
 
+## Running locally
+
+**Requirements:** Python 3.11+, the `data/` directory (DEM + rasters + Horizons cache — not in the repo due to size).
+
+```bash
+# 1. Clone and set up the backend
+git clone https://github.com/NachoPasser/GauchitoLunar
+cd GauchitoLunar/backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Start backend + frontend together
+cd ..
+./dev.sh
+```
+
+This opens:
+- Backend API → http://127.0.0.1:8000/docs
+- Frontend → http://127.0.0.1:5600/map.html
+
+> The `data/` folder (272 MB) contains the LOLA DEM, PGDA rasters, and the JPL Horizons cache. Without it the backend starts but `/api/mask` and `/api/site` will not work. Contact the team if you need the dataset.
+
+---
+
 ## Team
 
 Built in 48 h at NASA Space Apps Challenge 2026.
